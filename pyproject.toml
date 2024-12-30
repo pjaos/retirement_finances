@@ -17,6 +17,7 @@ p3lib = "^1.1.100"
 requests = "*"
 nicegui = "*"
 plotly = "*"
+python-dateutil = "*"
 
 [tool.poetry.scripts]
 retirement_finances = "retirement_finances.retirement_finances:main"
