@@ -1577,7 +1577,7 @@ class FuturePlotGUI(GUIBase):
         return converted_table
 
     def _calc(self):
-        """@brief Perform calculation."""
+        """@brief Perform calculation. This took ages to get right. I used the household_finances spreadsheet to validate the numbers it produces."""
         try:
             plot_table = []
             max_planning_date = self._get_max_date()
