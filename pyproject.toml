@@ -13,11 +13,12 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.10"
 click = "*"
-p3lib = "^1.1.100"
+p3lib = "^1.1.101"
 requests = "*"
 nicegui = "*"
 plotly = "*"
 python-dateutil = "*"
+psutil = "*"
 
 [tool.poetry.scripts]
 retirement_finances = "retirement_finances.retirement_finances:main"
