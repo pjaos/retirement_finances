@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "retirement-finances"
-version = "0.1.0"
+version = "1.0"
 description = ""
 authors = ["Paul Austen <pjaos@gmail.com>"]
 readme = "README.md"

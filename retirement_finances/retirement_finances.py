@@ -2274,6 +2274,10 @@ def main():
             "-p", "--password", help="Password use for encrypting savings and pension details.", required=True)
         parser.add_argument(
             "-f", "--folder",   help="The folder to store the retirement finances files in.")
+        parser.add_argument(
+            "--port", type=int, help="The TCP IP port to serve the GUI on (default = 9090).", default=9090)
+        parser.add_argument(
+            "--reload",  action='store_true', help="Set nicegui reload = True.")
 
         options = parser.parse_args()
         uio.enableDebug(options.debug)
@@ -2283,7 +2287,7 @@ def main():
             uio.info("Syslog enabled")
 
         finances = Finances(options.password, options.folder)
-        finances.initGUI(uio, options.debug)
+        finances.initGUI(uio, options.debug, port=options.port, reload=options.reload)
 
     # If the program throws a system exit exception
     except SystemExit:
