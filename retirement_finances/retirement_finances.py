@@ -4,6 +4,7 @@
 import argparse
 import os
 import copy
+import shutil
 
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
@@ -44,22 +45,6 @@ class Config(object):
             os.makedirs(cfg_folder)
         return cfg_folder
 
-    def _getBankAccountListFile(self):
-        """@return The file used to store bank account details."""
-        return os.path.join(self._config_folder, Config.BANK_ACCOUNTS_FILE)
-
-    def _getPensionsListFile(self):
-        """@return The file used to store pension details."""
-        return os.path.join(self._config_folder, Config.PENSIONS_FILE)
-
-    def _getFuturePlotAttrFile(self):
-        """@return The file used to store future plot details."""
-        return os.path.join(self._config_folder, Config.FUTURE_PLOT_ATTR_FILE)
-
-    def _getMultipleFuturePlotAttrFile(self):
-        """@return The file used to store future plot details."""
-        return os.path.join(self._config_folder, Config.MULTIPLE_FUTURE_PLOT_ATTR_FILE)
-
     def __init__(self, password, folder):
         self._password = password
         self._config_folder = Config.GetConfigFolder(folder)
@@ -79,6 +64,26 @@ class Config(object):
         self._multiple_future_plot_file = self._getMultipleFuturePlotAttrFile()
         self._multiple_future_plot_crypt_file = CryptFile(filename=self._multiple_future_plot_file, password=self._password)
         self._load_multiple_future_plot_attrs()
+
+    def get_config_folder(self):
+        """@return the folder used to store config files."""
+        return self._config_folder
+
+    def _getBankAccountListFile(self):
+        """@return The file used to store bank account details."""
+        return os.path.join(self._config_folder, Config.BANK_ACCOUNTS_FILE)
+
+    def _getPensionsListFile(self):
+        """@return The file used to store pension details."""
+        return os.path.join(self._config_folder, Config.PENSIONS_FILE)
+
+    def _getFuturePlotAttrFile(self):
+        """@return The file used to store future plot details."""
+        return os.path.join(self._config_folder, Config.FUTURE_PLOT_ATTR_FILE)
+
+    def _getMultipleFuturePlotAttrFile(self):
+        """@return The file used to store future plot details."""
+        return os.path.join(self._config_folder, Config.MULTIPLE_FUTURE_PLOT_ATTR_FILE)
 
     # --- methods for bank accounts ---
 
@@ -270,6 +275,8 @@ class Finances(GUIBase):
         self._last_selected_bank_account_index = None
         self._last_selected_pension_index = None
 
+        self._backup_data_files( self._config.get_config_folder() )
+
     def initGUI(self,
                 uio,
                 debugEnabled,
@@ -318,6 +325,28 @@ class Finances(GUIBase):
                dark=True,
                uvicorn_logging_level=self._guiLogLevel,
                reload=reload)
+
+    def _backup_data_files(self, data_folder):
+        """@brief Backup files in the data folder.
+           @param data_folder The folder containing the data files created by this tool."""
+        if os.path.isdir(data_folder):
+            backup_folder = os.path.join(data_folder, 'backup')
+            if not os.path.isdir(backup_folder):
+                os.makedirs(backup_folder)
+            timestamp_str = datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
+            this_backup_folder = os.path.join(backup_folder, timestamp_str)
+            if not os.path.isdir(this_backup_folder):
+                os.makedirs(this_backup_folder)
+            # Copy the data files to the backup folder
+            items = os.listdir(data_folder)
+            file_list = [item for item in items if os.path.isfile(os.path.join(data_folder, item))]
+            for _file in file_list:
+                src_file = os.path.join(data_folder, _file)
+                dest_file = os.path.join(this_backup_folder, _file)
+                shutil.copy(src_file, dest_file)
+
+        else:
+            raise Exception(f"{data_folder} data folder not found.")
 
     def gui_timer_callback(self):
         """@brief Called periodically to update the GUI."""
@@ -1171,7 +1200,7 @@ class FuturePlotGUI(GUIBase):
     DEFAULT = "Default"
 
     YEARLY = 'Yearly'
-    MONTHLY = 'Montly'
+    MONTHLY = 'Monthly'
 
     @staticmethod
     def GetDateTimeList(start_datetime, stop_datetime):
