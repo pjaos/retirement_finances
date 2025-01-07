@@ -1723,6 +1723,8 @@ class FuturePlotGUI(GUIBase):
                 self._future_plot_attr_dict[FuturePlotGUI.PENSION_DRAWDOWN_START_DATE], '%d-%m-%Y')
             predicted_state_pension_table = self._get_predicted_state_pension(
                 datetime_list, report_start_date)
+            if predicted_state_pension_table is None:
+                raise Exception('No state pension defined in the pension list.')
             monthly_from_children = float(
                 self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN])
             lump_sum_savings_withdrawals_table = self._convert_table(
