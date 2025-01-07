@@ -1701,7 +1701,7 @@ class FuturePlotGUI(GUIBase):
 
     def _calc(self):
         """@brief Perform calculation. This took ages to get right. I used the household_finances spreadsheet to validate the numbers it produces."""
-# add check for at least one non state pension and at least one state pension
+# PJA add check for at least one non state pension and at least one state pension
         try:
             plot_table = []
             max_planning_date = self._get_max_date()
@@ -2026,9 +2026,13 @@ class FuturePlotGUI(GUIBase):
                 date_value_table, initial_date=report_start_date)
             year_index = 0
             for this_datetime in datetime_list:
+                # If the state pension increases it occurs on 6 Apr.
+                # This approximates this to the 1 apr
+                adjusted_datetime = this_datetime - relativedelta(months=4)
                 # If the year hasn't changed
-                if this_datetime.year == last_datetime.year:
-                    if this_datetime >= state_pension_start_date:
+                if adjusted_datetime.year == last_datetime.year:
+                    if adjusted_datetime >= state_pension_start_date:
+
                         future_table.append(
                             [this_datetime, state_pension_amount])
                     else:
@@ -2038,12 +2042,12 @@ class FuturePlotGUI(GUIBase):
                 else:
                     state_pension_amount = self._calc_new_account_value(state_pension_amount, self._future_plot_attr_dict.get(
                         FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST), year_index)
-                    if this_datetime >= state_pension_start_date:
+                    if adjusted_datetime >= state_pension_start_date:
                         future_table.append(
                             [this_datetime, state_pension_amount])
                     else:
                         future_table.append([this_datetime, 0.0])
-                    last_datetime = this_datetime
+                    last_datetime = adjusted_datetime
                     year_index = year_index + 1
 
         return future_table
