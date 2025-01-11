@@ -2481,11 +2481,9 @@ class Plot1GUI(GUIBase):
             if this_year_reality:
                 max_date = max(x)
 
-        if self._overlay_reality():
-            # 'solid', 'dash', 'dot', 'dashdot'
-            line_dict = dict(dash='dot')
-        else:
-            line_dict = dict(dash='solid')
+        # Prediction traces are always dotted lines
+        # as this tends to indicate their unclear nature.
+        line_dict = dict(dash='dot')
 
         max_y = 0
         for plot_name in plot_dict:
