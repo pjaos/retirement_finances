@@ -1142,13 +1142,14 @@ class PensionGUI(GUIBase):
     def _update_pension_from_gui(self):
         """@brief Update the pension dict from the GUI fields."""
         duplicate_description = False
-        pension_dict_list = self._config.get_pension_dict_list()
-        for pension_dict in pension_dict_list:
-            if PensionGUI.PENSION_DESCRIPTION_LABEL in pension_dict:
-                _descrip = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
-                if _descrip == self._description_field.value:
-                    duplicate_description = True
-                    ui.notify(f"A pension with this description ('{_descrip}') is already present.", type='negative')
+        if self._add:
+            pension_dict_list = self._config.get_pension_dict_list()
+            for pension_dict in pension_dict_list:
+                if PensionGUI.PENSION_DESCRIPTION_LABEL in pension_dict:
+                    _descrip = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
+                    if _descrip == self._description_field.value:
+                        duplicate_description = True
+                        ui.notify(f"A pension with this description ('{_descrip}') is already present.", type='negative')
 
         if not duplicate_description:
             state_pension = self._state_pension_checkbox.value
