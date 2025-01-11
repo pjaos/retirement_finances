@@ -1461,7 +1461,7 @@ class FuturePlotGUI(GUIBase):
         if name in name_list:
             future_plot_attr_dict = self._config.get_future_plot_attrs_dict()
             # Save the selected settings name
-            future_plot_attr_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME]=name
+            future_plot_attr_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME] = name
             # Save it persistently
             self._save()
 
