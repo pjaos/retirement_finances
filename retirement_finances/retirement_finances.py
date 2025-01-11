@@ -694,7 +694,6 @@ class Finances(GUIBase):
                  ]
         self._init_table_dialog(table)
         self._table_dialog.open()
-        # Plot this over time
 
     def _future_plot(self):
         """@brief Plot our financial future based on given parameters."""
@@ -1142,26 +1141,36 @@ class PensionGUI(GUIBase):
 
     def _update_pension_from_gui(self):
         """@brief Update the pension dict from the GUI fields."""
-        state_pension = self._state_pension_checkbox.value
-        self._pension_dict[PensionGUI.STATE_PENSION] = state_pension
-        self._pension_dict[PensionGUI.PENSION_OWNER_LABEL] = self._pension_owner_field.value
-        self._pension_dict[PensionGUI.PENSION_PROVIDER_LABEL] = self._provider_field.value
-        self._pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL] = self._description_field.value
+        duplicate_description = False
+        pension_dict_list = self._config.get_pension_dict_list()
+        for pension_dict in pension_dict_list:
+            if PensionGUI.PENSION_DESCRIPTION_LABEL in pension_dict:
+                _descrip = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
+                if _descrip == self._description_field.value:
+                    duplicate_description = True
+                    ui.notify(f"A pension with this description ('{_descrip}') is already present.", type='negative')
 
-        if state_pension:
-            if BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value):
-                self._pension_dict[PensionGUI.STATE_PENSION_START_DATE] = self._state_pension_state_date_field.value
+        if not duplicate_description:
+            state_pension = self._state_pension_checkbox.value
+            self._pension_dict[PensionGUI.STATE_PENSION] = state_pension
+            self._pension_dict[PensionGUI.PENSION_OWNER_LABEL] = self._pension_owner_field.value
+            self._pension_dict[PensionGUI.PENSION_PROVIDER_LABEL] = self._provider_field.value
+            self._pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL] = self._description_field.value
 
-            # If a state pension but the start date is not entered correctly quit
-            else:
-                return
+            if state_pension:
+                if BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value):
+                    self._pension_dict[PensionGUI.STATE_PENSION_START_DATE] = self._state_pension_state_date_field.value
 
-        if self._add:
-            self._config.add_pension(self._pension_dict)
+                # If a state pension but the start date is not entered correctly quit
+                else:
+                    return
 
-        self._state_pension_checkbox_callback()
+            if self._add:
+                self._config.add_pension(self._pension_dict)
 
-        self._config.save_pensions()
+            self._state_pension_checkbox_callback()
+
+            self._config.save_pensions()
 
 
 class FuturePlotGUI(GUIBase):
