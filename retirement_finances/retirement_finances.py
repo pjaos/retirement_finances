@@ -6,8 +6,10 @@ import os
 import copy
 import shutil
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
+
+import pandas as pd
 
 from p3lib.uio import UIO
 from p3lib.helper import logTraceBack
@@ -275,7 +277,7 @@ class Finances(GUIBase):
         self._last_selected_bank_account_index = None
         self._last_selected_pension_index = None
 
-        self._backup_data_files( self._config.get_config_folder() )
+        self._backup_data_files(self._config.get_config_folder())
 
     def initGUI(self,
                 uio,
@@ -1388,11 +1390,13 @@ class FuturePlotGUI(GUIBase):
                 with ui.row():
                     self._settings_name_list = [
                         FuturePlotGUI.DEFAULT] + self._get_settings_name_list()
+                    future_plot_attr_dict = self._config.get_future_plot_attrs_dict()
+                    retirement_predictions_settings_name = future_plot_attr_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME]
                     self._settings_name_select = ui.select(self._settings_name_list,
                                                            label='Name',
                                                            on_change=lambda e: self._select_settings_name(
                                                                e.value),
-                                                           value=self._settings_name_list[0]).style('width: 400px;')
+                                                           value=retirement_predictions_settings_name).style('width: 400px;')
                     self._new_settings_name_input = ui.input(
                         label='New name').style('width: 400px;')
 
@@ -1405,6 +1409,10 @@ class FuturePlotGUI(GUIBase):
         with ui.row():
             ui.button('show prediction', on_click=lambda: self._calc()).tooltip(
                 'Perform calculation and plot the results.')
+            ui.button('Show progress', on_click=lambda: self._show_progress()).tooltip(
+                'Show the progress against a prediction.')
+            ui.button('Show progress this year', on_click=lambda: self._show_progress_this_year()).tooltip(
+                'Show the progress against a prediction.')
         self._update_gui_from_dict()
         self._load()
 
@@ -1449,6 +1457,14 @@ class FuturePlotGUI(GUIBase):
 
     def _load(self):
         name = self._get_settings_name()
+        name_list = list(self._config.get_multiple_future_plot_attrs_dict().keys())
+        if name in name_list:
+            future_plot_attr_dict = self._config.get_future_plot_attrs_dict()
+            # Save the selected settings name
+            future_plot_attr_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME]=name
+            # Save it persistently
+            self._save()
+
         multiple_future_plot_attrs_dict = self._config.get_multiple_future_plot_attrs_dict()
         if name and len(name) > 0:
             if name in multiple_future_plot_attrs_dict:
@@ -1699,9 +1715,16 @@ class FuturePlotGUI(GUIBase):
             converted_table.append((date_obj, value_float))
         return converted_table
 
-    def _calc(self):
-        """@brief Perform calculation. This took ages to get right. I used the household_finances spreadsheet to validate the numbers it produces."""
-# PJA add check for at least one non state pension and at least one state pension
+    def _show_progress(self):
+        self._calc(overlay_real_performance=True)
+
+    def _show_progress_this_year(self):
+        self._calc(overlay_real_performance=True, this_year_reality=True)
+
+    def _calc(self, overlay_real_performance=False, this_year_reality=False):
+        """@brief Perform calculation. This took ages to get right. I used the household_finances spreadsheet to validate the numbers it produces.
+           @param overlay_real_performance If True then the plot shows the predictions overlaid with the real performance.
+           @param this_year_reality If plotting rel values of pension, savings and total only show current year."""
         try:
             plot_table = []
             max_planning_date = self._get_max_date()
@@ -1834,10 +1857,40 @@ class FuturePlotGUI(GUIBase):
                 plot_table.append((this_date, total, personal_pension_value, savings_amount, income_this_month,
                                   state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
 
-            self._do_plot(self._settings_name_select.value, plot_table)
+            if overlay_real_performance:
+                pp_table = self._get_personal_pension_table()
+                savings_table = self._get_savings_table()
+                total_table = self._get_total_table()
+                reality_tables = (pp_table, savings_table, total_table)
+                self._do_plot(self._settings_name_select.value,
+                              plot_table,
+                              reality_tables=reality_tables,
+                              this_year_reality=this_year_reality)
+            else:
+                self._do_plot(self._settings_name_select.value, plot_table)
 
         except Exception as ex:
+            # PJA enable for debugging
+            # raise ex
             ui.notify(str(ex), type='negative')
+
+    # PJA not used but may be useful for example code
+    def _show_progress_against_prediction(self):
+        """@brief Show the increase/decrease of savings and pension against a selected prediction."""
+        pp_table = self._get_personal_pension_table()
+        print('Pension table')
+        for row in pp_table:
+            print(row)
+
+        savings_table = self._get_savings_table()
+        print('Savings table')
+        for row in savings_table:
+            print(row)
+
+        total_table = self._get_total_table()
+        print('Total table')
+        for row in total_table:
+            print(row)
 
     def _get_value_drop(self, this_date, value, withdrawals_table):
         """@brief Determine how much a value drops given the withdrawal table amounts.
@@ -1851,35 +1904,13 @@ class FuturePlotGUI(GUIBase):
             _date = row[0]
             amount = row[1]
             if self.is_this_month(_date, this_date):
-                #            if self._in_next_month(_date, this_date):
-                #            if self.is_in_last_month(_date, this_date):
                 value -= amount
         return value
 
     def is_this_month(self, this_date, date_to_check):
         return (this_date.year == date_to_check.year and this_date.month == date_to_check.month)
 
-    def is_in_last_month(self, this_date, date_to_check):
-        today = this_date
-        first_of_this_month = datetime(today.year, today.month, 1)
-        first_of_last_month = first_of_this_month - timedelta(days=1)
-        first_of_last_month = datetime(
-            first_of_last_month.year, first_of_last_month.month, 1)
-        return first_of_last_month <= date_to_check < first_of_this_month
-
-    def _in_next_month(self, this_date, date_to_check):
-        """@brief Check if this_date falls in the next month after that_date.
-           @param this_date A datetime instance.
-           @param that_date A datetime instance.
-           @return True if this_date falls in the month previous to that_date."""
-        # Calculate next month and year
-        next_month = this_date.month % 12 + 1
-        next_year = this_date.year + (1 if this_date.month == 12 else 0)
-
-        # Check if the date's month and year match the next month and year
-        return date_to_check.year == next_year and date_to_check.month == next_month
-
-    def _do_plot(self, name, plot_table):
+    def _do_plot(self, name, plot_table, reality_tables=None, this_year_reality=False):
         """@brief perform a plot of the data in the plot_table.
            @param name The name of the plot.
            @param plot_table Holds rows that comprise the following
@@ -1888,11 +1919,20 @@ class FuturePlotGUI(GUIBase):
                              2 = pension total
                              3 = total of both the above
                              4 = monthly income
-                             5 = monthly state pension total of both of us."""
+                             5 = monthly state pension total of both of us.
+            @param reality_tables If defined this is a list of three tables.
+                                  Each row in each table has a 0:Date and 1:Total column
+                                  0 = personal_pension_table
+                                  1 = savings table
+                                  2 = total table
+           @param this_year_reality If plotting the real performance of pensions & savings you can either
+                                    show the entered pension,savings and total alongside the entire
+                                    prediction time period (False default)or if this param is set True limit
+                                    the X axis to end at the end of the current year."""
         # Define a secondary page
         @ui.page('/plot_1_page')
         def plot_1_page():
-            Plot1GUI(name, plot_table)
+            Plot1GUI(name, plot_table, reality_tables, this_year_reality)
         # This will open in a separate browser window
         ui.run_javascript("window.open('/plot_1_page', '_blank')")
 
@@ -1968,14 +2008,134 @@ class FuturePlotGUI(GUIBase):
         return compound_growth_table
 
     def _get_personal_pension_table(self):
-        # PJA ADD DOC
+        """@return A table that contains the total amounts in all our personal pension
+                   accounts over time. This is not predicted but comprises the total of all
+                   savings accounts."""
+        pp_dfl = self._get_personal_pension_pd_dfl()
+        return self._get_amalgamated_table(pp_dfl)
+
+    def _get_savings_table(self):
+        """@return A table that contains the total amounts in all our savings accounts
+                   over time. This is not predicted but comprises the total of all
+                   savings accounts."""
+        savings_dfl = self._get_savings_pd_dfl()
+        return self._get_amalgamated_table(savings_dfl)
+
+    def _get_total_table(self):
+        """@return A table that contains the total amounts in our personal
+                   pension and saviings over time. This is not predicted but
+                   comprises the total of all personal pension and savings accounts."""
+        pp_dfl = self._get_personal_pension_pd_dfl()
+        savings_dfl = self._get_savings_pd_dfl()
+        return self._get_amalgamated_table(pp_dfl+savings_dfl)
+
+    def _get_amalgamated_table(self, dataframe_list, return_total_table=True):
+        """@brief Get an amalgamated table such that the total value of all input tables
+                  can be seen over time. This was originally aimed at combining multiple
+                  savings account tables into one so that the single table shows the
+                  total amount of savings and how it changes over time as the user enters
+                  the value in each savings account.
+           @param dataframe_list A list of pandas dataframes. Each dataframe must have
+                                 a 'Date' and a 'Value' column.
+           @param return_total_table If True then the table returned just has two columns
+                                     Date and Total.
+                                     If False then the table returned has the same Date
+                                     column but has separate columns for the total of
+                                     each of the input tables."""
+        table_index = 0
+        for df in dataframe_list:
+            # Convert 'Date' column to datetime
+            df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y", errors="coerce")
+            # Ensure Value column is a float
+            df["Value"] = df["Value"].astype(float)
+            # We need to ensure that the Value column is different in each table
+            # So that they can be merged into one table without a column name clash.
+            df.rename(columns={'Value': f'Value_{table_index}'}, inplace=True)
+            # Inc the table index.
+            table_index += 1
+
+        # Merge all tables in the list
+        merged_table = dataframe_list[0]
+        for table in dataframe_list[1:]:
+            merged_table = merged_table.merge(table, on='Date', how='outer').sort_values(by="Date")
+        # Fill NaN values with previous row value if NaN
+        # merged_table.fillna(method='ffill', inplace=True)
+        merged_table.ffill(inplace=True)
+
+        # Fall any NaN columns left over from above (no previous value in column) with 0
+        merged_table.fillna(0.0, inplace=True)
+
+        # Sum all the columns so that we know the total value each time it changes
+        merged_table['Total'] = merged_table.drop(columns=['Date']).sum(axis=1)
+
+        merged_table['Date'] = merged_table['Date'].apply(lambda x: x.to_pydatetime())
+
+        if return_total_table:
+            # Reset the Date index column so it is appears as any other table column
+            table1 = merged_table.reset_index()
+            # Only include the Date and Total columns on the returned table
+            table2 = table1[['Date', 'Total']]
+        else:
+            # Return a table that has the date column and a separate column for
+            # the total of each input table.
+            table2 = merged_table
+
+        return table2.values.tolist()
+
+    def _get_personal_pension_pd_dfl(self):
+        # Build a list of pandas dataframes
+        pd_dataframe_list = []
         pension_dict_list = self._config.get_pension_dict_list()
         for pension_dict in pension_dict_list:
             state_pension = pension_dict[PensionGUI.STATE_PENSION]
             if not state_pension:
-                return self._convert_table(pension_dict[PensionGUI.PENSION_TABLE])
+                table = pension_dict[PensionGUI.PENSION_TABLE]
+                dates, values = zip(*table)
+                data_dict = {"Date": dates, "Value": values}
+                pd_dataframe = pd.DataFrame(data_dict)
+                pd_dataframe_list.append(pd_dataframe)
+        return pd_dataframe_list
 
-        raise Exception("No personal pension found.")
+    def _get_merged_dfl(self, pd_dataframe_list):
+        """@brief Get a merged dataframe list.
+           @param pd_dataframe_list Has a Date and a Value column in each.
+           @return A table, a list of lists/rows, each row holding a date and value."""
+        # Convert 'Date' column to datetime
+        for df in pd_dataframe_list:
+            df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y", errors="coerce")
+
+        # Combine all DataFrames
+        pd_dataframe_list_merged = pd.concat(pd_dataframe_list).sort_values(by="Date")
+
+        # Compute cumulative sum
+        full_date_range = pd.date_range(start=pd_dataframe_list_merged["Date"].min(), end=pd_dataframe_list_merged["Date"].max())
+        final_pd_dataframe_list = (
+            pd_dataframe_list_merged.set_index("Date")
+            .reindex(full_date_range)
+            .fillna({"Value": 0})
+            .rename_axis("Date")
+        )
+        final_pd_dataframe_list["Value"] = final_pd_dataframe_list["Value"].astype(float)
+        final_pd_dataframe_list["Cumulative Value"] = final_pd_dataframe_list["Value"].cumsum()
+        table1 = final_pd_dataframe_list.reset_index()
+        table2 = table1.drop(columns=["Value"])
+        table2["Date"] = table2["Date"].dt.strftime("%d-%m-%Y")
+
+        return self._convert_table(table2.values.tolist())
+
+    def _get_savings_pd_dfl(self):
+        # Build a list of pandas dataframes
+        pd_dataframe_list = []
+        bank_accounts_dict_list = self._config.get_bank_accounts_dict_list()
+        for bank_accounts_dict in bank_accounts_dict_list:
+            active = bank_accounts_dict[BankAccountGUI.ACCOUNT_ACTIVE]
+            if active:
+                table = bank_accounts_dict[BankAccountGUI.TABLE]
+                dates, values = zip(*table)
+                data_dict = {"Date": dates, "Value": values}
+                pd_dataframe = pd.DataFrame(data_dict)
+                pd_dataframe_list.append(pd_dataframe)
+        return pd_dataframe_list
 
     def _get_predicted_state_pension(self, datetime_list, report_start_date):
         """ @param datetime_list A list of datetime instances
@@ -2147,7 +2307,7 @@ class FuturePlotGUI(GUIBase):
 class Plot1GUI(GUIBase):
     """@brief Responsible for plotting the data of the predicted changes in the savings as we draw out money."""
 
-    def __init__(self, name, plot_table):
+    def __init__(self, name, plot_table, reality_tables=None, this_year_reality=False):
         """@param name The name of the plot.
            @param plot_table Holds rows that comprise the following
                              0 = date
@@ -2159,10 +2319,28 @@ class Plot1GUI(GUIBase):
                              6 = savings_interest (yearly)
                              7 = savings withdrawal this month
                              8 = pension withdrawal this month.
+           @param reality_tables If defined this is a list of three tables.
+                                  Each row in each table has a 0:Date and 1:Total column
+                                  0 = personal_pension_table
+                                  1 = savings table
+                                  2 = total table
+           @param this_year_reality If plotting the real performance of pensions & savings you can either
+                                    show the entered pension,savings and total alongside the entire
+                                    prediction time period (False default)or if this param is set True limit
+                                    the X axis to end at the end of the current year.
                              """
         self._name = name
         self._plot_table = plot_table
+        self._reality_tables = reality_tables
+        self._this_year_reality = this_year_reality
         self._init_gui()
+
+    def _overlay_reality(self):
+        """@return True if the plot shows predicted and real values overlaid."""
+        overlay_reality = False
+        if self._reality_tables:
+            overlay_reality = True
+        return overlay_reality
 
     def _init_gui(self):
         """@brief plot the data in the plot table."""
@@ -2200,7 +2378,7 @@ class Plot1GUI(GUIBase):
             plot_dict[plot_names[1]].append((_date, personal_pension))
             plot_dict[plot_names[2]].append((_date, savings))
 
-        self._do_plot(plot_panel_1, plot_dict)
+        self._do_plot(plot_panel_1, plot_dict, reality_tables=self._reality_tables, this_year_reality=self._this_year_reality)
 
         plot_names = ['Monthly budget/income', 'Total state pension']
         plot_dict = {plot_names[0]: [],
@@ -2241,7 +2419,7 @@ class Plot1GUI(GUIBase):
 
         self._do_plot(plot_panel_4, plot_dict, bar_chart=True)
 
-    def _do_plot(self, plot_pane, plot_dict, bar_chart=False):
+    def _do_plot(self, plot_pane, plot_dict, bar_chart=False, reality_tables=None, this_year_reality=False):
         """@brief Perform a plot of the data in the plot_dict on the plot_pane.
            @param plot_pane The area to plot data on.
            @param plot_dict The dict containing date to be plotted.
@@ -2249,13 +2427,69 @@ class Plot1GUI(GUIBase):
                             Each value is a row in the table
                             0 = The date.
                             1 = The value.
-           @param bar_chart If True show a bar chart."""
+           @param bar_chart If True show a bar chart.
+           @param this_year_reality If plotting the real performance of pensions & savings you can either
+                                    show the entered pension,savings and total alongside the entire
+                                    prediction time period (False default)or if this param is set True limit
+                                    the X axis to end at the end of the current year."""
         fig = go.Figure()
+
+        max_date = None
+        if reality_tables:
+
+            totals_table = reality_tables[2]
+            x, y = zip(*totals_table)
+            # Convert from Timestamp instances to datetime instances
+            datetimes = [ts.to_pydatetime() for ts in x]
+            fig.add_trace(go.Scatter(name='Total (reality)',
+                                     x=datetimes,
+                                     y=y,
+                                     mode='lines',
+                                     line=dict(dash='solid')))
+
+            pension_table = reality_tables[0]
+            x, y = zip(*pension_table)
+            # Convert from Timestamp instances to datetime instances
+            datetimes = [ts.to_pydatetime() for ts in x]
+            fig.add_trace(go.Scatter(name='Personal Pension (reality)',
+                                     x=datetimes,
+                                     y=y,
+                                     mode='lines',
+                                     line=dict(dash='solid')))
+
+            savings_table = reality_tables[1]
+            x, y = zip(*savings_table)
+            # Convert from Timestamp instances to datetime instances
+            datetimes = [ts.to_pydatetime() for ts in x]
+            fig.add_trace(go.Scatter(name='Savings (reality)',
+                                     x=datetimes,
+                                     y=y,
+                                     mode='lines',
+                                     line=dict(dash='solid')))
+
+            # If the user wants to limit the reality plot to just this year
+            if this_year_reality:
+                max_date = max(x)
+
+        if self._overlay_reality():
+            # 'solid', 'dash', 'dot', 'dashdot'
+            line_dict = dict(dash='dot')
+        else:
+            line_dict = dict(dash='solid')
 
         max_y = 0
         for plot_name in plot_dict:
             plot_table = plot_dict[plot_name]
             x, y = zip(*plot_table)
+            if max_date:
+                value_count = 0
+                for _date in x:
+                    if _date.year > max_date.year:
+                        break
+                    value_count += 1
+                if value_count < len(x):
+                    x = x[:value_count]
+                    y = y[:value_count]
             my = max(y)
             if my > max_y:
                 max_y = my
@@ -2264,7 +2498,7 @@ class Plot1GUI(GUIBase):
             else:
                 # option mode='lines+markers'
                 fig.add_trace(go.Scatter(
-                    name=plot_name, x=x, y=y, mode='lines'))
+                    name=plot_name, x=x, y=y, mode='lines', line=line_dict))
 
         max_y = int(max_y * 1.1)
         fig.update_layout(margin=dict(l=40, r=40, t=40, b=40),
