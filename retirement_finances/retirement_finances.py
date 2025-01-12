@@ -27,6 +27,7 @@ class Config(object):
     PENSIONS_FILE = "pensions.json"
     FUTURE_PLOT_ATTR_FILE = "future_plot_attr.json"
     MULTIPLE_FUTURE_PLOT_ATTR_FILE = "multiple_future_plot_attr.json"
+    SELECTED_FUTURE_PLOT_NAME_ATTR_FILE = "selected_future_plot_name_attr.json"
 
     @staticmethod
     def GetConfigFolder(folder):
@@ -67,6 +68,10 @@ class Config(object):
         self._multiple_future_plot_crypt_file = CryptFile(filename=self._multiple_future_plot_file, password=self._password)
         self._load_multiple_future_plot_attrs()
 
+        self._selected_retirement_parameters_name_file = self._getSelectedRequirementParametersNameFile()
+        self._selected_retirement_parameters_name_crypt_file = CryptFile(filename=self._selected_retirement_parameters_name_file, password=self._password)
+        self._load_selected_retirement_parameters_name_attrs()
+
     def get_config_folder(self):
         """@return the folder used to store config files."""
         return self._config_folder
@@ -84,8 +89,12 @@ class Config(object):
         return os.path.join(self._config_folder, Config.FUTURE_PLOT_ATTR_FILE)
 
     def _getMultipleFuturePlotAttrFile(self):
-        """@return The file used to store future plot details."""
+        """@return The file used to store multiple future plot details."""
         return os.path.join(self._config_folder, Config.MULTIPLE_FUTURE_PLOT_ATTR_FILE)
+
+    def _getSelectedRequirementParametersNameFile(self):
+        """@return The file used to store the selected future plot name."""
+        return os.path.join(self._config_folder, Config.SELECTED_FUTURE_PLOT_NAME_ATTR_FILE)
 
     # --- methods for bank accounts ---
 
@@ -179,7 +188,7 @@ class Config(object):
     def replace_future_plot_attrs_dict(self, new_future_plot_attrs_dict):
         self._future_plot_attr_dict = new_future_plot_attrs_dict
 
-    # --- methods for future plot parameters ---
+    # --- methods for future plot parameters list ---
 
     def _load_multiple_future_plot_attrs(self):
         """@brief Load the multiple future plot parameters from file."""
@@ -197,8 +206,29 @@ class Config(object):
         ui.notify(f'Saved {self._multiple_future_plot_crypt_file.get_file()}')
 
     def get_multiple_future_plot_attrs_dict(self):
-        """@brief Get the the future plot parameters dict."""
+        """@brief Get the future plot parameters dict."""
         return self._multiple_future_plot_attr_dict
+
+    # --- methods for selected future plot parameters name ---
+
+    def _load_selected_retirement_parameters_name_attrs(self):
+        """@brief Load the selected retirement parameters name parameters from file."""
+        try:
+            self._selected_retirement_parameters_name_dict = {}
+            self._selected_retirement_parameters_name_dict = self._selected_retirement_parameters_name_crypt_file.load()
+            ui.notify(f'Loaded from {self._selected_retirement_parameters_name_crypt_file.get_file()}')
+
+        except Exception:
+            ui.notify(f'{self._selected_retirement_parameters_name_crypt_file.get_file()} file not found.', type='negative')
+
+    def _save_selected_retirement_parameters_name_attrs(self):
+        """@brief Save the selected retirement parameters name parameters persistently."""
+        self._selected_retirement_parameters_name_crypt_file.save(self._selected_retirement_parameters_name_dict)
+        ui.notify(f'Saved {self._selected_retirement_parameters_name_crypt_file.get_file()}')
+
+    def get_selected_retirement_parameters_name_dict(self):
+        """@brief Get the selected retirement parameters name parameters dict."""
+        return self._selected_retirement_parameters_name_dict
 
 
 class GUIBase(object):
@@ -220,34 +250,46 @@ class GUIBase(object):
         date.tooltip("DD-MM-YYYY")
         return date
 
-    def CheckValidDateString(date_str):
+    @staticmethod
+    def CheckValidDateString(date_str, field_name=None):
         """@brief Check for a valid date string. An exception is thrown if the date is invalid.
            @param date_str The dd-mm-yyyy format string.
+           @param field_name The optional name of the field being checked.
            @return True if date is valid."""
         valid = False
         try:
             datetime.strptime(date_str, '%d-%m-%Y')
             valid = True
         except Exception:
-            ui.notify(
-                f"{date_str} is not a valid date string (dd-mm-yyyy)", type='negative')
+            msg = f"The date '{date_str}' is not a valid date string (dd-mm-yyyy)"
+            if field_name:
+                msg = f"The '{field_name}' = '{date_str}' is not a valid date string (dd-mm-yyyy)"
+            ui.notify(msg, type='negative')
         return valid
 
-    def CheckGreaterThanZero(number):
+    @staticmethod
+    def CheckGreaterThanZero(number, field_name=None):
         """@brief Check that the number is greater than 0.0.
            @param number The number to check.
+           @param field_name The optional name of the field being checked.
            @return True if number is greater than 0."""
+        if number is None:
+            number = 0
         valid = False
         if number > 0.0:
             valid = True
         else:
-            ui.notify(
-                f"The number entered ({number}) must be greater than zero.", type='negative')
+            msg = f"The number entered ({number}) must be greater than zero."
+            if field_name:
+                msg = f"The '{field_name}' = ({number}) must be greater than zero."
+            ui.notify(msg, type='negative')
         return valid
 
-    def CheckCommaSeparatedNumberList(comma_separated_number_str):
+    @staticmethod
+    def CheckCommaSeparatedNumberList(comma_separated_number_str, field_name=None):
         """@brief Check that the string entered contains a comma separated number list.
            @param comma_separated_number_str The string to check.
+           @param field_name The optional name of the field being checked.
            @return True if the string is a valid comma separated list of numbers."""
         valid = False
         try:
@@ -256,8 +298,11 @@ class GUIBase(object):
                 float(elem)
             valid = True
         except ValueError:
-            ui.notify(
-                f"{comma_separated_number_str} is not a valid comma separated number list.", type='negative')
+            msg = f"'{comma_separated_number_str}' is not a valid comma separated number list."
+            if field_name:
+                msg = f"The '{field_name}' = '{comma_separated_number_str}' is not a valid comma separated number list."
+            ui.notify(msg, type='negative')
+
         return valid
 
     def __init__(self):
@@ -294,13 +339,11 @@ class Finances(GUIBase):
 
         tabNameList = ('Savings',
                        'Pensions',
-                       'Reports',
-                       'Configuration')
+                       'Reports')
         # This must have the same number of elements as the above list
         tabMethodInitList = [self._init_bank_accounts_tab,
                              self._init_pensions_tab,
-                             self._init_reports_tab,
-                             self._init_configuration_tab]
+                             self._init_reports_tab]
 
         tabObjList = []
         with ui.row():
@@ -704,9 +747,6 @@ class Finances(GUIBase):
         # This will open in a separate browser window
         ui.run_javascript("window.open('/future_plot_page', '_blank')")
 
-    def _init_configuration_tab(self):
-        pass
-
 
 class BankAccountGUI(GUIBase):
     """@brief Responsible for allowing the user to add details of a bank/building society account or any other institution holding savings accounts"""
@@ -874,7 +914,10 @@ class BankAccountGUI(GUIBase):
 
     def _add_row_dialog_ok_button_press(self):
         self._add_row_dialog.close()
-        if BankAccountGUI.CheckValidDateString(self._date_input_field.value) and BankAccountGUI.CheckGreaterThanZero(self._amount_field.value):
+        if BankAccountGUI.CheckValidDateString(self._date_input_field.value,
+                                               field_name = self._date_input_field.props['label']) and \
+                          BankAccountGUI.CheckGreaterThanZero(self._amount_field.value,
+                                                              field_name = self._amount_field.props['label']):
             row = (self._date_input_field.value, self._amount_field.value)
             self._add_table_row(row)
             self._display_table_rows()
@@ -950,7 +993,8 @@ class BankAccountGUI(GUIBase):
             self._bank_account_dict[BankAccountGUI.ACCOUNT_NUMBER] = self._bank_account_field_list[3].value
             self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER] = self._bank_account_field_list[4].value
 
-            if BankAccountGUI.CheckValidDateString(self._bank_account_field_list[5].value):
+            if BankAccountGUI.CheckValidDateString(self._bank_account_field_list[5].value,
+                                                   field_name = self._bank_account_field_list[5].props['label']):
                 self._bank_account_dict[BankAccountGUI.ACCOUNT_OPEN_DATE] = self._bank_account_field_list[5].value
                 self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE] = self._bank_account_field_list[6].value
                 self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE] = self._bank_account_field_list[7].value
@@ -1120,7 +1164,10 @@ class PensionGUI(GUIBase):
 
     def _add_row_dialog_ok_button_press(self):
         self._add_row_dialog.close()
-        if PensionGUI.CheckValidDateString(self._date_input_field.value) and PensionGUI.CheckGreaterThanZero(self._amount_field.value):
+        if PensionGUI.CheckValidDateString(self._date_input_field.value,
+                                           field_name = self._date_input_field.props['label']) and \
+           PensionGUI.CheckGreaterThanZero(self._amount_field.value,
+                                           field_name = self._amount_field.props['label']):
             row = (self._date_input_field.value, self._amount_field.value)
             self._add_table_row(row)
             self._display_table_rows()
@@ -1159,7 +1206,8 @@ class PensionGUI(GUIBase):
             self._pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL] = self._description_field.value
 
             if state_pension:
-                if BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value):
+                if BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value,
+                                                       field_name = self._state_pension_state_date_field.props['label']):
                     self._pension_dict[PensionGUI.STATE_PENSION_START_DATE] = self._state_pension_state_date_field.value
 
                 # If a state pension but the start date is not entered correctly quit
@@ -1286,10 +1334,21 @@ class FuturePlotGUI(GUIBase):
         if FuturePlotGUI.PENSION_WITHDRAWAL_TABLE not in future_plot_attr_dict:
             future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = []
 
-        if FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME] = FuturePlotGUI.DEFAULT
-
         return future_plot_attr_dict
+
+    def _get_selected_retirement_predictions_settings_name(self):
+        """@brief Get the name of the selected retirement predictions settings."""
+        selected_retirement_parameters_name_dict = self._config.get_selected_retirement_parameters_name_dict()
+        if FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME not in selected_retirement_parameters_name_dict:
+            selected_retirement_parameters_name_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME] = FuturePlotGUI.DEFAULT
+        return selected_retirement_parameters_name_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME]
+
+    def _set_selected_retirement_predictions_settings_name(self, name):
+        """@brief Set the name of the selected retirement prediction settings.
+           @param name The name of the settings."""
+        selected_retirement_parameters_name_dict = self._config.get_selected_retirement_parameters_name_dict()
+        selected_retirement_parameters_name_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME] = name
+        self._config._save_selected_retirement_parameters_name_attrs()
 
     def _init_gui(self):
         with ui.row():
@@ -1398,10 +1457,8 @@ class FuturePlotGUI(GUIBase):
             with ui.card():
                 ui.label("Save/Load the above retirement prediction parameters.")
                 with ui.row():
-                    self._settings_name_list = [
-                        FuturePlotGUI.DEFAULT] + self._get_settings_name_list()
-                    future_plot_attr_dict = self._config.get_future_plot_attrs_dict()
-                    retirement_predictions_settings_name = future_plot_attr_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME]
+                    self._settings_name_list = [FuturePlotGUI.DEFAULT] + self._get_settings_name_list()
+                    retirement_predictions_settings_name = self._get_selected_retirement_predictions_settings_name()
                     self._settings_name_select = ui.select(self._settings_name_list,
                                                            label='Name',
                                                            on_change=lambda e: self._select_settings_name(
@@ -1424,7 +1481,7 @@ class FuturePlotGUI(GUIBase):
             ui.button('Show progress this year', on_click=lambda: self._show_progress_this_year()).tooltip(
                 'Show the progress against a prediction.')
         self._update_gui_from_dict()
-        self._load()
+        self._load_settings(retirement_predictions_settings_name)
 
     def _get_settings_name_list(self):
         """@return a list of name of the saved future plot parameters."""
@@ -1433,8 +1490,10 @@ class FuturePlotGUI(GUIBase):
 
     def _select_settings_name(self, value):
         # Clear the new name field
+        settings_name = self._get_settings_name()
+        self._set_selected_retirement_predictions_settings_name(settings_name)
         self._new_settings_name_input.value = ""
-        self._load()
+        self._load_settings(settings_name)
 
     def _get_settings_name(self):
         """@brief Get the entered settings name."""
@@ -1465,27 +1524,14 @@ class FuturePlotGUI(GUIBase):
             # Clear the new name field
             self._new_settings_name_input.value = ""
 
-    def _load(self):
-        name = self._get_settings_name()
-        name_list = list(self._config.get_multiple_future_plot_attrs_dict().keys())
-        if name in name_list:
-            future_plot_attr_dict = self._config.get_future_plot_attrs_dict()
-            # Save the selected settings name
-            future_plot_attr_dict[FuturePlotGUI.RETIREMENT_PREDICTION_SETTINGS_NAME] = name
-            # Save it persistently
-            self._save()
-
-        multiple_future_plot_attrs_dict = self._config.get_multiple_future_plot_attrs_dict()
-        if name and len(name) > 0:
-            if name in multiple_future_plot_attrs_dict:
-                future_plot_attrs_dict = multiple_future_plot_attrs_dict[name]
-                self._config.replace_future_plot_attrs_dict(
-                    future_plot_attrs_dict)
-                self._config.save_future_plot_attrs()
-                self._update_gui_from_dict()
-
-            else:
-                ui.notify(f"{name} not found.")
+    def _load_settings(self, selected_settings_name):
+        """@brief Load the prediction parameters.
+           @param selected_settings_name The name of the settings to load."""
+        name_list = self._get_settings_name_list()
+        if selected_settings_name in name_list:
+            future_plot_attrs_dict = self._config.get_multiple_future_plot_attrs_dict()[selected_settings_name]
+            self._config.replace_future_plot_attrs_dict(future_plot_attrs_dict)
+            self._update_gui_from_dict()
 
     def _delete(self):
         name = self._settings_name_select.value
@@ -1588,9 +1634,12 @@ class FuturePlotGUI(GUIBase):
         self._update_gui_tables()
 
     def _add_row_dialog_ok_button_press(self):
-        if FuturePlotGUI.CheckValidDateString(self._date_input_field.value) and \
-           FuturePlotGUI.CheckGreaterThanZero(self._amount_field.value) and \
-           FuturePlotGUI.CheckGreaterThanZero(self._repeat_count_field.value):
+        if FuturePlotGUI.CheckValidDateString(self._date_input_field.value,
+                                              field_name = self._date_input_field.props['label']) and \
+           FuturePlotGUI.CheckGreaterThanZero(self._amount_field.value,
+                                              field_name = self._amount_field.props['label']) and \
+           FuturePlotGUI.CheckGreaterThanZero(self._repeat_count_field.value,
+                                              field_name = self._repeat_count_field.props['label']):
 
             self._add_row_dialog.close()
             yearly = False
@@ -1658,17 +1707,24 @@ class FuturePlotGUI(GUIBase):
         """@brief update the dict from the details entered into the GUI.
            @return True if all entries are valid."""
         valid = False
-        if FuturePlotGUI.CheckValidDateString(self._start_date_field.value) and \
-           FuturePlotGUI.CheckValidDateString(self._my_dob_field.value) and \
-           FuturePlotGUI.CheckValidDateString(self._partner_dob_field.value) and \
-           FuturePlotGUI.CheckValidDateString(self._pension_drawdown_start_date_field.value) and \
-           BankAccountGUI.CheckGreaterThanZero(self._my_max_age_field.value) and \
-           BankAccountGUI.CheckGreaterThanZero(self._partner_max_age_field.value) and \
-           BankAccountGUI.CheckGreaterThanZero(self._monthly_income_field.value) and \
-           BankAccountGUI.CheckCommaSeparatedNumberList(self._yearly_increase_in_income_field.value) and \
-           BankAccountGUI.CheckCommaSeparatedNumberList(self._savings_interest_rates_field.value) and \
-           BankAccountGUI.CheckCommaSeparatedNumberList(self._pension_growth_rate_list_field.value) and \
-           BankAccountGUI.CheckCommaSeparatedNumberList(self._state_pension_growth_rate_list_field.value):
+        if FuturePlotGUI.CheckValidDateString(self._start_date_field.value,
+                                              field_name=self._start_date_field.props['label']) and \
+           FuturePlotGUI.CheckValidDateString(self._my_dob_field.value,
+                                              field_name=self._my_dob_field.props['label']) and \
+           FuturePlotGUI.CheckValidDateString(self._pension_drawdown_start_date_field.value,
+                                              field_name=self._pension_drawdown_start_date_field.props['label']) and \
+           BankAccountGUI.CheckGreaterThanZero(self._my_max_age_field.value,
+                                               field_name=self._my_max_age_field.props['label']) and \
+           BankAccountGUI.CheckGreaterThanZero(self._monthly_income_field.value,
+                                               field_name=self._monthly_income_field.props['label']) and \
+           BankAccountGUI.CheckCommaSeparatedNumberList(self._yearly_increase_in_income_field.value,
+                                                        field_name=self._yearly_increase_in_income_field.props['label']) and \
+           BankAccountGUI.CheckCommaSeparatedNumberList(self._savings_interest_rates_field.value,
+                                                        field_name=self._savings_interest_rates_field.props['label']) and \
+           BankAccountGUI.CheckCommaSeparatedNumberList(self._pension_growth_rate_list_field.value,
+                                                        field_name=self._pension_growth_rate_list_field.props['label']) and \
+           BankAccountGUI.CheckCommaSeparatedNumberList(self._state_pension_growth_rate_list_field.value,
+                                                        field_name=self._state_pension_growth_rate_list_field.props['label']):
 
             self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH] = self._my_dob_field.value
             self._future_plot_attr_dict[FuturePlotGUI.MY_MAX_AGE] = self._my_max_age_field.value
