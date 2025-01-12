@@ -915,9 +915,9 @@ class BankAccountGUI(GUIBase):
     def _add_row_dialog_ok_button_press(self):
         self._add_row_dialog.close()
         if BankAccountGUI.CheckValidDateString(self._date_input_field.value,
-                                               field_name = self._date_input_field.props['label']) and \
-                          BankAccountGUI.CheckGreaterThanZero(self._amount_field.value,
-                                                              field_name = self._amount_field.props['label']):
+                                               field_name=self._date_input_field.props['label']) and \
+           BankAccountGUI.CheckGreaterThanZero(self._amount_field.value,
+                                               field_name=self._amount_field.props['label']):
             row = (self._date_input_field.value, self._amount_field.value)
             self._add_table_row(row)
             self._display_table_rows()
@@ -994,7 +994,7 @@ class BankAccountGUI(GUIBase):
             self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER] = self._bank_account_field_list[4].value
 
             if BankAccountGUI.CheckValidDateString(self._bank_account_field_list[5].value,
-                                                   field_name = self._bank_account_field_list[5].props['label']):
+                                                   field_name=self._bank_account_field_list[5].props['label']):
                 self._bank_account_dict[BankAccountGUI.ACCOUNT_OPEN_DATE] = self._bank_account_field_list[5].value
                 self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE] = self._bank_account_field_list[6].value
                 self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE] = self._bank_account_field_list[7].value
@@ -1165,9 +1165,9 @@ class PensionGUI(GUIBase):
     def _add_row_dialog_ok_button_press(self):
         self._add_row_dialog.close()
         if PensionGUI.CheckValidDateString(self._date_input_field.value,
-                                           field_name = self._date_input_field.props['label']) and \
+                                           field_name=self._date_input_field.props['label']) and \
            PensionGUI.CheckGreaterThanZero(self._amount_field.value,
-                                           field_name = self._amount_field.props['label']):
+                                           field_name=self._amount_field.props['label']):
             row = (self._date_input_field.value, self._amount_field.value)
             self._add_table_row(row)
             self._display_table_rows()
@@ -1207,7 +1207,7 @@ class PensionGUI(GUIBase):
 
             if state_pension:
                 if BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value,
-                                                       field_name = self._state_pension_state_date_field.props['label']):
+                                                       field_name=self._state_pension_state_date_field.props['label']):
                     self._pension_dict[PensionGUI.STATE_PENSION_START_DATE] = self._state_pension_state_date_field.value
 
                 # If a state pension but the start date is not entered correctly quit
@@ -1635,11 +1635,11 @@ class FuturePlotGUI(GUIBase):
 
     def _add_row_dialog_ok_button_press(self):
         if FuturePlotGUI.CheckValidDateString(self._date_input_field.value,
-                                              field_name = self._date_input_field.props['label']) and \
+                                              field_name=self._date_input_field.props['label']) and \
            FuturePlotGUI.CheckGreaterThanZero(self._amount_field.value,
-                                              field_name = self._amount_field.props['label']) and \
+                                              field_name=self._amount_field.props['label']) and \
            FuturePlotGUI.CheckGreaterThanZero(self._repeat_count_field.value,
-                                              field_name = self._repeat_count_field.props['label']):
+                                              field_name=self._repeat_count_field.props['label']):
 
             self._add_row_dialog.close()
             yearly = False
