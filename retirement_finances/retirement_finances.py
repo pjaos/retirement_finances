@@ -1084,8 +1084,8 @@ class PensionGUI(GUIBase):
         self._state_pension_state_date_field = GUIBase.GetInputDateField(
             PensionGUI.STATE_PENSION_START_DATE)
         self._pension_owner_field = ui.select(PensionGUI.PENSION_OWNER_LIST,
-                                                           label=PensionGUI.PENSION_OWNER,
-                                                           value=PensionGUI.PENSION_OWNER_LIST[0]).style('width: 200px;')
+                                              label=PensionGUI.PENSION_OWNER,
+                                              value=PensionGUI.PENSION_OWNER_LIST[0]).style('width: 200px;')
 
         with ui.card().style("height: 300px; overflow-y: auto;"):
             self._table = self._get_table_copy()
@@ -1741,7 +1741,6 @@ class FuturePlotGUI(GUIBase):
         """@brief update the dict from the details entered into the GUI.
            @return True if all entries are valid."""
         valid = False
-        l=self._start_date_field.props['label']
         if FuturePlotGUI.CheckValidDateString(self._start_date_field.value,
                                               field_name=self._start_date_field.props['label']) and \
            FuturePlotGUI.CheckValidDateString(self._my_dob_field.value,
@@ -1958,13 +1957,13 @@ class FuturePlotGUI(GUIBase):
                 if personal_pension_value > 0:
                     # Add to the data to be plotted
                     plot_table.append((this_date, total, personal_pension_value, savings_amount, income_this_month,
-                                    state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
+                                       state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
 
                 # If not we assume that monthly budget/income will now come out of savings.
                 else:
                     # Add to the data to be plotted
                     plot_table.append((this_date, total, 0, savings_amount+personal_pension_value, income_this_month,
-                                    state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
+                                       state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
 
                 # If the total assets drop to 0 then we have used up all our finances.
                 if total <= 0:
