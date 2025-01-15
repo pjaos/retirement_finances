@@ -234,6 +234,11 @@ class Config(object):
 class GUIBase(object):
     DATE = "Date"
 
+# PJA
+    # The names in this list should be configurable
+#    OWNER_LIST = ['Me', 'Partner', 'Joint']
+    OWNER_LIST = ['Paul', 'Karen', 'Joint']
+
     @staticmethod
     def GetInputDateField(label):
         """@brief Add a control to allow the user to enter the date as an DD:MM:YYYY.
@@ -834,8 +839,10 @@ class BankAccountGUI(GUIBase):
                 label=BankAccountGUI.ACCOUNT_NUMBER).style('width: 200px;')
 
         with ui.row():
-            bank_account_owner_field = ui.input(
-                label=BankAccountGUI.ACCOUNT_OWNER).style('width: 300px;')
+            bank_account_owner_select = ui.select(BankAccountGUI.OWNER_LIST,
+                                                  label=BankAccountGUI.ACCOUNT_OWNER,
+                                                  value=BankAccountGUI.OWNER_LIST[0]).style('width: 200px;')
+
             bank_account_interest_rate_field = ui.number(
                 label=BankAccountGUI.ACCOUNT_INTEREST_RATE, min=0, max=100).style('width: 150px;')
             bank_account_interest_type_field = ui.select(
@@ -880,7 +887,7 @@ class BankAccountGUI(GUIBase):
                                          bank_account_name_field,
                                          bank_account_sort_code_field,
                                          bank_account_number_field,
-                                         bank_account_owner_field,
+                                         bank_account_owner_select,
                                          bank_account_open_date_field,
                                          bank_account_interest_rate_field,
                                          bank_account_interest_type_field,
@@ -966,7 +973,18 @@ class BankAccountGUI(GUIBase):
                 input_field.value = self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE]
 
             elif isinstance(input_field, ui.select):
-                input_field.value = self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE]
+                found_field = False
+                properties = input_field.props
+                if 'label' in properties:
+                    label = input_field.props['label']
+                    if label == BankAccountGUI.ACCOUNT_OWNER:
+                        input_field.value = self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER]
+                        found_field = True
+
+                # If not found we assume this is the interest rate type field as this is the only other ui.select
+                # field in the bank account GUI.
+                if not found_field:
+                    input_field.value = self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE]
 
             elif isinstance(input_field, ui.checkbox):
                 input_field.value = self._bank_account_dict[BankAccountGUI.ACCOUNT_ACTIVE]
@@ -1018,6 +1036,9 @@ class PensionGUI(GUIBase):
     PENSION_OWNER_LABEL = "Owner"
     STATE_PENSION_START_DATE = "State Pension Start Date"
     PENSION_TABLE = "table"
+    # No joint owner for pension, so remove joint from list
+    PENSION_OWNER_LIST = GUIBase.OWNER_LIST[:2]
+    PENSION_OWNER = "Owner"
 
     def __init__(self, add, pension_dict, config):
         """@brief Constructor.
@@ -1062,8 +1083,9 @@ class PensionGUI(GUIBase):
             label=PensionGUI.PENSION_DESCRIPTION_LABEL, value=PensionGUI.STATE_PENSION).style('width: 400px;')
         self._state_pension_state_date_field = GUIBase.GetInputDateField(
             PensionGUI.STATE_PENSION_START_DATE)
-        self._pension_owner_field = ui.input(
-            label=PensionGUI.PENSION_OWNER_LABEL)
+        self._pension_owner_field = ui.select(PensionGUI.PENSION_OWNER_LIST,
+                                                           label=PensionGUI.PENSION_OWNER,
+                                                           value=PensionGUI.PENSION_OWNER_LIST[0]).style('width: 200px;')
 
         with ui.card().style("height: 300px; overflow-y: auto;"):
             self._table = self._get_table_copy()
@@ -1181,8 +1203,7 @@ class PensionGUI(GUIBase):
         self._provider_field.value = self._pension_dict[PensionGUI.PENSION_PROVIDER_LABEL]
         self._description_field.value = self._pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
         self._pension_owner_field.value = self._pension_dict[PensionGUI.PENSION_OWNER_LABEL]
-        self._state_pension_state_date_field.value = self._pension_dict[
-            PensionGUI.STATE_PENSION_START_DATE]
+        self._state_pension_state_date_field.value = self._pension_dict[PensionGUI.STATE_PENSION_START_DATE]
         self._state_pension_checkbox_callback()
         self._display_table_rows()
 
@@ -1688,25 +1709,39 @@ class FuturePlotGUI(GUIBase):
         """@brief Get the maximum date we need to plan for.
            @return a datetime instance of the max year."""
         self._update_dict_from_gui()
+        my_max_date = self._get_my_max_date()
+        max_date = my_max_date
+
+        partner_max_date = self._get_partner_max_date()
+        if partner_max_date is not None and partner_max_date > my_max_date:
+            max_date = partner_max_date
+
+        return max_date
+
+    def _get_my_max_date(self):
+        """@return The maximum date I (for trhe purposes of this report) hope to be alive."""
         my_dob_str = self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH]
         my_dob = datetime.strptime(my_dob_str, '%d-%m-%Y')
         my_max_age = int(self._future_plot_attr_dict[FuturePlotGUI.MY_MAX_AGE])
         my_max_date = my_dob + relativedelta(years=my_max_age)
+        return my_max_date
 
+    def _get_partner_max_date(self):
+        """@return The maximum date my partner (for the purposes of this report) hopes to be alive or None
+                   if no partner details entered into the retirement prediction form."""
+        partner_max_date = None
         partner_dob_str = self._future_plot_attr_dict[FuturePlotGUI.PARTNER_DATE_OF_BIRTH]
-        partner_dob = datetime.strptime(partner_dob_str, '%d-%m-%Y')
-        partner_max_age = int(
-            self._future_plot_attr_dict[FuturePlotGUI.PARTNER_MAX_AGE])
-        partner_max_date = partner_dob + relativedelta(years=partner_max_age)
-        max_date = my_max_date
-        if partner_max_date > my_max_date:
-            max_date = partner_max_date
-        return max_date
+        if partner_dob_str and len(partner_dob_str) > 0:
+            partner_dob = datetime.strptime(partner_dob_str, '%d-%m-%Y')
+            partner_max_age = int(self._future_plot_attr_dict[FuturePlotGUI.PARTNER_MAX_AGE])
+            partner_max_date = partner_dob + relativedelta(years=partner_max_age)
+        return partner_max_date
 
     def _update_dict_from_gui(self):
         """@brief update the dict from the details entered into the GUI.
            @return True if all entries are valid."""
         valid = False
+        l=self._start_date_field.props['label']
         if FuturePlotGUI.CheckValidDateString(self._start_date_field.value,
                                               field_name=self._start_date_field.props['label']) and \
            FuturePlotGUI.CheckValidDateString(self._my_dob_field.value,
@@ -1919,9 +1954,21 @@ class FuturePlotGUI(GUIBase):
                 # Calc the total
                 total = savings_amount + personal_pension_value
 
-                # Add to the data to be plotted
-                plot_table.append((this_date, total, personal_pension_value, savings_amount, income_this_month,
-                                  state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
+                # If there is money in our pension
+                if personal_pension_value > 0:
+                    # Add to the data to be plotted
+                    plot_table.append((this_date, total, personal_pension_value, savings_amount, income_this_month,
+                                    state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
+
+                # If not we assume that monthly budget/income will now come out of savings.
+                else:
+                    # Add to the data to be plotted
+                    plot_table.append((this_date, total, 0, savings_amount+personal_pension_value, income_this_month,
+                                    state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
+
+                # If the total assets drop to 0 then we have used up all our finances.
+                if total <= 0:
+                    break
 
             if overlay_real_performance:
                 pp_table = self._get_personal_pension_table()
@@ -2120,33 +2167,37 @@ class FuturePlotGUI(GUIBase):
             # Inc the table index.
             table_index += 1
 
-        # Merge all tables in the list
-        merged_table = dataframe_list[0]
-        for table in dataframe_list[1:]:
-            merged_table = merged_table.merge(table, on='Date', how='outer').sort_values(by="Date")
-        # Fill NaN values with previous row value if NaN
-        # merged_table.fillna(method='ffill', inplace=True)
-        merged_table.ffill(inplace=True)
+        if len(dataframe_list) > 0:
+            # Merge all tables in the list
+            merged_table = dataframe_list[0]
+            for table in dataframe_list[1:]:
+                merged_table = merged_table.merge(table, on='Date', how='outer').sort_values(by="Date")
+            # Fill NaN values with previous row value if NaN
+            # merged_table.fillna(method='ffill', inplace=True)
+            merged_table.ffill(inplace=True)
 
-        # Fall any NaN columns left over from above (no previous value in column) with 0
-        merged_table.fillna(0.0, inplace=True)
+            # Fall any NaN columns left over from above (no previous value in column) with 0
+            merged_table.fillna(0.0, inplace=True)
 
-        # Sum all the columns so that we know the total value each time it changes
-        merged_table['Total'] = merged_table.drop(columns=['Date']).sum(axis=1)
+            # Sum all the columns so that we know the total value each time it changes
+            merged_table['Total'] = merged_table.drop(columns=['Date']).sum(axis=1)
 
-        merged_table['Date'] = merged_table['Date'].apply(lambda x: x.to_pydatetime())
+            merged_table['Date'] = merged_table['Date'].apply(lambda x: x.to_pydatetime())
 
-        if return_total_table:
-            # Reset the Date index column so it is appears as any other table column
-            table1 = merged_table.reset_index()
-            # Only include the Date and Total columns on the returned table
-            table2 = table1[['Date', 'Total']]
+            if return_total_table:
+                # Reset the Date index column so it is appears as any other table column
+                table1 = merged_table.reset_index()
+                # Only include the Date and Total columns on the returned table
+                table2 = table1[['Date', 'Total']]
+            else:
+                # Return a table that has the date column and a separate column for
+                # the total of each input table.
+                table2 = merged_table
+
+            return table2.values.tolist()
+
         else:
-            # Return a table that has the date column and a separate column for
-            # the total of each input table.
-            table2 = merged_table
-
-        return table2.values.tolist()
+            return []
 
     def _get_personal_pension_pd_dfl(self):
         # Build a list of pandas dataframes
@@ -2213,11 +2264,10 @@ class FuturePlotGUI(GUIBase):
 
                    of None if no state pensions found."""
         # Calculate the income from state pensions into the future
-        consolidated_state_pension_income_table = None
+        consolidated_state_pension_income_table = []
         pension_dict_list = self._config.get_pension_dict_list()
         for pension_dict in pension_dict_list:
-            state_pension_income_table = self._process_state_pension_table(
-                pension_dict, datetime_list, report_start_date)
+            state_pension_income_table = self._process_state_pension_table(pension_dict, datetime_list, report_start_date)
             # If a state pension was found
             if state_pension_income_table:
 
@@ -2241,6 +2291,7 @@ class FuturePlotGUI(GUIBase):
                    Or None if the this pension is not a state pension."""
         future_table = None
         state_pension = pension_dict[PensionGUI.STATE_PENSION]
+        owner = pension_dict[PensionGUI.PENSION_OWNER]
         if state_pension:
             future_table = []
             date_value_table = self._convert_table(
@@ -2250,50 +2301,75 @@ class FuturePlotGUI(GUIBase):
                 state_pension_start_date_str, '%d-%m-%Y')
             last_datetime = datetime_list[0]
             # Get the initial state pension amount based on the start date for the calc
-            state_pension_amount = self._get_initial_value(
-                date_value_table, initial_date=report_start_date)
+            state_pension_amount = self._get_initial_value(date_value_table, initial_date=report_start_date)
             year_index = 0
+            receiving_state_pension = False
             for this_datetime in datetime_list:
                 # If the state pension increases it occurs on 6 Apr.
-                # This approximates this to the 1 apr
+                # We approximate this to the 1 apr
                 adjusted_datetime = this_datetime - relativedelta(months=4)
                 # If the year hasn't changed
                 if adjusted_datetime.year == last_datetime.year:
                     if adjusted_datetime >= state_pension_start_date:
-
-                        future_table.append(
-                            [this_datetime, state_pension_amount])
+                        receiving_state_pension = True
                     else:
-                        future_table.append([this_datetime, 0.0])
+                        receiving_state_pension = False
 
                 # If the year has rolled over
                 else:
-                    state_pension_amount = self._calc_new_account_value(state_pension_amount, self._future_plot_attr_dict.get(
-                        FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST), year_index)
+                    state_pension_amount = self._calc_new_account_value(state_pension_amount, self._future_plot_attr_dict.get(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST), year_index)
                     if adjusted_datetime >= state_pension_start_date:
-                        future_table.append(
-                            [this_datetime, state_pension_amount])
+                        receiving_state_pension = True
                     else:
-                        future_table.append([this_datetime, 0.0])
+                        receiving_state_pension = False
                     last_datetime = adjusted_datetime
                     year_index = year_index + 1
 
+                # We assume that if the owner is not alive they are not receiving state pension
+                # We assume that the partner receives none of the state pension. This may not be
+                # the case as pension rules prior to 2016 but for the purposes of this tool
+                # this is the assumption.
+                if not self._is_pension_owner_alive(owner, this_datetime):
+                    receiving_state_pension = False
+
+                if receiving_state_pension:
+                    future_table.append([this_datetime, state_pension_amount])
+                else:
+                    future_table.append([this_datetime, 0.0])
+
         return future_table
 
-    def _get_state_pension_this_month(self, at_date, state_pension_table):
-        amount = state_pension_table[0][1]
-        if len(state_pension_table) > 0:
-            amount = state_pension_table[0][1]
-            for row in state_pension_table:
-                _date = row[0]
-                amount = row[1]
-                if at_date <= _date:
-                    break
-        else:
-            raise Exception(
-                "State pension table has size = 0. There must be at least one entry in the state pension table.")
+    def _is_pension_owner_alive(self, owner, report_date):
+        """@brief Determine if (for the purposes of this report) the pension owner is alive.
+           @return True if they are still alive."""
+        alive = True
+        me = PensionGUI.PENSION_OWNER_LIST[0]
+        if owner not in PensionGUI.PENSION_OWNER_LIST:
+            me = PensionGUI.PENSION_OWNER_LIST[0]
+            partner = PensionGUI.PENSION_OWNER_LIST[1]
+            raise Exception(f"{owner} is an unknown pension owner. Must be {me} or {partner}")
 
-        return amount/12
+        if owner == me:
+            me_max_date = self._get_my_max_date()
+            if report_date > me_max_date:
+                alive = False
+        return alive
+
+    def _get_state_pension_this_month(self, at_date, state_pension_table):
+        if len(state_pension_table) == 0:
+            return 0
+
+        else:
+            amount = state_pension_table[0][1]
+            if len(state_pension_table) > 0:
+                amount = state_pension_table[0][1]
+                for row in state_pension_table:
+                    _date = row[0]
+                    amount = row[1]
+                    if at_date <= _date:
+                        break
+
+            return amount/12
 
     def _get_initial_value(self, date_value_table, initial_date=None):
         """@brief Get the first value to be used from the table (date,value rows)
@@ -2302,18 +2378,22 @@ class FuturePlotGUI(GUIBase):
                                If a datetime is provided then we check the date_value_table
                                for the initial_date and use the date before or equal to this
                                for the value we're after."""
-        initial_value = date_value_table[0][1]
-        if initial_date:
-            for row in date_value_table:
-                _date = row[0]
-                _value = row[1]
-                if _date >= initial_date:
-                    initial_value = _value
-                    break
-                else:
-                    initial_value = _value
+        if len(date_value_table) == 0:
+            return 0
 
-        return initial_value
+        else:
+            initial_value = date_value_table[0][1]
+            if initial_date:
+                for row in date_value_table:
+                    _date = row[0]
+                    _value = row[1]
+                    if _date >= initial_date:
+                        initial_value = _value
+                        break
+                    else:
+                        initial_value = _value
+
+            return initial_value
 
     def _get_monthly_budget_table(self, datetime_list):
         """@brief Get a table detailing how much we plan to spend each month from our savings and pension."""
