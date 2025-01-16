@@ -1726,6 +1726,16 @@ class FuturePlotGUI(GUIBase):
         my_max_date = my_dob + relativedelta(years=my_max_age)
         return my_max_date
 
+    def _get_my_age(self, current_date):
+        """@brief Get my age at the given date.
+           @param current_date The date of interest.
+           @return My age in years."""
+        my_dob_str = self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH]
+        my_dob = datetime.strptime(my_dob_str, '%d-%m-%Y')
+        timedelta = current_date - my_dob
+        age_years = timedelta.days / 364.25
+        return age_years
+
     def _get_partner_max_date(self):
         """@return The maximum date my partner (for the purposes of this report) hopes to be alive or None
                    if no partner details entered into the retirement prediction form."""
@@ -1869,8 +1879,8 @@ class FuturePlotGUI(GUIBase):
             year_index = 0
             total = savings_amount + personal_pension_value
             income_this_month = monthly_budget_table[0][1]
-            state_pension_this_month = self._get_state_pension_this_month(
-                first_date, predicted_state_pension_table)
+            state_pension_this_month = self._get_state_pension_this_month(first_date, predicted_state_pension_table)
+            my_death_before_75 = False
 
             # Add initial state
             plot_table.append((first_date, total, personal_pension_value, savings_amount, income_this_month,
@@ -1953,6 +1963,15 @@ class FuturePlotGUI(GUIBase):
                 # Calc the total
                 total = savings_amount + personal_pension_value
 
+                # If an event has yet to occur that gives pension tax free
+                if not my_death_before_75:
+                    # Check to see if the prediction details my death before 75
+                    if self._dead_before_75(this_date):
+                        # Transfer all of pension to savings
+                        savings_amount = savings_amount + personal_pension_value
+                        personal_pension_value = 0
+                        my_death_before_75 = True
+
                 # If there is money in our pension
                 if personal_pension_value > 0:
                     # Add to the data to be plotted
@@ -1961,9 +1980,17 @@ class FuturePlotGUI(GUIBase):
 
                 # If not we assume that monthly budget/income will now come out of savings.
                 else:
-                    # Add to the data to be plotted
-                    plot_table.append((this_date, total, 0, savings_amount+personal_pension_value, income_this_month,
-                                       state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
+                    if my_death_before_75:
+                        # In this case we assume the pension is transferred tax free to my partner. Therefore all budget/income comes
+                        # from savings.
+                        _total_savings_withdrawal = total_savings_withdrawal + total_pension_withdrawal
+                        plot_table.append((this_date, total, 0, savings_amount+personal_pension_value, income_this_month,
+                                        state_pension_this_month, savings_interest, _total_savings_withdrawal, 0))
+
+                    else:
+                        # Add to the data to be plotted
+                        plot_table.append((this_date, total, 0, savings_amount+personal_pension_value, income_this_month,
+                                        state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
 
                 # If the total assets drop to 0 then we have used up all our finances.
                 if total <= 0:
@@ -1985,6 +2012,16 @@ class FuturePlotGUI(GUIBase):
             # PJA enable for debugging
             # raise ex
             ui.notify(str(ex), type='negative')
+
+    def _dead_before_75(self, report_date):
+        """@brief Check to see if dead before 75'th birthday.
+           @param report_date The current date of the report."""
+        died_before_75 = False
+        death_date = self._get_my_max_date()
+        age = self._get_my_age(report_date)
+        if age < 75 and death_date < report_date:
+            died_before_75 = True
+        return died_before_75
 
     # PJA not used but may be useful for example code
     def _show_progress_against_prediction(self):
@@ -2331,6 +2368,11 @@ class FuturePlotGUI(GUIBase):
                 if not self._is_pension_owner_alive(owner, this_datetime):
                     receiving_state_pension = False
 
+                # We assume that if your partner dies then their state pension stops. You may get some
+                # money from the DWP but for purposes of this prediction we assume worst case.
+                if not self._is_partner_alive(owner, this_datetime):
+                    receiving_state_pension = False
+
                 if receiving_state_pension:
                     future_table.append([this_datetime, state_pension_amount])
                 else:
@@ -2339,19 +2381,40 @@ class FuturePlotGUI(GUIBase):
         return future_table
 
     def _is_pension_owner_alive(self, owner, report_date):
-        """@brief Determine if (for the purposes of this report) the pension owner is alive.
-           @return True if they are still alive."""
+        """@brief Determine if (for the purposes of this report) the pension owner is alive and this pension is owned by you.
+           @return True if you are still alive."""
         alive = True
         me = PensionGUI.PENSION_OWNER_LIST[0]
+        partner = PensionGUI.PENSION_OWNER_LIST[1]
         if owner not in PensionGUI.PENSION_OWNER_LIST:
-            me = PensionGUI.PENSION_OWNER_LIST[0]
-            partner = PensionGUI.PENSION_OWNER_LIST[1]
             raise Exception(f"{owner} is an unknown pension owner. Must be {me} or {partner}")
 
         if owner == me:
             me_max_date = self._get_my_max_date()
             if report_date > me_max_date:
                 alive = False
+        return alive
+
+    def _is_partner_alive(self, owner, report_date):
+        """@brief Determine if (for the purposes of this report) your partner is alive and this pension is owned by your partner.
+           @return True if they are still alive."""
+        alive = True
+        me = PensionGUI.PENSION_OWNER_LIST[0]
+        partner = PensionGUI.PENSION_OWNER_LIST[1]
+        if partner not in PensionGUI.PENSION_OWNER_LIST:
+            raise Exception(f"{owner} is an unknown pension owner. Must be {me} or {partner}")
+
+        if owner == partner:
+            partner_max_date = self._get_partner_max_date()
+            # If partner DOB exists
+            if partner_max_date:
+                # If partner has died
+                if report_date > partner_max_date:
+                    alive = False
+            # If partner is not listed as having a DOB
+            else:
+                alive = False
+
         return alive
 
     def _get_state_pension_this_month(self, at_date, state_pension_table):
