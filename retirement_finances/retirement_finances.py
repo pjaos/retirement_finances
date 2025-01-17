@@ -1509,7 +1509,7 @@ class FuturePlotGUI(GUIBase):
                 with ui.row():
                     monthly_income = self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME]
                     self._monthly_income_field = ui.number(label=FuturePlotGUI.MONTHLY_INCOME, value=monthly_income).tooltip(
-                        'The total monthly budget/income target amount including money from other sources.')
+                        'The total monthly budget/income target amount including money from other sources. This is taken from savings prior to drawdown start date. Then from pension drawdown. If the pension runs out then money is taken from savings to cover this.')
 
                     monthly_amount_from_children = self._future_plot_attr_dict[
                         FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN]
