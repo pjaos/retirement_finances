@@ -5,6 +5,7 @@ import argparse
 import os
 import copy
 import shutil
+import traceback
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -28,6 +29,7 @@ class Config(object):
     FUTURE_PLOT_ATTR_FILE = "future_plot_attr.json"
     MULTIPLE_FUTURE_PLOT_ATTR_FILE = "multiple_future_plot_attr.json"
     SELECTED_FUTURE_PLOT_NAME_ATTR_FILE = "selected_future_plot_name_attr.json"
+    GLOBAL_CONFIGURATION_FILE = "global_configuration_parameters.json"
 
     @staticmethod
     def GetConfigFolder(folder):
@@ -51,6 +53,11 @@ class Config(object):
     def __init__(self, password, folder):
         self._password = password
         self._config_folder = Config.GetConfigFolder(folder)
+
+        self._global_configuration_name_file = self._getGlobalConfigurationFile()
+        self._global_configuration_name_crypt_file = CryptFile(filename=self._global_configuration_name_file, password=self._password)
+        self.load_global_configuration()
+
         # Notify user of config location on startup
         self._bank_accounts_file = self._getBankAccountListFile()
         self._bank_account_crypt_file = CryptFile(filename=self._bank_accounts_file, password=self._password)
@@ -95,6 +102,10 @@ class Config(object):
     def _getSelectedRequirementParametersNameFile(self):
         """@return The file used to store the selected future plot name."""
         return os.path.join(self._config_folder, Config.SELECTED_FUTURE_PLOT_NAME_ATTR_FILE)
+
+    def _getGlobalConfigurationFile(self):
+        """@return The file used to store global configuration parameters."""
+        return os.path.join(self._config_folder, Config.GLOBAL_CONFIGURATION_FILE)
 
     # --- methods for bank accounts ---
 
@@ -230,14 +241,31 @@ class Config(object):
         """@brief Get the selected retirement parameters name parameters dict."""
         return self._selected_retirement_parameters_name_dict
 
+    # --- methods for global configuration parameters ---
+
+    def load_global_configuration(self):
+        """@brief Load the global configuration parameters from file."""
+        try:
+            self._global_configuration_dict = {}
+            self._global_configuration_dict = self._global_configuration_name_crypt_file.load()
+            ui.notify(f'Loaded from {self._global_configuration_name_crypt_file.get_file()}')
+
+        except Exception:
+            ui.notify(f'{self._global_configuration_name_crypt_file.get_file()} file not found.', type='negative')
+            self.save_global_configuration()
+
+    def save_global_configuration(self):
+        """@brief Save the global configuration parameters persistently."""
+        self._global_configuration_name_crypt_file.save(self._global_configuration_dict)
+        ui.notify(f'Saved {self._global_configuration_name_crypt_file.get_file()}')
+
+    def get_global_configuration_dict(self):
+        """@brief Get the global configuration parameters name parameters dict."""
+        return self._global_configuration_dict
+
 
 class GUIBase(object):
     DATE = "Date"
-
-# PJA
-    # The names in this list should be configurable
-#    OWNER_LIST = ['Me', 'Partner', 'Joint']
-    OWNER_LIST = ['Paul', 'Karen', 'Joint']
 
     @staticmethod
     def GetInputDateField(label):
@@ -321,13 +349,30 @@ class Finances(GUIBase):
     YES = "Yes"
     NO = "No"
 
+    MY_NAME_FIELD = "My Name"
+    PARTNER_NAME_FIELD = "Partner Name"
+
     def __init__(self, password, folder):
         super().__init__()
         self._config = Config(password, folder)
+        self._load_global_config()
+
         self._last_selected_bank_account_index = None
         self._last_selected_pension_index = None
 
         self._backup_data_files(self._config.get_config_folder())
+
+    def _load_global_config(self):
+        self._global_configuration_dict = self._ensure_default_global_config_keys()
+
+        self._savings_owner_list = []
+        self._savings_owner_list.append(self._global_configuration_dict[Finances.MY_NAME_FIELD])
+        self._savings_owner_list.append(self._global_configuration_dict[Finances.PARTNER_NAME_FIELD])
+        self._savings_owner_list.append('Joint')
+
+        self._pension_owner_list = []
+        self._pension_owner_list.append(self._global_configuration_dict[Finances.MY_NAME_FIELD])
+        self._pension_owner_list.append(self._global_configuration_dict[Finances.PARTNER_NAME_FIELD])
 
     def initGUI(self,
                 uio,
@@ -344,11 +389,13 @@ class Finances(GUIBase):
 
         tabNameList = ('Savings',
                        'Pensions',
-                       'Reports')
+                       'Reports',
+                       'Configuration')
         # This must have the same number of elements as the above list
         tabMethodInitList = [self._init_bank_accounts_tab,
                              self._init_pensions_tab,
-                             self._init_reports_tab]
+                             self._init_reports_tab,
+                             self._init_config_tab]
 
         tabObjList = []
         with ui.row():
@@ -366,6 +413,8 @@ class Finances(GUIBase):
         self._guiLogLevel = "warning"
         if debugEnabled:
             self._guiLogLevel = "debug"
+
+        self._update_gui_from_config()
 
         ui.timer(interval=Finances.GUI_TIMER_SECONDS,
                  callback=self.gui_timer_callback)
@@ -524,15 +573,31 @@ class Finances(GUIBase):
 
     def _add_bank_account(self):
         """@brief Add a bank account."""
-        self._update_bank_account(True, {})
+        if self._is_my_name_set():
+            self._load_global_config()
+            self._update_bank_account(True, {})
 
     def _edit_bank_account(self):
         """@brief Add a bank account."""
-        bank_account_dict = self._get_selected_bank_account_dict()
-        if bank_account_dict:
-            self._update_bank_account(False, bank_account_dict)
-        else:
-            ui.notify("Select a bank account to edit.")
+        if self._is_my_name_set():
+            self._load_global_config()
+            bank_account_dict = self._get_selected_bank_account_dict()
+            if bank_account_dict:
+                self._update_bank_account(False, bank_account_dict)
+            else:
+                ui.notify("Select a bank account to edit.")
+
+    def _is_my_name_set(self):
+        """@return True if my name is set in the global config."""
+        set = False
+        my_name = self._global_configuration_dict[Finances.MY_NAME_FIELD]
+        if my_name and len(my_name) > 0:
+            set = True
+
+        if not set:
+            ui.notify("Your name is unset in the configuration tab. Set and save it then restart the program.", type='negative')
+
+        return set
 
     def _update_bank_account(self, add, bank_account_dict):
         """@brief edit bank account details.
@@ -542,7 +607,7 @@ class Finances(GUIBase):
             # Define a secondary page
             @ui.page('/bank_accounts_page')
             def bank_accounts_page():
-                BankAccountGUI(add, bank_account_dict, self._config)
+                BankAccountGUI(add, bank_account_dict, self._config, self._savings_owner_list)
             # This will open the new page in the same browser window
             ui.run_javascript("window.open('/bank_accounts_page', '_parent')")
 
@@ -656,15 +721,19 @@ class Finances(GUIBase):
 
     def _add_pension(self):
         """@brief Add a bank account."""
-        self._update_pension(True, {})
+        if self._is_my_name_set():
+            self._load_global_config()
+            self._update_pension(True, {})
 
     def _edit_pension(self):
         """@brief Add a pension."""
-        pension_dict = self._get_selected_pension_dict()
-        if pension_dict:
-            self._update_pension(False, pension_dict)
-        else:
-            ui.notify("Select a pension to edit")
+        if self._is_my_name_set():
+            self._load_global_config()
+            pension_dict = self._get_selected_pension_dict()
+            if pension_dict:
+                self._update_pension(False, pension_dict)
+            else:
+                ui.notify("Select a pension to edit")
 
     def _update_pension(self, add, pension_dict):
         """@brief edit pension details.
@@ -674,7 +743,7 @@ class Finances(GUIBase):
             # Define a secondary page
             @ui.page('/pensions_page')
             def pensions_page():
-                PensionGUI(add, pension_dict, self._config)
+                PensionGUI(add, pension_dict, self._config, self._pension_owner_list)
             # This will open the new page in the same browser window
             ui.run_javascript("window.open('/pensions_page', '_parent')")
 
@@ -711,8 +780,40 @@ class Finances(GUIBase):
             ui.button('Totals', on_click=lambda: self._show_totals()).tooltip(
                 'Show the current savings and pension totals.')
         with ui.row():
-            ui.button('Retirement Prediction', on_click=lambda: self._future_plot()).tooltip(
+            ui.button('Drawdown Retirement Prediction', on_click=lambda: self._future_plot()).tooltip(
                 'Show how your finances could increase/decrease in the future.')
+
+    def _init_config_tab(self):
+        self._my_name_field = ui.input(label=Finances.MY_NAME_FIELD).style('width: 300px;').tooltip('Enter your name here.')
+        self._partner_name_field = ui.input(label=Finances.PARTNER_NAME_FIELD).style('width: 300px;').tooltip('If you have a partner enter their name here.')
+        with ui.row():
+            ui.button('Save', on_click=self._save_config_button_selected)
+
+    def _save_config_button_selected(self):
+        """@brief Save configuration."""
+        self._update_config_from_gui()
+        self._config.save_global_configuration()
+
+    def _ensure_default_global_config_keys(self):
+        self._config.load_global_configuration()
+        global_configuration_dict = self._config.get_global_configuration_dict()
+        if Finances.MY_NAME_FIELD not in global_configuration_dict:
+            global_configuration_dict[Finances.MY_NAME_FIELD] = ""
+
+        if Finances.PARTNER_NAME_FIELD not in global_configuration_dict:
+            global_configuration_dict[Finances.PARTNER_NAME_FIELD] = ""
+
+        return global_configuration_dict
+
+    def _update_gui_from_config(self):
+        """@brief Update GUI from the configuration."""
+        self._my_name_field.value = self._global_configuration_dict[Finances.MY_NAME_FIELD]
+        self._partner_name_field.value = self._global_configuration_dict[Finances.PARTNER_NAME_FIELD]
+
+    def _update_config_from_gui(self):
+        """@brief Update configuration from the GUI."""
+        self._global_configuration_dict[Finances.MY_NAME_FIELD] = self._my_name_field.value
+        self._global_configuration_dict[Finances.PARTNER_NAME_FIELD] = self._partner_name_field.value
 
     def _show_totals(self):
         """@brief Show details of the total savings and pensions."""
@@ -748,7 +849,7 @@ class Finances(GUIBase):
         # Define a secondary page
         @ui.page('/future_plot_page')
         def future_plot_page():
-            FuturePlotGUI(self._config)
+            FuturePlotGUI(self._config, self._pension_owner_list)
         # This will open in a separate browser window
         ui.run_javascript("window.open('/future_plot_page', '_blank')")
 
@@ -770,15 +871,17 @@ class BankAccountGUI(GUIBase):
     BALANCE = 'Balance (£)'
     BANK = 'Bank'
 
-    def __init__(self, add, bank_account_dict, config):
+    def __init__(self, add, bank_account_dict, config, owner_list):
         """@brief Constructor.
            @param add If True then add to the list of available bank accounts.
            @param bank_account_dict A dict holding the bank account details.
-           @param config A Config instance."""
+           @param config A Config instance.
+           @param owner_list A list of savings account owners."""
         self._add = add
-        self._bank_account_dict = self._ensure_default_bank_account_keys(
-            bank_account_dict)
+
+        self._bank_account_dict = self._ensure_default_bank_account_keys(bank_account_dict)
         self._config = config
+        self._owner_list = owner_list
         self._selected_row_index = -1
         self._init_page()
         self._init_add_row_dialog()
@@ -839,9 +942,9 @@ class BankAccountGUI(GUIBase):
                 label=BankAccountGUI.ACCOUNT_NUMBER).style('width: 200px;')
 
         with ui.row():
-            bank_account_owner_select = ui.select(BankAccountGUI.OWNER_LIST,
+            bank_account_owner_select = ui.select(self._owner_list,
                                                   label=BankAccountGUI.ACCOUNT_OWNER,
-                                                  value=BankAccountGUI.OWNER_LIST[0]).style('width: 200px;')
+                                                  value=self._owner_list[0]).style('width: 200px;')
 
             bank_account_interest_rate_field = ui.number(
                 label=BankAccountGUI.ACCOUNT_INTEREST_RATE, min=0, max=100).style('width: 150px;')
@@ -865,7 +968,7 @@ class BankAccountGUI(GUIBase):
                            ]
                 self._bank_acount_table = ui.table(columns=columns,
                                                    rows=[],
-                                                   row_key=BankAccountGUI.DATE,
+                                                   row_key=BankAccountGUI.ACCOUNT_NUMBER,
                                                    selection='single')
 
                 self._display_table_rows()
@@ -1036,18 +1139,18 @@ class PensionGUI(GUIBase):
     PENSION_OWNER_LABEL = "Owner"
     STATE_PENSION_START_DATE = "State Pension Start Date"
     PENSION_TABLE = "table"
-    # No joint owner for pension, so remove joint from list
-    PENSION_OWNER_LIST = GUIBase.OWNER_LIST[:2]
     PENSION_OWNER = "Owner"
 
-    def __init__(self, add, pension_dict, config):
+    def __init__(self, add, pension_dict, config, owner_list):
         """@brief Constructor.
            @param add If True then add to the list of available bank accounts.
            @param pension_dict A dict holding the pension details.
-           @param config A Config instance."""
+           @param config A Config instance.
+           @param owner_list A list of pension owners."""
         self._add = add
         self._pension_dict = self._ensure_default_pension_keys(pension_dict)
         self._config = config
+        self._owner_list = owner_list
         self._init_add_row_dialog()
         self._init_page()
 
@@ -1083,9 +1186,9 @@ class PensionGUI(GUIBase):
             label=PensionGUI.PENSION_DESCRIPTION_LABEL, value=PensionGUI.STATE_PENSION).style('width: 400px;')
         self._state_pension_state_date_field = GUIBase.GetInputDateField(
             PensionGUI.STATE_PENSION_START_DATE)
-        self._pension_owner_field = ui.select(PensionGUI.PENSION_OWNER_LIST,
+        self._pension_owner_field = ui.select(self._owner_list,
                                               label=PensionGUI.PENSION_OWNER,
-                                              value=PensionGUI.PENSION_OWNER_LIST[0]).style('width: 200px;')
+                                              value=self._owner_list[0]).style('width: 200px;')
 
         with ui.card().style("height: 300px; overflow-y: auto;"):
             self._table = self._get_table_copy()
@@ -1246,26 +1349,26 @@ class PensionGUI(GUIBase):
 class FuturePlotGUI(GUIBase):
     """@brief Responsible for allowing the user to plot predictions about the way the savings and pensions will fare during retirement."""
     DEFAULT_MALE_MAX_AGE = 90
-    # The default initial monthly budget/income including the monthly amount that adult children living at home pay towards household bills
+    # The default initial monthly budget/income including any monthly income from other sources
     DEFAULT_MONTHLY_INCOME = 2850
-    # The default amount an adult child living at home pays pays towards household bills
-    DEFAULT_MONTHLY_AMOUNT_FROM_CHILD = 250
+    # The default amount other sources. E.G an adult child living at home pays pays towards household bills
+    DEFAULT_MONTHLY_AMOUNT_FROM_CHILD = 0
     # Default list of savings interest rates and pension growth rates.
-    DEFAULT_RATE_LIST = "4, 3.5, 3.2, 3, 3, 3, 3"
-    DEFAULT_YEARLY_INCREASE_IN_INCOME = "2.5, 2.5, 2.5, 2.5, 2.5, 2.5"
+    DEFAULT_RATE_LIST = "3"
+    DEFAULT_YEARLY_INCREASE_IN_INCOME = "2.5"
     DEFAULT_STATE_PENSION_YEARLY_INCREASE = DEFAULT_YEARLY_INCREASE_IN_INCOME
     MY_MAX_AGE = "My max age"
     MY_DATE_OF_BIRTH = "My date of birth"
     PARTNER_MAX_AGE = "Partner max age"
     PARTNER_DATE_OF_BIRTH = "Partner date of birth"
-    SAVINGS_INTEREST_RATE_LIST = "Predicted savings interest rate list (%)"
-    PENSION_GROWTH_RATE_LIST = "Predicted pension growth rate list (%)"
-    STATE_PENSION_YEARLY_INCREASE_LIST = "Predicted state pension yearly increase (%)"
-    MONTHLY_AMOUNT_FROM_CHILDREN = "Monthly from all adult children (£)"
+    SAVINGS_INTEREST_RATE_LIST = "Savings interest rate (%)"
+    PENSION_GROWTH_RATE_LIST = "Pension growth rate (%)"
+    STATE_PENSION_YEARLY_INCREASE_LIST = "State pension yearly increase (%)"
+    MONTHLY_AMOUNT_FROM_CHILDREN = "Monthly from other sources (£)"
     MONTHLY_INCOME = "Monthly budget/income (£)"
     YEARLY_INCREASE_IN_INCOME = "Yearly budget/income increase (%)"
     REPORT_START_DATE = "Prediction start date"
-    PENSION_DRAWDOWN_START_DATE = "Pension drawdown start date"
+    PENSION_DRAWDOWN_START_DATE = "My pension drawdown start date"
 
     DATE = BankAccountGUI.DATE
     AMOUNT = "Amount"
@@ -1302,8 +1405,9 @@ class FuturePlotGUI(GUIBase):
     def Datetime2String(_datetime):
         return _datetime.strftime("%Y-%m-%d %H:%M:%S")
 
-    def __init__(self, config):
+    def __init__(self, config, pension_owner_list):
         self._config = config
+        self._pension_owner_list = pension_owner_list
         self._last_pp_year = None
         self._future_plot_attr_dict = self._ensure_keys_present()
         self._init_gui()
@@ -1373,7 +1477,7 @@ class FuturePlotGUI(GUIBase):
 
     def _init_gui(self):
         with ui.row():
-            ui.label("Retirement Prediction").style(
+            ui.label("Drawdown Retirement Prediction").style(
                 'font-size: 32px; font-weight: bold;')
         with ui.row():
             ui.label(
@@ -1405,34 +1509,34 @@ class FuturePlotGUI(GUIBase):
                 with ui.row():
                     monthly_income = self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME]
                     self._monthly_income_field = ui.number(label=FuturePlotGUI.MONTHLY_INCOME, value=monthly_income).tooltip(
-                        'The total monthly budget/income target amount including money from adult children living at home.')
+                        'The total monthly budget/income target amount including money from other sources.')
 
                     monthly_amount_from_children = self._future_plot_attr_dict[
                         FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN]
                     self._monthly_amount_from_children_field = ui.number(label=FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN, value=monthly_amount_from_children, min=0).tooltip(
-                        'The total amount from all adult children living at home.')
+                        'A monthly amount from non savings/pension sources. E.G Adult children living at home contributing to household finances.')
 
                 with ui.row():
                     yearly_increase_in_income = self._future_plot_attr_dict[
                         FuturePlotGUI.YEARLY_INCREASE_IN_INCOME]
                     self._yearly_increase_in_income_field = ui.input(label=FuturePlotGUI.YEARLY_INCREASE_IN_INCOME, value=yearly_increase_in_income).style(
-                        'width: 800px;').tooltip('A comma separated list of the predicted increase in yearly income as a %.')
+                        'width: 800px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
 
                 with ui.row():
                     savings_interest_rate_list = self._future_plot_attr_dict[
                         FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST]
                     self._savings_interest_rates_field = ui.input(label=FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST, value=savings_interest_rate_list).style(
-                        'width: 800px;').tooltip('A comma separated list of savings interest rate (%) predictions for this year, next year and so on.')
+                        'width: 800px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
                 with ui.row():
                     pension_growth_rate_list = self._future_plot_attr_dict[
                         FuturePlotGUI.PENSION_GROWTH_RATE_LIST]
                     self._pension_growth_rate_list_field = ui.input(label=FuturePlotGUI.PENSION_GROWTH_RATE_LIST, value=pension_growth_rate_list).style(
-                        'width: 800px;').tooltip('A comma separated list of the predicted yearly non state pension growth rate (%).')
+                        'width: 800px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
                 with ui.row():
                     state_pension_growth_rate_list = self._future_plot_attr_dict[
                         FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST]
                     self._state_pension_growth_rate_list_field = ui.input(label=FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST, value=state_pension_growth_rate_list).style(
-                        'width: 800px;').tooltip('A comma separated list of the predicted yearly state pension increase (%).')
+                        'width: 800px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
 
                 with ui.row():
                     self._pension_drawdown_start_date_field = GUIBase.GetInputDateField(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE).style(
@@ -1445,7 +1549,7 @@ class FuturePlotGUI(GUIBase):
                                    'field': FuturePlotGUI.AMOUNT},
                                ]
                     with ui.column():
-                        with ui.card().style("height: 600px; overflow-y: auto;"):
+                        with ui.card().style("height: 600px; overflow-y: auto;").tooltip("Add planned savings withdrawals here."):
                             ui.label("Savings withdrawals").style(
                                 'font-weight: bold;')
                             self._savings_withdrawals_table = ui.table(columns=columns,
@@ -1459,7 +1563,7 @@ class FuturePlotGUI(GUIBase):
                                     'Delete a savings withdrawal from the table.')
 
                     with ui.column():
-                        with ui.card().style("height: 600px; overflow-y: auto;"):
+                        with ui.card().style("height: 600px; overflow-y: auto;").tooltip("Add planned pension withdrawals here."):
                             ui.label("Pension withdrawals").style(
                                 'font-weight: bold;')
                             self._pension_withdrawals_table = ui.table(columns=columns,
@@ -1809,9 +1913,8 @@ class FuturePlotGUI(GUIBase):
             FuturePlotGUI.MONTHLY_INCOME, FuturePlotGUI.DEFAULT_MONTHLY_INCOME)
         self._yearly_increase_in_income_field.value = self._future_plot_attr_dict.get(
             FuturePlotGUI.YEARLY_INCREASE_IN_INCOME, FuturePlotGUI.DEFAULT_YEARLY_INCREASE_IN_INCOME)
-        self._start_date_field.value = self._future_plot_attr_dict[FuturePlotGUI.REPORT_START_DATE]
-        self._pension_drawdown_start_date_field.value = self._future_plot_attr_dict[
-            FuturePlotGUI.PENSION_DRAWDOWN_START_DATE]
+        self._start_date_field.value = self._future_plot_attr_dict.get(FuturePlotGUI.REPORT_START_DATE, "")
+        self._pension_drawdown_start_date_field.value = self._future_plot_attr_dict.get(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE, '')
         self._update_gui_tables()
 
     def _convert_table(self, date_value_table):
@@ -1985,12 +2088,12 @@ class FuturePlotGUI(GUIBase):
                         # from savings.
                         _total_savings_withdrawal = total_savings_withdrawal + total_pension_withdrawal
                         plot_table.append((this_date, total, 0, savings_amount+personal_pension_value, income_this_month,
-                                        state_pension_this_month, savings_interest, _total_savings_withdrawal, 0))
+                                           state_pension_this_month, savings_interest, _total_savings_withdrawal, 0))
 
                     else:
                         # Add to the data to be plotted
                         plot_table.append((this_date, total, 0, savings_amount+personal_pension_value, income_this_month,
-                                        state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
+                                           state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
 
                 # If the total assets drop to 0 then we have used up all our finances.
                 if total <= 0:
@@ -2009,6 +2112,7 @@ class FuturePlotGUI(GUIBase):
                 self._do_plot(self._settings_name_select.value, plot_table)
 
         except Exception as ex:
+            traceback.print_tb(ex.__traceback__)
             # PJA enable for debugging
             # raise ex
             ui.notify(str(ex), type='negative')
@@ -2384,9 +2488,9 @@ class FuturePlotGUI(GUIBase):
         """@brief Determine if (for the purposes of this report) the pension owner is alive and this pension is owned by you.
            @return True if you are still alive."""
         alive = True
-        me = PensionGUI.PENSION_OWNER_LIST[0]
-        partner = PensionGUI.PENSION_OWNER_LIST[1]
-        if owner not in PensionGUI.PENSION_OWNER_LIST:
+        me = self._pension_owner_list[0]
+        partner = self._pension_owner_list[1]
+        if owner not in self._pension_owner_list:
             raise Exception(f"{owner} is an unknown pension owner. Must be {me} or {partner}")
 
         if owner == me:
@@ -2399,9 +2503,9 @@ class FuturePlotGUI(GUIBase):
         """@brief Determine if (for the purposes of this report) your partner is alive and this pension is owned by your partner.
            @return True if they are still alive."""
         alive = True
-        me = PensionGUI.PENSION_OWNER_LIST[0]
-        partner = PensionGUI.PENSION_OWNER_LIST[1]
-        if partner not in PensionGUI.PENSION_OWNER_LIST:
+        me = self._pension_owner_list[0]
+        partner = self._pension_owner_list[1]
+        if partner not in self._pension_owner_list:
             raise Exception(f"{owner} is an unknown pension owner. Must be {me} or {partner}")
 
         if owner == partner:
