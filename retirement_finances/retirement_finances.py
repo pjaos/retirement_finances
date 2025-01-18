@@ -1513,7 +1513,8 @@ class FuturePlotGUI(GUIBase):
                 with ui.row():
                     monthly_income = self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME]
                     self._monthly_income_field = ui.number(label=FuturePlotGUI.MONTHLY_INCOME, value=monthly_income).tooltip(
-                        'The total monthly budget/income target amount including money from other sources. This is taken from savings prior to drawdown start date. Then from pension drawdown. If the pension runs out then money is taken from savings to cover this.')
+                        'The total monthly budget/income target amount including money from other sources. This is taken from savings prior to drawdown start date. Then from pension drawdown.'
+                        ' If the pension runs out then money is taken from savings to cover this.')
 
                     monthly_amount_from_children = self._future_plot_attr_dict[
                         FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN]
@@ -2105,14 +2106,14 @@ class FuturePlotGUI(GUIBase):
 
                 # Add to the data to be plotted
                 plot_table.append((this_date,
-                                    total,
-                                    plot_personal_pension_value,
-                                    plot_savings_amount,
-                                    plot_income_this_month,
-                                    plot_state_pension_this_month,
-                                    plot_savings_interest,
-                                    plot_total_savings_withdrawal,
-                                    plot_total_pension_withdrawal))
+                                   total,
+                                   plot_personal_pension_value,
+                                   plot_savings_amount,
+                                   plot_income_this_month,
+                                   plot_state_pension_this_month,
+                                   plot_savings_interest,
+                                   plot_total_savings_withdrawal,
+                                   plot_total_pension_withdrawal))
 
                 if total <= 0:
                     money_ran_out = True
