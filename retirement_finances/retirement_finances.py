@@ -1368,7 +1368,7 @@ class FuturePlotGUI(GUIBase):
     MONTHLY_INCOME = "Monthly budget/income (£)"
     YEARLY_INCREASE_IN_INCOME = "Yearly budget/income increase (%)"
     REPORT_START_DATE = "Prediction start date"
-    PENSION_DRAWDOWN_START_DATE = "My pension drawdown start date"
+    PENSION_DRAWDOWN_START_DATE = "Pension drawdown start date"
 
     DATE = BankAccountGUI.DATE
     AMOUNT = "Amount"
@@ -1490,6 +1490,10 @@ class FuturePlotGUI(GUIBase):
                         'The prediction start date is when you stop earning and live from your savings and pensions.')
 
                 with ui.row():
+                    self._pension_drawdown_start_date_field = GUIBase.GetInputDateField(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE).style(
+                        'width: 300px;').tooltip('The date at which we stop drawing out of savings and draw out of our pension to cover monthly income.')
+
+                with ui.row():
                     self._my_dob_field = GUIBase.GetInputDateField(
                         FuturePlotGUI.MY_DATE_OF_BIRTH)
                     my_dob = self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH]
@@ -1537,10 +1541,6 @@ class FuturePlotGUI(GUIBase):
                         FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST]
                     self._state_pension_growth_rate_list_field = ui.input(label=FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST, value=state_pension_growth_rate_list).style(
                         'width: 800px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
-
-                with ui.row():
-                    self._pension_drawdown_start_date_field = GUIBase.GetInputDateField(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE).style(
-                        'width: 300px;').tooltip('The date at which we stop drawing out of savings and draw out of our pension to cover monthly income.')
 
             with ui.column():
                 with ui.row():
@@ -1654,6 +1654,8 @@ class FuturePlotGUI(GUIBase):
            @param selected_settings_name The name of the settings to load."""
         name_list = self._get_settings_name_list()
         if selected_settings_name in name_list:
+            # Load from the stored settings file
+            self._config._load_multiple_future_plot_attrs()
             future_plot_attrs_dict = self._config.get_multiple_future_plot_attrs_dict()[selected_settings_name]
             self._config.replace_future_plot_attrs_dict(future_plot_attrs_dict)
             self._update_gui_from_dict()
@@ -1937,7 +1939,9 @@ class FuturePlotGUI(GUIBase):
     def _calc(self, overlay_real_performance=False, this_year_reality=False):
         """@brief Perform calculation. This took ages to get right. I used the household_finances spreadsheet to validate the numbers it produces.
            @param overlay_real_performance If True then the plot shows the predictions overlaid with the real performance.
-           @param this_year_reality If plotting rel values of pension, savings and total only show current year."""
+           @param this_year_reality If plotting rel values of pension, savings and total only show current year.
+
+           !!! This method is to large, work needed !!!"""
         try:
             plot_table = []
             max_planning_date = self._get_max_date()
@@ -1983,7 +1987,8 @@ class FuturePlotGUI(GUIBase):
             total = savings_amount + personal_pension_value
             income_this_month = monthly_budget_table[0][1]
             state_pension_this_month = self._get_state_pension_this_month(first_date, predicted_state_pension_table)
-            my_death_before_75 = False
+            tax_free_pension_event = False
+            money_ran_out = False
 
             # Add initial state
             plot_table.append((first_date, total, personal_pension_value, savings_amount, income_this_month,
@@ -2003,7 +2008,6 @@ class FuturePlotGUI(GUIBase):
 
                 if this_date.year != last_date.year:
                     year_index += 1
-
                     # Sum the interest we've added each month this year
                     savings_interest = sum(monthly_savings_interest_list)
                     savings_amount += savings_interest
@@ -2040,8 +2044,9 @@ class FuturePlotGUI(GUIBase):
 
                 # If we drew lump sum/s from savings in the last month
                 savings_amount_before = savings_amount
-                new_savings_amount = self._get_value_drop(
-                    this_date, savings_amount, lump_sum_savings_withdrawals_table)
+                new_savings_amount = self._get_value_drop(this_date,
+                                                          savings_amount,
+                                                          lump_sum_savings_withdrawals_table)
                 lump_sum_savings_withdrawal = savings_amount_before - new_savings_amount
 
                 # Calc the withdrawal from savings and pension
@@ -2051,53 +2056,66 @@ class FuturePlotGUI(GUIBase):
                 # Calc the new savings and pension amounts
                 personal_pension_value = personal_pension_value - total_pension_withdrawal
                 savings_amount = savings_amount - total_savings_withdrawal
-
                 # Calc the increase/decrease on savings this month given the predicted interest rate.
-                increase_this_month = self._get_savings_increase_this_month(
-                    savings_amount, year_index)
+                increase_this_month = self._get_savings_increase_this_month(savings_amount, year_index)
                 # We assume savings interest acrus' monthly but is added yearly. Therefore add to a list for use later.
                 monthly_savings_interest_list.append(increase_this_month)
 
                 # Calc increase/decrease of pension this month due to growth/decline. We assume this acru's monthly
-                personal_pension_increase = self._get_pension_increase_this_month(
-                    personal_pension_value, year_index)
+                personal_pension_increase = self._get_pension_increase_this_month(personal_pension_value,
+                                                                                  year_index)
                 personal_pension_value = personal_pension_value + personal_pension_increase
+
+                # If we don't have the pension monies for the withdrawal pull it from savings
+                if total_pension_withdrawal > 0 and personal_pension_value <= 0:
+                    savings_amount = savings_amount - total_pension_withdrawal
+                    personal_pension_value = 0
+
+                # If we don't have the savings monies for the withdrawal pull it from pensions
+                if total_savings_withdrawal > 0 and savings_amount <= 0:
+                    personal_pension_value = personal_pension_value - total_savings_withdrawal
+                    savings_amount = 0
 
                 # Calc the total
                 total = savings_amount + personal_pension_value
 
                 # If an event has yet to occur that gives pension tax free
-                if not my_death_before_75:
+                if not tax_free_pension_event:
                     # Check to see if the prediction details my death before 75
                     if self._dead_before_75(this_date):
-                        # Transfer all of pension to savings
+                        # Transfer all pension funds to savings tax free
                         savings_amount = savings_amount + personal_pension_value
                         personal_pension_value = 0
-                        my_death_before_75 = True
+                        tax_free_pension_event = True
 
-                # If there is money in our pension
-                if personal_pension_value > 0:
-                    # Add to the data to be plotted
-                    plot_table.append((this_date, total, personal_pension_value, savings_amount, income_this_month,
-                                       state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
+                plot_personal_pension_value = personal_pension_value
+                plot_savings_amount = savings_amount
+                plot_income_this_month = income_this_month
+                plot_state_pension_this_month = state_pension_this_month
+                plot_savings_interest = savings_interest
+                plot_total_savings_withdrawal = total_savings_withdrawal
+                plot_total_pension_withdrawal = total_pension_withdrawal
 
-                # If not we assume that monthly budget/income will now come out of savings.
-                else:
-                    if my_death_before_75:
-                        # In this case we assume the pension is transferred tax free to my partner. Therefore all budget/income comes
-                        # from savings.
-                        _total_savings_withdrawal = total_savings_withdrawal + total_pension_withdrawal
-                        plot_table.append((this_date, total, 0, savings_amount+personal_pension_value, income_this_month,
-                                           state_pension_this_month, savings_interest, _total_savings_withdrawal, 0))
-
-                    else:
-                        # Add to the data to be plotted
-                        plot_table.append((this_date, total, 0, savings_amount+personal_pension_value, income_this_month,
-                                           state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
-
-                # If the total assets drop to 0 then we have used up all our finances.
                 if total <= 0:
-                    break
+                    # Income drops to the state pension if we run out of money
+                    plot_income_this_month = plot_state_pension_this_month
+                    # We can't withdraw as savings and personal pensions have dropped to zero
+                    plot_total_savings_withdrawal = 0
+                    plot_total_pension_withdrawal = 0
+
+                # Add to the data to be plotted
+                plot_table.append((this_date,
+                                    total,
+                                    plot_personal_pension_value,
+                                    plot_savings_amount,
+                                    plot_income_this_month,
+                                    plot_state_pension_this_month,
+                                    plot_savings_interest,
+                                    plot_total_savings_withdrawal,
+                                    plot_total_pension_withdrawal))
+
+                if total <= 0:
+                    money_ran_out = True
 
             if overlay_real_performance:
                 pp_table = self._get_personal_pension_table()
@@ -2107,14 +2125,15 @@ class FuturePlotGUI(GUIBase):
                 self._do_plot(self._settings_name_select.value,
                               plot_table,
                               reality_tables=reality_tables,
-                              this_year_reality=this_year_reality)
+                              this_year_reality=this_year_reality,
+                              money_ran_out=money_ran_out)
             else:
-                self._do_plot(self._settings_name_select.value, plot_table)
+                self._do_plot(self._settings_name_select.value,
+                              plot_table,
+                              money_ran_out=money_ran_out)
 
         except Exception as ex:
             traceback.print_tb(ex.__traceback__)
-            # PJA enable for debugging
-            # raise ex
             ui.notify(str(ex), type='negative')
 
     def _dead_before_75(self, report_date):
@@ -2163,7 +2182,7 @@ class FuturePlotGUI(GUIBase):
     def is_this_month(self, this_date, date_to_check):
         return (this_date.year == date_to_check.year and this_date.month == date_to_check.month)
 
-    def _do_plot(self, name, plot_table, reality_tables=None, this_year_reality=False):
+    def _do_plot(self, name, plot_table, reality_tables=None, this_year_reality=False, money_ran_out=False):
         """@brief perform a plot of the data in the plot_table.
            @param name The name of the plot.
            @param plot_table Holds rows that comprise the following
@@ -2181,11 +2200,16 @@ class FuturePlotGUI(GUIBase):
            @param this_year_reality If plotting the real performance of pensions & savings you can either
                                     show the entered pension,savings and total alongside the entire
                                     prediction time period (False default)or if this param is set True limit
-                                    the X axis to end at the end of the current year."""
+                                    the X axis to end at the end of the current year.
+           @param money_ran_out If True the money ran out."""
         # Define a secondary page
         @ui.page('/plot_1_page')
         def plot_1_page():
-            Plot1GUI(name, plot_table, reality_tables, this_year_reality)
+            Plot1GUI(name,
+                     plot_table,
+                     reality_tables,
+                     this_year_reality,
+                     money_ran_out)
         # This will open in a separate browser window
         ui.run_javascript("window.open('/plot_1_page', '_blank')")
 
@@ -2619,7 +2643,12 @@ class FuturePlotGUI(GUIBase):
 class Plot1GUI(GUIBase):
     """@brief Responsible for plotting the data of the predicted changes in the savings as we draw out money."""
 
-    def __init__(self, name, plot_table, reality_tables=None, this_year_reality=False):
+    def __init__(self,
+                 name,
+                 plot_table,
+                 reality_tables=None,
+                 this_year_reality=False,
+                 money_ran_out=False):
         """@param name The name of the plot.
            @param plot_table Holds rows that comprise the following
                              0 = date
@@ -2640,11 +2669,13 @@ class Plot1GUI(GUIBase):
                                     show the entered pension,savings and total alongside the entire
                                     prediction time period (False default)or if this param is set True limit
                                     the X axis to end at the end of the current year.
+           @param money_ran_out If True the money ran out.
                              """
         self._name = name
         self._plot_table = plot_table
         self._reality_tables = reality_tables
         self._this_year_reality = this_year_reality
+        self._money_ran_out = money_ran_out
         self._init_gui()
 
     def _overlay_reality(self):
@@ -2836,6 +2867,10 @@ class Plot1GUI(GUIBase):
             plot_pane.clear()
             with plot_pane:
                 ui.plotly(fig).style('width: 100%; height: 100%;')
+
+        # Let the user know this prediction ran out of money before you, and your partner (if you have one) passed away.
+        if self._money_ran_out:
+            ui.notify("You ran out of money", type='negative')
 
 
 def main():
