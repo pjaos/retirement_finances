@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "retirement-finances"
-version = "2.0"
+version = "2.2"
 description = ""
 authors = ["Paul Austen <pjaos@gmail.com>"]
 readme = "README.md"
@@ -13,7 +13,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.10"
 click = "*"
-p3lib = "^1.1.101"
+p3lib = "^1.1.105"
 requests = "*"
 nicegui = "*"
 plotly = "*"

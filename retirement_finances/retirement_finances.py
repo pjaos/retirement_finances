@@ -16,6 +16,7 @@ from p3lib.uio import UIO
 from p3lib.helper import logTraceBack
 from p3lib.pconfig import DotConfigManager
 from p3lib.file_io import CryptFile
+from p3lib.gnome_desktop_app import GnomeDesktopApp
 
 from nicegui import ui
 
@@ -354,25 +355,8 @@ class Finances(GUIBase):
 
     def __init__(self, password, folder):
         super().__init__()
-        self._config = Config(password, folder)
-        self._load_global_config()
-
-        self._last_selected_bank_account_index = None
-        self._last_selected_pension_index = None
-
-        self._backup_data_files(self._config.get_config_folder())
-
-    def _load_global_config(self):
-        self._global_configuration_dict = self._ensure_default_global_config_keys()
-
-        self._savings_owner_list = []
-        self._savings_owner_list.append(self._global_configuration_dict[Finances.MY_NAME_FIELD])
-        self._savings_owner_list.append(self._global_configuration_dict[Finances.PARTNER_NAME_FIELD])
-        self._savings_owner_list.append('Joint')
-
-        self._pension_owner_list = []
-        self._pension_owner_list.append(self._global_configuration_dict[Finances.MY_NAME_FIELD])
-        self._pension_owner_list.append(self._global_configuration_dict[Finances.PARTNER_NAME_FIELD])
+        self._password = password
+        self._folder = folder
 
     def initGUI(self,
                 uio,
@@ -385,45 +369,87 @@ class Finances(GUIBase):
         self._port = port
         self._reload = reload
 
-        self._init_dialogs()
-
-        tabNameList = ('Savings',
-                       'Pensions',
-                       'Reports',
-                       'Configuration')
-        # This must have the same number of elements as the above list
-        tabMethodInitList = [self._init_bank_accounts_tab,
-                             self._init_pensions_tab,
-                             self._init_reports_tab,
-                             self._init_config_tab]
-
-        tabObjList = []
-        with ui.row():
-            with ui.tabs().classes('w-full') as tabs:
-                for tabName in tabNameList:
-                    tabObj = ui.tab(tabName)
-                    tabObjList.append(tabObj)
-
-            with ui.tab_panels(tabs, value=tabObjList[0]).classes('w-full'):
-                for tabObj in tabObjList:
-                    with ui.tab_panel(tabObj):
-                        tabIndex = tabObjList.index(tabObj)
-                        tabMethodInitList[tabIndex]()
-
         self._guiLogLevel = "warning"
         if debugEnabled:
             self._guiLogLevel = "debug"
 
-        self._update_gui_from_config()
+        # main page (password must be entered to decrypt data/config files)
+        @ui.page('/password_entered')
+        def password_entered_page():
 
-        ui.timer(interval=Finances.GUI_TIMER_SECONDS,
-                 callback=self.gui_timer_callback)
+            self._config = Config(self._password, self._folder)
+            self._load_global_config()
+
+            self._last_selected_bank_account_index = None
+            self._last_selected_pension_index = None
+
+            self._backup_data_files(self._config.get_config_folder())
+
+            self._init_dialogs()
+
+            tabNameList = ('Savings',
+                           'Pensions',
+                           'Reports',
+                           'Configuration')
+            # This must have the same number of elements as the above list
+            tabMethodInitList = [self._init_bank_accounts_tab,
+                                 self._init_pensions_tab,
+                                 self._init_reports_tab,
+                                 self._init_config_tab]
+
+            tabObjList = []
+            with ui.row():
+                with ui.tabs().classes('w-full') as tabs:
+                    for tabName in tabNameList:
+                        tabObj = ui.tab(tabName)
+                        tabObjList.append(tabObj)
+
+                with ui.tab_panels(tabs, value=tabObjList[0]).classes('w-full'):
+                    for tabObj in tabObjList:
+                        with ui.tab_panel(tabObj):
+                            tabIndex = tabObjList.index(tabObj)
+                            tabMethodInitList[tabIndex]()
+
+            self._update_gui_from_config()
+
+            ui.timer(interval=Finances.GUI_TIMER_SECONDS, callback=self.gui_timer_callback)
+
+        # We open the password entry page first
+        with ui.row():
+            ui.label("Retirement Finances").style('font-size: 32px; font-weight: bold;')
+        with ui.row():
+            ui.label('Password:')
+        with ui.row():
+            self._password_input = ui.input(password=True).props("autofocus").on("keydown.enter", lambda e: self._open_main_window())
+            self._password_input.value = self._password
+        with ui.row():
+            ui.button('OK', on_click=self._open_main_window)
+
         ui.run(host=address,
                port=port,
-               title="Austen Retirement Finances",
+               title="Retirement Finances",
                dark=True,
                uvicorn_logging_level=self._guiLogLevel,
                reload=reload)
+
+    def _open_main_window(self):
+        """@brief Once the password has been entered by the user open the main
+                  window. File decryption will fail if the wrong password is entered."""
+        # Use the password entered from the GUI
+        self._password = self._password_input.value
+        ui.run_javascript("window.open('/password_entered', '_blank')")
+
+    def _load_global_config(self):
+        self._global_configuration_dict = self._ensure_default_global_config_keys()
+
+        self._savings_owner_list = []
+        self._savings_owner_list.append(self._global_configuration_dict[Finances.MY_NAME_FIELD])
+        self._savings_owner_list.append(self._global_configuration_dict[Finances.PARTNER_NAME_FIELD])
+        self._savings_owner_list.append('Joint')
+
+        self._pension_owner_list = []
+        self._pension_owner_list.append(self._global_configuration_dict[Finances.MY_NAME_FIELD])
+        self._pension_owner_list.append(self._global_configuration_dict[Finances.PARTNER_NAME_FIELD])
 
     def _backup_data_files(self, data_folder):
         """@brief Backup files in the data folder.
@@ -1477,8 +1503,7 @@ class FuturePlotGUI(GUIBase):
 
     def _init_gui(self):
         with ui.row():
-            ui.label("Drawdown Retirement Prediction").style(
-                'font-size: 32px; font-weight: bold;')
+            ui.label("Drawdown Retirement Prediction").style('font-size: 32px; font-weight: bold;')
         with ui.row():
             ui.label(
                 "The following parameters can be change to alter your retirement prediction.")
@@ -2886,13 +2911,17 @@ def main():
         parser.add_argument(
             "-enable_syslog", action='store_true', help="Enable syslog.")
         parser.add_argument(
-            "-p", "--password", help="Password use for encrypting savings and pension details.", required=True)
+            "-p", "--password", help="Password use for encrypting savings and pension details.")
         parser.add_argument(
             "-f", "--folder",   help="The folder to store the retirement finances files in.")
         parser.add_argument(
             "--port", type=int, help="The TCP IP port to serve the GUI on (default = 9090).", default=9090)
         parser.add_argument(
             "--reload",  action='store_true', help="Set nicegui reload = True.")
+        parser.add_argument(
+            "-a", "--add_gnome_desktop_launcher",  action='store_true', help="Add a gnome desktop launcher.")
+        parser.add_argument(
+            "-r", "--remove_gnome_desktop_launcher",  action='store_true', help="Remove a gnome desktop launcher.")
 
         options = parser.parse_args()
         uio.enableDebug(options.debug)
@@ -2901,8 +2930,21 @@ def main():
         if options.enable_syslog:
             uio.info("Syslog enabled")
 
-        finances = Finances(options.password, options.folder)
-        finances.initGUI(uio, options.debug, port=options.port, reload=options.reload)
+        if options.add_gnome_desktop_launcher:
+            gda = GnomeDesktopApp('savings.png')
+            gda.create()
+            uio.info("Created gnome desktop application launcher")
+
+        elif options.remove_gnome_desktop_launcher:
+            gda = GnomeDesktopApp('savings.png')
+            if gda.delete():
+                uio.info("Deleted gnome desktop application launcher")
+            else:
+                uio.info("No gnome desktop application launcher was found to delete.")
+
+        else:
+            finances = Finances(options.password, options.folder)
+            finances.initGUI(uio, options.debug, port=options.port, reload=options.reload)
 
     # If the program throws a system exit exception
     except SystemExit:
