@@ -5,8 +5,8 @@ TODO
 DONE - Fix bug, if monthly income set to £10000 then the plots don't show the pension drawdown correctly.
 DONE - Make GUIBase.OWNER_LIST configurable.
 DONE - Add change so that If I die before 75 pension-0 and money moves to savings.
-       This is the case because if I die before 75 then karen gets the pension as a tax free lump sum.
-DONE - Make karens max age stop her state pension
+       This is the case because if I die before 75 then my partner gets the pension as a tax free lump sum.
+DONE - Make partners max age stop her state pension
 DONE - Allow no pension to be entered.
 DONE - Add change so that my max age is used to stop my state pension being included.
 DONE - Add backup option
