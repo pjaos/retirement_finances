@@ -373,10 +373,36 @@ class Finances(GUIBase):
         if debugEnabled:
             self._guiLogLevel = "debug"
 
-        # main page (password must be entered to decrypt data/config files)
-        @ui.page('/password_entered')
-        def password_entered_page():
+        # If a password was entered on the cmd line open the top level page
+        if self._password and len(self._password) > 0:
+            self._init_top_level()
 
+        else:
+            # If not allow the user to enter the app password.
+            # main page (password must be entered to decrypt data/config files)
+            @ui.page('/password_entered')
+            def password_entered_page():
+                self._init_top_level()
+
+            # We open the password entry page first
+            with ui.row():
+                ui.label("Retirement Finances").style('font-size: 32px; font-weight: bold;')
+            with ui.row():
+                ui.label('Password:')
+            with ui.row():
+                self._password_input = ui.input(password=True).props("autofocus").on("keydown.enter", lambda e: self._open_main_window())
+                self._password_input.value = self._password
+            with ui.row():
+                ui.button('OK', on_click=self._open_main_window)
+
+        ui.run(host=address,
+               port=port,
+               title="Retirement Finances",
+               dark=True,
+               uvicorn_logging_level=self._guiLogLevel,
+               reload=reload)
+
+    def _init_top_level(self):
             self._config = Config(self._password, self._folder)
             self._load_global_config()
 
@@ -413,24 +439,6 @@ class Finances(GUIBase):
             self._update_gui_from_config()
 
             ui.timer(interval=Finances.GUI_TIMER_SECONDS, callback=self.gui_timer_callback)
-
-        # We open the password entry page first
-        with ui.row():
-            ui.label("Retirement Finances").style('font-size: 32px; font-weight: bold;')
-        with ui.row():
-            ui.label('Password:')
-        with ui.row():
-            self._password_input = ui.input(password=True).props("autofocus").on("keydown.enter", lambda e: self._open_main_window())
-            self._password_input.value = self._password
-        with ui.row():
-            ui.button('OK', on_click=self._open_main_window)
-
-        ui.run(host=address,
-               port=port,
-               title="Retirement Finances",
-               dark=True,
-               uvicorn_logging_level=self._guiLogLevel,
-               reload=reload)
 
     def _open_main_window(self):
         """@brief Once the password has been entered by the user open the main
