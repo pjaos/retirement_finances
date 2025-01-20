@@ -403,42 +403,42 @@ class Finances(GUIBase):
                reload=reload)
 
     def _init_top_level(self):
-            self._config = Config(self._password, self._folder)
-            self._load_global_config()
+        self._config = Config(self._password, self._folder)
+        self._load_global_config()
 
-            self._last_selected_bank_account_index = None
-            self._last_selected_pension_index = None
+        self._last_selected_bank_account_index = None
+        self._last_selected_pension_index = None
 
-            self._backup_data_files(self._config.get_config_folder())
+        self._backup_data_files(self._config.get_config_folder())
 
-            self._init_dialogs()
+        self._init_dialogs()
 
-            tabNameList = ('Savings',
-                           'Pensions',
-                           'Reports',
-                           'Configuration')
-            # This must have the same number of elements as the above list
-            tabMethodInitList = [self._init_bank_accounts_tab,
-                                 self._init_pensions_tab,
-                                 self._init_reports_tab,
-                                 self._init_config_tab]
+        tabNameList = ('Savings',
+                       'Pensions',
+                       'Reports',
+                       'Configuration')
+        # This must have the same number of elements as the above list
+        tabMethodInitList = [self._init_bank_accounts_tab,
+                             self._init_pensions_tab,
+                             self._init_reports_tab,
+                             self._init_config_tab]
 
-            tabObjList = []
-            with ui.row():
-                with ui.tabs().classes('w-full') as tabs:
-                    for tabName in tabNameList:
-                        tabObj = ui.tab(tabName)
-                        tabObjList.append(tabObj)
+        tabObjList = []
+        with ui.row():
+            with ui.tabs().classes('w-full') as tabs:
+                for tabName in tabNameList:
+                    tabObj = ui.tab(tabName)
+                    tabObjList.append(tabObj)
 
-                with ui.tab_panels(tabs, value=tabObjList[0]).classes('w-full'):
-                    for tabObj in tabObjList:
-                        with ui.tab_panel(tabObj):
-                            tabIndex = tabObjList.index(tabObj)
-                            tabMethodInitList[tabIndex]()
+            with ui.tab_panels(tabs, value=tabObjList[0]).classes('w-full'):
+                for tabObj in tabObjList:
+                    with ui.tab_panel(tabObj):
+                        tabIndex = tabObjList.index(tabObj)
+                        tabMethodInitList[tabIndex]()
 
-            self._update_gui_from_config()
+        self._update_gui_from_config()
 
-            ui.timer(interval=Finances.GUI_TIMER_SECONDS, callback=self.gui_timer_callback)
+        ui.timer(interval=Finances.GUI_TIMER_SECONDS, callback=self.gui_timer_callback)
 
     def _open_main_window(self):
         """@brief Once the password has been entered by the user open the main
