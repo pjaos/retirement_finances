@@ -535,7 +535,7 @@ class Finances(GUIBase):
             ui.button('Update', on_click=lambda: self._show_bank_account_list()).tooltip(
                 'Update the list bank/building society accounts')
             self._show_only_active_accounts_checkbox = ui.checkbox(
-                "Show only active accounts", value=True)
+                "Show only active accounts", value=True).tooltip("Deselect to show inactive accounts in the above list.")
 
         self._show_bank_account_list()
 
@@ -980,7 +980,7 @@ class BankAccountGUI(GUIBase):
             'font-size: 32px; font-weight: bold;')
         with ui.row():
             bank_active_checkbox = ui.checkbox(
-                BankAccountGUI.ACCOUNT_ACTIVE, value=True)
+                BankAccountGUI.ACCOUNT_ACTIVE, value=True).tooltip("Deselect this if this account should not be included in retirement planning finances.")
 
         with ui.row():
             bank_account_bank_name_field = ui.input(
@@ -1230,18 +1230,18 @@ class PensionGUI(GUIBase):
     def _init_page(self):
         ui.label("Pension").style('font-size: 32px; font-weight: bold;')
         self._state_pension_checkbox = ui.checkbox(PensionGUI.STATE_PENSION, value=True).on(
-            'click', self._state_pension_checkbox_callback)
+            'click', self._state_pension_checkbox_callback).tooltip("This should be checked if this is a state pension. If not then this should be unchecked.")
         self._provider_field = ui.input(
-            label=PensionGUI.PENSION_PROVIDER_LABEL, value=PensionGUI.GOV)
+            label=PensionGUI.PENSION_PROVIDER_LABEL, value=PensionGUI.GOV).tooltip("The name of the pension provider.")
         self._description_field = ui.input(
-            label=PensionGUI.PENSION_DESCRIPTION_LABEL, value=PensionGUI.STATE_PENSION).style('width: 400px;')
+            label=PensionGUI.PENSION_DESCRIPTION_LABEL, value=PensionGUI.STATE_PENSION).style('width: 400px;').tooltip("A description of the pension.")
         self._state_pension_state_date_field = GUIBase.GetInputDateField(
             PensionGUI.STATE_PENSION_START_DATE)
         self._pension_owner_field = ui.select(self._owner_list,
                                               label=PensionGUI.PENSION_OWNER,
-                                              value=self._owner_list[0]).style('width: 200px;')
+                                              value=self._owner_list[0]).style('width: 200px;').tooltip("The name of the pension owner.")
 
-        with ui.card().style("height: 300px; overflow-y: auto;"):
+        with ui.card().style("height: 300px; overflow-y: auto;").tooltip("If a state pension the amount should be the yearly expected state pension. If not a state pension, then the amount should be the pension fund value."):
             self._table = self._get_table_copy()
             with ui.row():
                 columns = [{'name': PensionGUI.DATE, 'label': PensionGUI.DATE, 'field': PensionGUI.DATE},
