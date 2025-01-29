@@ -319,6 +319,23 @@ class GUIBase(object):
             ui.notify(msg, type='negative')
         return valid
 
+    def CheckZeroOrGreater(number, field_name=None):
+        """@brief Check that the number is 0.0 or greater.
+           @param number The number to check.
+           @param field_name The optional name of the field being checked.
+           @return True if number is 0 or greater."""
+        if number is None:
+            number = 0
+        valid = False
+        if number >= 0.0:
+            valid = True
+        else:
+            msg = f"The number entered ({number}) must be zero or greater."
+            if field_name:
+                msg = f"The '{field_name}' = ({number}) must be zero or greater."
+            ui.notify(msg, type='negative')
+        return valid
+
     @staticmethod
     def CheckCommaSeparatedNumberList(comma_separated_number_str, field_name=None):
         """@brief Check that the string entered contains a comma separated number list.
@@ -967,31 +984,31 @@ class BankAccountGUI(GUIBase):
 
         with ui.row():
             bank_account_bank_name_field = ui.input(
-                label=BankAccountGUI.ACCOUNT_BANK_NAME_LABEL).style('width: 300px;')
+                label=BankAccountGUI.ACCOUNT_BANK_NAME_LABEL).style('width: 300px;').tooltip("The name of the institution where the account is held.")
             bank_account_name_field = ui.input(
-                label=BankAccountGUI.ACCOUNT_NAME_LABEL).style('width: 300px;')
+                label=BankAccountGUI.ACCOUNT_NAME_LABEL).style('width: 300px;').tooltip("The name of the savings account.")
             bank_account_sort_code_field = ui.input(
-                label=BankAccountGUI.ACCOUNT_SORT_CODE).style('width: 100px;')
+                label=BankAccountGUI.ACCOUNT_SORT_CODE).style('width: 100px;').tooltip("The sort code of the savings account. Savings accounts may not have a sort code.")
             bank_account_number_field = ui.input(
-                label=BankAccountGUI.ACCOUNT_NUMBER).style('width: 200px;')
+                label=BankAccountGUI.ACCOUNT_NUMBER).style('width: 200px;').tooltip("The account number of the savings account.")
 
         with ui.row():
             bank_account_owner_select = ui.select(self._owner_list,
                                                   label=BankAccountGUI.ACCOUNT_OWNER,
-                                                  value=self._owner_list[0]).style('width: 200px;')
+                                                  value=self._owner_list[0]).style('width: 200px;').tooltip("The owner of the savings account.")
 
             bank_account_interest_rate_field = ui.number(
-                label=BankAccountGUI.ACCOUNT_INTEREST_RATE, min=0, max=100).style('width: 150px;')
+                label=BankAccountGUI.ACCOUNT_INTEREST_RATE, min=0, max=100).style('width: 150px;').tooltip("The rate of interest for this savings account when the account was opened. This is for your reference only and is not used in calculations.")
             bank_account_interest_type_field = ui.select(
                 ['Fixed', 'Variable'], value='Fixed')
             bank_account_interest_type_field.tooltip(
                 BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE)
             bank_account_open_date_field = Finances.GetInputDateField(
-                BankAccountGUI.ACCOUNT_OPEN_DATE)
+                BankAccountGUI.ACCOUNT_OPEN_DATE).tooltip("The date that the savings account was opened.")
 
         with ui.row():
             bank_notes_field = ui.textarea(
-                label=BankAccountGUI.ACCOUNT_NOTES).style('width: 800px;')
+                label=BankAccountGUI.ACCOUNT_NOTES).style('width: 800px;').tooltip("Any notes you may wish to record regarding this avings acount.")
 
         with ui.card().style("height: 300px; overflow-y: auto;"):
             self._table = self._get_table_copy()
@@ -1899,7 +1916,7 @@ class FuturePlotGUI(GUIBase):
                                               field_name=self._pension_drawdown_start_date_field.props['label']) and \
            BankAccountGUI.CheckGreaterThanZero(self._my_max_age_field.value,
                                                field_name=self._my_max_age_field.props['label']) and \
-           BankAccountGUI.CheckGreaterThanZero(self._monthly_income_field.value,
+           BankAccountGUI.CheckZeroOrGreater(self._monthly_income_field.value,
                                                field_name=self._monthly_income_field.props['label']) and \
            BankAccountGUI.CheckCommaSeparatedNumberList(self._yearly_increase_in_income_field.value,
                                                         field_name=self._yearly_increase_in_income_field.props['label']) and \
@@ -2028,6 +2045,12 @@ class FuturePlotGUI(GUIBase):
             plot_table.append((first_date, total, personal_pension_value, savings_amount, income_this_month,
                               state_pension_this_month, savings_interest, total_savings_withdrawal, total_pension_withdrawal))
 
+            # Assume that the account existed in the month prior to the report start date.
+            # Therefore add the savings accrued during this month.
+            increase_this_month = self._get_savings_increase_this_month(savings_amount, 0)
+            # We assume savings interest accrues monthly but is added yearly. Therefore add to a list for use later.
+            monthly_savings_interest_list.append(increase_this_month)
+
             # Calc the required parameters for each date
             for row in monthly_budget_table:
                 this_date = row[0]
@@ -2042,7 +2065,7 @@ class FuturePlotGUI(GUIBase):
 
                 if this_date.year != last_date.year:
                     year_index += 1
-                    # Sum the interest we've added each month this year
+                    # Sum the interest we've added each month in the previous year
                     savings_interest = sum(monthly_savings_interest_list)
                     savings_amount += savings_interest
                     monthly_savings_interest_list = []
@@ -2092,7 +2115,7 @@ class FuturePlotGUI(GUIBase):
                 savings_amount = savings_amount - total_savings_withdrawal
                 # Calc the increase/decrease on savings this month given the predicted interest rate.
                 increase_this_month = self._get_savings_increase_this_month(savings_amount, year_index)
-                # We assume savings interest acrus' monthly but is added yearly. Therefore add to a list for use later.
+                # We assume savings interest accrues monthly but is added yearly. Therefore add to a list for use later.
                 monthly_savings_interest_list.append(increase_this_month)
 
                 # Calc increase/decrease of pension this month due to growth/decline. We assume this acru's monthly
