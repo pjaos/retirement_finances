@@ -1917,7 +1917,7 @@ class FuturePlotGUI(GUIBase):
            BankAccountGUI.CheckGreaterThanZero(self._my_max_age_field.value,
                                                field_name=self._my_max_age_field.props['label']) and \
            BankAccountGUI.CheckZeroOrGreater(self._monthly_income_field.value,
-                                               field_name=self._monthly_income_field.props['label']) and \
+                                             field_name=self._monthly_income_field.props['label']) and \
            BankAccountGUI.CheckCommaSeparatedNumberList(self._yearly_increase_in_income_field.value,
                                                         field_name=self._yearly_increase_in_income_field.props['label']) and \
            BankAccountGUI.CheckCommaSeparatedNumberList(self._savings_interest_rates_field.value,
