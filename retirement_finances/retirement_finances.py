@@ -31,6 +31,7 @@ class Config(object):
     MULTIPLE_FUTURE_PLOT_ATTR_FILE = "multiple_future_plot_attr.json"
     SELECTED_FUTURE_PLOT_NAME_ATTR_FILE = "selected_future_plot_name_attr.json"
     GLOBAL_CONFIGURATION_FILE = "global_configuration_parameters.json"
+    MONTHLY_SPENDING_FILE = "monthly_spending.json"
 
     @staticmethod
     def GetConfigFolder(folder):
@@ -80,6 +81,10 @@ class Config(object):
         self._selected_retirement_parameters_name_crypt_file = CryptFile(filename=self._selected_retirement_parameters_name_file, password=self._password)
         self._load_selected_retirement_parameters_name_attrs()
 
+        self._monthly_spending_file = self._getMonthlySpendingFile()
+        self._monthly_spending_crypt_file = CryptFile(filename=self._monthly_spending_file, password=self._password)
+        self._load_monthly_spending_dict()
+
     def get_config_folder(self):
         """@return the folder used to store config files."""
         return self._config_folder
@@ -107,6 +112,10 @@ class Config(object):
     def _getGlobalConfigurationFile(self):
         """@return The file used to store global configuration parameters."""
         return os.path.join(self._config_folder, Config.GLOBAL_CONFIGURATION_FILE)
+
+    def _getMonthlySpendingFile(self):
+        """@return The file used to store monthly spending details."""
+        return os.path.join(self._config_folder, Config.MONTHLY_SPENDING_FILE)
 
     # --- methods for bank accounts ---
 
@@ -264,6 +273,27 @@ class Config(object):
         """@brief Get the global configuration parameters name parameters dict."""
         return self._global_configuration_dict
 
+    # --- methods for holding the recording monthly spending values ---
+
+    def _load_monthly_spending_dict(self):
+        """@brief Load the monthly spending dict from a file."""
+        try:
+            self._monthly_spending_dict = {}
+            self._monthly_spending_dict = self._monthly_spending_crypt_file.load()
+            ui.notify(f'Loaded from {self._monthly_spending_crypt_file.get_file()}')
+
+        except Exception:
+            ui.notify(f'{self._monthly_spending_crypt_file.get_file()} file not found.', type='negative')
+
+    def _save_monthly_spending_dict(self):
+        """@brief Save the monthly spending dict to a file."""
+        self._monthly_spending_crypt_file.save(self._monthly_spending_dict)
+        ui.notify(f'Saved {self._monthly_spending_crypt_file.get_file()}')
+
+    def get_monthly_spending_dict(self):
+        """@brief Get the the monthly spending dict."""
+        return self._monthly_spending_dict
+
 
 class GUIBase(object):
     DATE = "Date"
@@ -376,6 +406,7 @@ class Finances(GUIBase):
         self._folder = folder
         self._bank_acount_table = None
         self._pension_table = None
+        self._monthly_spend_table = None
 
     def initGUI(self,
                 uio,
@@ -392,31 +423,27 @@ class Finances(GUIBase):
         if debugEnabled:
             self._guiLogLevel = "debug"
 
-        # If a password was entered on the cmd line open the top level page
-        if self._password and len(self._password) > 0:
+        # If not allow the user to enter the app password.
+        # main page (password must be entered to decrypt data/config files)
+        @ui.page('/password_entered')
+        def password_entered_page():
             self._init_top_level()
+            # Called every time this page is displayed
+            # i.e when the back button is selected
+            self._show_bank_account_list()
+            self._show_pension_list()
+            self._show_monthly_spending_list()
 
-        else:
-            # If not allow the user to enter the app password.
-            # main page (password must be entered to decrypt data/config files)
-            @ui.page('/password_entered')
-            def password_entered_page():
-                self._init_top_level()
-                # Called every time this page is displayed
-                # i.e when the back button is selected
-                self._show_bank_account_list()
-                self._show_pension_list()
-
-            # We open the password entry page first
-            with ui.row():
-                ui.label("Retirement Finances").style('font-size: 32px; font-weight: bold;')
-            with ui.row():
-                ui.label('Password:')
-            with ui.row():
-                self._password_input = ui.input(password=True).props("autofocus").on("keydown.enter", lambda e: self._open_main_window())
-                self._password_input.value = self._password
-            with ui.row():
-                ui.button('OK', on_click=self._open_main_window)
+        # We open the password entry page first
+        with ui.row():
+            ui.label("Retirement Finances").style('font-size: 32px; font-weight: bold;')
+        with ui.row():
+            ui.label('Password:')
+        with ui.row():
+            self._password_input = ui.input(password=True).props("autofocus").on("keydown.enter", lambda e: self._open_main_window())
+            self._password_input.value = self._password
+        with ui.row():
+            ui.button('OK', on_click=self._open_main_window)
 
         ui.run(host=address,
                port=port,
@@ -464,6 +491,8 @@ class Finances(GUIBase):
         self._update_gui_from_config()
 
         ui.timer(interval=Finances.GUI_TIMER_SECONDS, callback=self.gui_timer_callback)
+
+        self._init_monthly_spending_dialog()
 
     def _open_main_window(self):
         """@brief Once the password has been entered by the user open the main
@@ -834,18 +863,135 @@ class Finances(GUIBase):
 
     # methods associated with the monthly spending
 
+    MONTHLY_SPEND_DATE = "Date"
+    MONTHLY_SPEND_AMOUNT = "Amount"
+    MONTHLY_SPENDING_TABLE = "MONTHLY_SPENDING_TABLE"
+
     def _init_monthly_spend_tab(self):
         with ui.row():
-            ui.button('Add', on_click=lambda: self._add_bank_account()
-                      ).tooltip('Add a bank/building society account')
-            ui.button('Delete', on_click=lambda: self._delete_bank_account()).tooltip(
-                'Delete a bank/building society account')
-            ui.button('Edit', on_click=lambda: self._edit_bank_account()).tooltip(
-                'Edit a bank/building society account')
-            ui.button('Update', on_click=lambda: self._show_bank_account_list()).tooltip(
-                'Update the list bank/building society accounts')
-            self._show_only_active_accounts_checkbox = ui.checkbox(
-                "Show only active accounts", value=True).tooltip("Deselect to show inactive accounts in the above list.")
+            columns = [{'name': Finances.MONTHLY_SPEND_DATE, 'label': Finances.MONTHLY_SPEND_DATE, 'field': Finances.MONTHLY_SPEND_DATE},
+                       {'name': Finances.MONTHLY_SPEND_AMOUNT, 'label': Finances.MONTHLY_SPEND_AMOUNT, 'field': Finances.MONTHLY_SPEND_AMOUNT},
+                       ]
+            self._monthly_spend_table = ui.table(columns=columns,
+                                                 rows=[],
+                                                 row_key=Finances.MONTHLY_SPEND_DATE,
+                                                 selection='single').classes('h-96').props('virtual-scroll').tooltip("This table allows you to record how much you spend each month.")
+            self._show_monthly_spending_list()
+
+        with ui.row():
+            ui.button('Add', on_click=lambda: self._add_monthly_spending()
+                      ).tooltip('Add to monthly spending table')
+            ui.button('Delete', on_click=lambda: self._delete_monthly_spending()).tooltip(
+                'Delete from monthly spending table')
+            ui.button('Edit', on_click=lambda: self._edit_monthly_spending()
+                      ).tooltip('Edit monthly spending table')
+
+    def _add_monthly_spending(self):
+        """@brief Add to the monthly spending table."""
+        self._add_to_monthly_spending_table = True
+        self._add_monthly_spend_row_dialog.open()
+
+    def _delete_monthly_spending(self):
+        """@brief Delete from the monthly spending table."""
+        selected_index = self._get_monthly_spending_index()
+        monthly_spending_dict = self._get_monthly_spending_dict()
+        if selected_index >= 0 and Finances.MONTHLY_SPENDING_TABLE in monthly_spending_dict:
+            monthly_spending_table = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
+            if selected_index < len(monthly_spending_table):
+                del monthly_spending_table[selected_index]
+                self._config._save_monthly_spending_dict()
+                self._show_monthly_spending_list()
+
+    def _get_monthly_spending_index(self):
+        selected_index = -1
+        selected_dict = self._monthly_spend_table.selected
+        if len(selected_dict) > 0:
+            selected_dict = selected_dict[0]
+            monthly_spending_dict = self._get_monthly_spending_dict()
+            if Finances.MONTHLY_SPENDING_TABLE in monthly_spending_dict:
+                monthly_spending_table = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
+                if selected_dict:
+                    if Finances.MONTHLY_SPEND_DATE in selected_dict:
+                        _date = selected_dict[Finances.MONTHLY_SPEND_DATE]
+                        current_index = 0
+                        for row in monthly_spending_table:
+                            if len(row) == 2:
+                                __date = row[0]
+                                if _date == __date:
+                                    selected_index = current_index
+                                    break
+                            current_index += 1
+
+        return selected_index
+
+    def _edit_monthly_spending(self):
+        """@brief Edit the monthly spending table."""
+        self._add_to_monthly_spending_table = False
+        monthly_spending_dict = self._get_monthly_spending_dict()
+        selected_index = self._get_monthly_spending_index()
+        if selected_index >= 0 and Finances.MONTHLY_SPENDING_TABLE in monthly_spending_dict:
+            monthly_spending_table = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
+            if selected_index < len(monthly_spending_table):
+                row = monthly_spending_table[selected_index]
+                self._monthly_spending_date_input_field.value = row[0]
+                self._monthly_spending_amount_field.value = row[1]
+                self._add_monthly_spend_row_dialog.open()
+
+    def _show_monthly_spending_list(self):
+        """@brief Display the monthly spending list."""
+        if self._monthly_spend_table:
+            self._monthly_spend_table.rows.clear()
+            self._monthly_spend_table.update()
+            monthly_spending_dict = self._get_monthly_spending_dict()
+            if Finances.MONTHLY_SPENDING_TABLE in monthly_spending_dict:
+                monthly_spending_table = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
+                for row in monthly_spending_table:
+                    if len(row) >= 2:
+                        _date = row[0]
+                        _amount = row[1]
+                        self._monthly_spend_table.add_row({Finances.MONTHLY_SPEND_DATE: _date,
+                                                           Finances.MONTHLY_SPEND_AMOUNT: _amount})
+            self._monthly_spend_table.run_method('scrollTo', len(self._monthly_spend_table.rows)-1)
+
+    def _get_monthly_spending_dict(self):
+        """@brief Get the dict that holds the monthly spending."""
+        monthly_spending_dict = self._config.get_monthly_spending_dict()
+        if Finances.MONTHLY_SPENDING_TABLE not in monthly_spending_dict:
+            monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE] = []
+        return monthly_spending_dict
+
+    def _init_monthly_spending_dialog(self):
+        """@brief Create a dialog presented to the user to check that they wish to add a bank account."""
+        with ui.dialog() as self._add_monthly_spend_row_dialog, ui.card().style('width: 400px;'):
+            self._monthly_spending_date_input_field = GUIBase.GetInputDateField(Finances.MONTHLY_SPEND_DATE)
+            self._monthly_spending_amount_field = ui.number(label="Amount (£)")
+            with ui.row():
+                ui.button("Ok", on_click=self._monthly_spending_ok_button_press)
+                ui.button("Cancel", on_click=self._monthly_spending_cancel_button_press)
+
+    def _monthly_spending_ok_button_press(self):
+        """@brief Add the monthly spending amount to the table."""
+        if Finances.CheckValidDateString(self._monthly_spending_date_input_field.value) and \
+           self._monthly_spending_amount_field.value >= 0:
+            monthly_spending_dict = self._config.get_monthly_spending_dict()
+            if Finances.MONTHLY_SPENDING_TABLE in monthly_spending_dict:
+                rows = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
+                if self._add_to_monthly_spending_table:
+                    rows.append((self._monthly_spending_date_input_field.value, self._monthly_spending_amount_field.value))
+                else:
+                    selected_index = self._get_monthly_spending_index()
+                    rows[selected_index] = (self._monthly_spending_date_input_field.value, self._monthly_spending_amount_field.value)
+
+                # Ensure we store the table in ascending date order.
+                sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
+                monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE] = sorted_rows
+                self._config._save_monthly_spending_dict()
+
+            self._show_monthly_spending_list()
+        self._add_monthly_spend_row_dialog.close()
+
+    def _monthly_spending_cancel_button_press(self):
+        self._add_monthly_spend_row_dialog.close()
 
     # end of methods associated with the monthly spending
 
@@ -1042,7 +1188,7 @@ class BankAccountGUI(GUIBase):
                            ]
                 self._bank_acount_table = ui.table(columns=columns,
                                                    rows=[],
-                                                   row_key=BankAccountGUI.ACCOUNT_NUMBER,
+                                                   row_key=BankAccountGUI.DATE,
                                                    selection='single')
 
                 self._display_table_rows()
@@ -1054,8 +1200,8 @@ class BankAccountGUI(GUIBase):
                 'Delete a row from the balance table.')
 
         with ui.row():
-            ui.button("OK", on_click=self._back_button_selected ).tooltip("Save the account details and go back to previous window.")
-            ui.button("Cancel", on_click=lambda: ui.navigate.back() ).tooltip("Cancel entry and go back to previous window.")
+            ui.button("OK", on_click=self._back_button_selected).tooltip("Save the account details and go back to previous window.")
+            ui.button("Cancel", on_click=lambda: ui.navigate.back()).tooltip("Cancel entry and go back to previous window.")
 
         self._bank_account_field_list = [bank_account_bank_name_field,
                                          bank_account_name_field,
@@ -1085,7 +1231,11 @@ class BankAccountGUI(GUIBase):
         return copy.deepcopy(table)
 
     def _add_table_row(self, row):
-        self._bank_account_dict[BankAccountGUI.TABLE].append(row)
+        rows = self._bank_account_dict[BankAccountGUI.TABLE]
+        rows.append(row)
+        # Sort table in ascending date order
+        sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
+        self._bank_account_dict[BankAccountGUI.TABLE] = sorted_rows
 
     def _init_add_row_dialog(self):
         """@brief Create a dialog presented to the user to check that they wish to add a bank account."""
@@ -1114,10 +1264,8 @@ class BankAccountGUI(GUIBase):
         self._bank_acount_table.update()
         table = self._bank_account_dict[BankAccountGUI.TABLE]
         for row in table:
-            self._bank_acount_table.add_row(
-                {BankAccountGUI.DATE: row[0], BankAccountGUI.BALANCE: row[1]})
-        self._bank_acount_table.run_method(
-            'scrollTo', len(self._bank_acount_table.rows)-1)
+            self._bank_acount_table.add_row({BankAccountGUI.DATE: row[0], BankAccountGUI.BALANCE: row[1]})
+        self._bank_acount_table.run_method('scrollTo', len(self._bank_acount_table.rows)-1)
 
     def _add_row_dialog_cancel_button_press(self):
         self._add_row_dialog.close()
@@ -1181,25 +1329,25 @@ class BankAccountGUI(GUIBase):
             ui.notify("Account name must be entered.")
 
         elif BankAccountGUI.CheckValidDateString(self._bank_account_field_list[5].value,
-                                                   field_name=self._bank_account_field_list[5].props['label']):
-                # The table rows were updated previously
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL] = self._bank_account_field_list[0].value
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL] = self._bank_account_field_list[1].value
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_SORT_CODE] = self._bank_account_field_list[2].value
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_NUMBER] = self._bank_account_field_list[3].value
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER] = self._bank_account_field_list[4].value
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_OPEN_DATE] = self._bank_account_field_list[5].value
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE] = self._bank_account_field_list[6].value
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE] = self._bank_account_field_list[7].value
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_ACTIVE] = self._bank_account_field_list[8].value
-                self._bank_account_dict[BankAccountGUI.ACCOUNT_NOTES] = self._bank_account_field_list[9].value
+                                                 field_name=self._bank_account_field_list[5].props['label']):
+            # The table rows were updated previously
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL] = self._bank_account_field_list[0].value
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL] = self._bank_account_field_list[1].value
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_SORT_CODE] = self._bank_account_field_list[2].value
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_NUMBER] = self._bank_account_field_list[3].value
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER] = self._bank_account_field_list[4].value
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_OPEN_DATE] = self._bank_account_field_list[5].value
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE] = self._bank_account_field_list[6].value
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE] = self._bank_account_field_list[7].value
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_ACTIVE] = self._bank_account_field_list[8].value
+            self._bank_account_dict[BankAccountGUI.ACCOUNT_NOTES] = self._bank_account_field_list[9].value
 
-                if self._add:
-                    self._config.add_bank_account(self._bank_account_dict)
+            if self._add:
+                self._config.add_bank_account(self._bank_account_dict)
 
-                # If editing an account then the bank_account_dict has been modified and we just need to save it.
-                self._config.save_bank_accounts()
-                valid = True
+            # If editing an account then the bank_account_dict has been modified and we just need to save it.
+            self._config.save_bank_accounts()
+            valid = True
 
         return valid
 
@@ -1362,7 +1510,11 @@ class PensionGUI(GUIBase):
     def _add_table_row(self, row):
         if PensionGUI.PENSION_TABLE not in self._pension_dict:
             self._pension_dict[PensionGUI.PENSION_TABLE] = []
-        self._pension_dict[PensionGUI.PENSION_TABLE].append(row)
+        rows = self._pension_dict[PensionGUI.PENSION_TABLE]
+        rows.append(row)
+        # Sort table in ascending date order
+        sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
+        self._pension_dict[PensionGUI.PENSION_TABLE] = sorted_rows
 
     def _add_row_dialog_ok_button_press(self):
         self._add_row_dialog.close()
@@ -1399,41 +1551,39 @@ class PensionGUI(GUIBase):
                     _descrip = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
                     if _descrip == self._description_field.value:
                         duplicate_description = True
-        valid_pension_start_date = BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value,
-                                                    field_name=self._state_pension_state_date_field.props['label'])
+
+        self._state_pension_checkbox_callback()
+
+        state_pension = self._state_pension_checkbox.value
+
+        valid_pension_start_date = False
+        if state_pension:
+            valid_pension_start_date = BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value,
+                                                                           field_name=self._state_pension_state_date_field.props['label'])
 
         if len(self._description_field.value) == 0:
-            ui.notify(f"No description entry.", type='negative')
-
-        elif not valid_pension_start_date:
-            pass
+            ui.notify("No description entry.", type='negative')
 
         elif len(self._pension_owner_field.value) == 0:
-            ui.notify(f"Owner field not set.", type='negative')
+            ui.notify("Owner field not set.", type='negative')
 
         elif duplicate_description:
             ui.notify(f"A pension with this description ('{_descrip}') is already present.", type='negative')
 
+        elif state_pension and not valid_pension_start_date:
+            # Error message already displayed
+            pass
+
         else:
-            state_pension = self._state_pension_checkbox.value
+
             self._pension_dict[PensionGUI.STATE_PENSION] = state_pension
-            self._pension_dict[PensionGUI.PENSION_OWNER_LABEL] = self._pension_owner_field.value
             self._pension_dict[PensionGUI.PENSION_PROVIDER_LABEL] = self._provider_field.value
             self._pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL] = self._description_field.value
-
-            if state_pension:
-                if BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value,
-                                                    field_name=self._state_pension_state_date_field.props['label']):
-                    self._pension_dict[PensionGUI.STATE_PENSION_START_DATE] = self._state_pension_state_date_field.value
-
-                # If a state pension but the start date is not entered correctly quit
-                else:
-                    return
+            self._pension_dict[PensionGUI.PENSION_OWNER_LABEL] = self._pension_owner_field.value
+            self._pension_dict[PensionGUI.STATE_PENSION_START_DATE] = self._state_pension_state_date_field.value
 
             if self._add:
                 self._config.add_pension(self._pension_dict)
-
-            self._state_pension_checkbox_callback()
 
             self._config.save_pensions()
 
