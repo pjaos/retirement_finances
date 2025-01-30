@@ -374,6 +374,8 @@ class Finances(GUIBase):
         super().__init__()
         self._password = password
         self._folder = folder
+        self._bank_acount_table = None
+        self._pension_table = None
 
     def initGUI(self,
                 uio,
@@ -400,6 +402,10 @@ class Finances(GUIBase):
             @ui.page('/password_entered')
             def password_entered_page():
                 self._init_top_level()
+                # Called every time this page is displayed
+                # i.e when the back button is selected
+                self._show_bank_account_list()
+                self._show_pension_list()
 
             # We open the password entry page first
             with ui.row():
@@ -432,11 +438,13 @@ class Finances(GUIBase):
 
         tabNameList = ('Savings',
                        'Pensions',
+                       'Monthly Spend',
                        'Reports',
                        'Configuration')
         # This must have the same number of elements as the above list
         tabMethodInitList = [self._init_bank_accounts_tab,
                              self._init_pensions_tab,
+                             self._init_monthly_spend_tab,
                              self._init_reports_tab,
                              self._init_config_tab]
 
@@ -532,8 +540,6 @@ class Finances(GUIBase):
                 'Delete a bank/building society account')
             ui.button('Edit', on_click=lambda: self._edit_bank_account()).tooltip(
                 'Edit a bank/building society account')
-            ui.button('Update', on_click=lambda: self._show_bank_account_list()).tooltip(
-                'Update the list bank/building society accounts')
             self._show_only_active_accounts_checkbox = ui.checkbox(
                 "Show only active accounts", value=True).tooltip("Deselect to show inactive accounts in the above list.")
 
@@ -564,23 +570,24 @@ class Finances(GUIBase):
 
     def _show_bank_account_list(self):
         """@brief Show a table of the configured bank accounts."""
-        show_only_active_accounts = self._show_only_active_accounts_checkbox.value
-        self._bank_acount_table.rows.clear()
-        self._bank_acount_table.update()
-        bank_accounts_dict_list = self._config.get_bank_accounts_dict_list()
-        for bank_account_dict in bank_accounts_dict_list:
-            owner = bank_account_dict[BankAccountGUI.ACCOUNT_OWNER]
-            bank = bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL]
-            account_name = bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
-            active_account = bank_account_dict[BankAccountGUI.ACCOUNT_ACTIVE]
-            show_account = True
-            if show_only_active_accounts and not active_account:
-                show_account = False
-            if show_account:
-                self._bank_acount_table.add_row(
-                    {BankAccountGUI.ACCOUNT_OWNER: owner, BankAccountGUI.BANK: bank, BankAccountGUI.ACCOUNT_NAME_LABEL: account_name})
-        self._bank_acount_table.run_method(
-            'scrollTo', len(self._bank_acount_table.rows)-1)
+        if self._bank_acount_table:
+            show_only_active_accounts = self._show_only_active_accounts_checkbox.value
+            self._bank_acount_table.rows.clear()
+            self._bank_acount_table.update()
+            bank_accounts_dict_list = self._config.get_bank_accounts_dict_list()
+            for bank_account_dict in bank_accounts_dict_list:
+                owner = bank_account_dict[BankAccountGUI.ACCOUNT_OWNER]
+                bank = bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL]
+                account_name = bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
+                active_account = bank_account_dict[BankAccountGUI.ACCOUNT_ACTIVE]
+                show_account = True
+                if show_only_active_accounts and not active_account:
+                    show_account = False
+                if show_account:
+                    self._bank_acount_table.add_row(
+                        {BankAccountGUI.ACCOUNT_OWNER: owner, BankAccountGUI.BANK: bank, BankAccountGUI.ACCOUNT_NAME_LABEL: account_name})
+            self._bank_acount_table.run_method(
+                'scrollTo', len(self._bank_acount_table.rows)-1)
 
     def _delete_bank_account(self):
         """@brief Delete the selected bank account."""
@@ -690,8 +697,6 @@ class Finances(GUIBase):
                 'Delete a pension')
             ui.button('Edit', on_click=lambda: self._edit_pension()
                       ).tooltip('Edit a pension')
-            ui.button('Update', on_click=lambda: self._show_pension_list()).tooltip(
-                'Update the list pensions')
 
     def _init_dialog3(self):
         """@brief Create a dialog presented to the user to check that they wish to delete a pension."""
@@ -717,18 +722,19 @@ class Finances(GUIBase):
 
     def _show_pension_list(self):
         """@brief Show a table of the configured pensions."""
-        self._pension_table.rows.clear()
-        self._pension_table.update()
-        pension_dict_list = self._config.get_pension_dict_list()
-        for pension_dict in pension_dict_list:
-            provider = pension_dict[PensionGUI.PENSION_PROVIDER_LABEL]
-            description = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
-            owner = pension_dict[PensionGUI.PENSION_OWNER_LABEL]
-            self._pension_table.add_row({PensionGUI.PENSION_PROVIDER_LABEL: provider,
-                                         PensionGUI.PENSION_DESCRIPTION_LABEL: description,
-                                         PensionGUI.PENSION_OWNER_LABEL: owner})
-        self._pension_table.run_method(
-            'scrollTo', len(self._bank_acount_table.rows)-1)
+        if self._pension_table:
+            self._pension_table.rows.clear()
+            self._pension_table.update()
+            pension_dict_list = self._config.get_pension_dict_list()
+            for pension_dict in pension_dict_list:
+                provider = pension_dict[PensionGUI.PENSION_PROVIDER_LABEL]
+                description = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
+                owner = pension_dict[PensionGUI.PENSION_OWNER_LABEL]
+                self._pension_table.add_row({PensionGUI.PENSION_PROVIDER_LABEL: provider,
+                                            PensionGUI.PENSION_DESCRIPTION_LABEL: description,
+                                            PensionGUI.PENSION_OWNER_LABEL: owner})
+            self._pension_table.run_method(
+                'scrollTo', len(self._bank_acount_table.rows)-1)
 
     def _delete_pension(self):
         """@brief Delete the pension."""
@@ -825,6 +831,23 @@ class Finances(GUIBase):
 
     def _table_dialog_ok_button_selected(self):
         self._table_dialog.close()
+
+    # methods associated with the monthly spending
+
+    def _init_monthly_spend_tab(self):
+        with ui.row():
+            ui.button('Add', on_click=lambda: self._add_bank_account()
+                      ).tooltip('Add a bank/building society account')
+            ui.button('Delete', on_click=lambda: self._delete_bank_account()).tooltip(
+                'Delete a bank/building society account')
+            ui.button('Edit', on_click=lambda: self._edit_bank_account()).tooltip(
+                'Edit a bank/building society account')
+            ui.button('Update', on_click=lambda: self._show_bank_account_list()).tooltip(
+                'Update the list bank/building society accounts')
+            self._show_only_active_accounts_checkbox = ui.checkbox(
+                "Show only active accounts", value=True).tooltip("Deselect to show inactive accounts in the above list.")
+
+    # end of methods associated with the monthly spending
 
     def _init_reports_tab(self):
         with ui.row():
@@ -1025,17 +1048,14 @@ class BankAccountGUI(GUIBase):
                 self._display_table_rows()
 
         with ui.row():
-            ui.button("Back", on_click=lambda: ui.navigate.back())
             ui.button("Add", on_click=self._add_button_handler).tooltip(
                 'Add a row to the balance table.')
             ui.button("Delete", on_click=self._delete_button_handler).tooltip(
                 'Delete a row from the balance table.')
-            if self._add:
-                tooltip_msg = 'Add a new bank/building society account and save it.'
-            else:
-                tooltip_msg = 'Save the modified bank/building society account.'
-            ui.button("Save", on_click=self._save_button_handler).tooltip(
-                tooltip_msg)
+
+        with ui.row():
+            ui.button("OK", on_click=self._back_button_selected ).tooltip("Save the account details and go back to previous window.")
+            ui.button("Cancel", on_click=lambda: ui.navigate.back() ).tooltip("Cancel entry and go back to previous window.")
 
         self._bank_account_field_list = [bank_account_bank_name_field,
                                          bank_account_name_field,
@@ -1047,6 +1067,11 @@ class BankAccountGUI(GUIBase):
                                          bank_account_interest_type_field,
                                          bank_active_checkbox,
                                          bank_notes_field]
+
+    def _back_button_selected(self):
+        """@brief Called when the back button is selected."""
+        if self._update_bank_account_from_gui():
+            ui.navigate.back()
 
     def _get_table_copy(self):
         """@brief Get a copy of the table from the dict that holds the balance table."""
@@ -1097,10 +1122,6 @@ class BankAccountGUI(GUIBase):
     def _add_row_dialog_cancel_button_press(self):
         self._add_row_dialog.close()
 
-    def _save_button_handler(self):
-        """@brief Handle save button selection events."""
-        self._update_bank_account_from_gui()
-
     def _add_button_handler(self):
         """@brief Handle add button selection events."""
         self._add_row_dialog.open()
@@ -1149,7 +1170,9 @@ class BankAccountGUI(GUIBase):
                 input_field.value = self._bank_account_dict[key]
 
     def _update_bank_account_from_gui(self):
-        """@brief Update the bank account dict. from the GUI fields."""
+        """@brief Update the bank account dict. from the GUI fields.
+           @return True if enough fields have been filled in to make the bank account valid."""
+        valid = False
         # Do some checks on the values entered.
         if len(self._bank_account_field_list[0].value) == 0:
             ui.notify("Bank/Building society name must be entered.")
@@ -1157,16 +1180,14 @@ class BankAccountGUI(GUIBase):
         elif len(self._bank_account_field_list[1].value) == 0:
             ui.notify("Account name must be entered.")
 
-        else:
-            # The table rows were updated previously
-            self._bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL] = self._bank_account_field_list[0].value
-            self._bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL] = self._bank_account_field_list[1].value
-            self._bank_account_dict[BankAccountGUI.ACCOUNT_SORT_CODE] = self._bank_account_field_list[2].value
-            self._bank_account_dict[BankAccountGUI.ACCOUNT_NUMBER] = self._bank_account_field_list[3].value
-            self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER] = self._bank_account_field_list[4].value
-
-            if BankAccountGUI.CheckValidDateString(self._bank_account_field_list[5].value,
+        elif BankAccountGUI.CheckValidDateString(self._bank_account_field_list[5].value,
                                                    field_name=self._bank_account_field_list[5].props['label']):
+                # The table rows were updated previously
+                self._bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL] = self._bank_account_field_list[0].value
+                self._bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL] = self._bank_account_field_list[1].value
+                self._bank_account_dict[BankAccountGUI.ACCOUNT_SORT_CODE] = self._bank_account_field_list[2].value
+                self._bank_account_dict[BankAccountGUI.ACCOUNT_NUMBER] = self._bank_account_field_list[3].value
+                self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER] = self._bank_account_field_list[4].value
                 self._bank_account_dict[BankAccountGUI.ACCOUNT_OPEN_DATE] = self._bank_account_field_list[5].value
                 self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE] = self._bank_account_field_list[6].value
                 self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE] = self._bank_account_field_list[7].value
@@ -1178,6 +1199,9 @@ class BankAccountGUI(GUIBase):
 
                 # If editing an account then the bank_account_dict has been modified and we just need to save it.
                 self._config.save_bank_accounts()
+                valid = True
+
+        return valid
 
 
 class PensionGUI(GUIBase):
@@ -1256,17 +1280,19 @@ class PensionGUI(GUIBase):
         self._update_gui_from_pension()
 
         with ui.row():
-            ui.button("Back", on_click=lambda: ui.navigate.back())
             ui.button("Add", on_click=self._add_button_handler).tooltip(
                 'Add a row to the pension table.')
             ui.button("Delete", on_click=self._delete_button_handler).tooltip(
                 'Delete a row from the pension table.')
-            if self._add:
-                tooltip_msg = 'Add a new pension account and save it.'
-            else:
-                tooltip_msg = 'Save the modified pension.'
-            ui.button("Save", on_click=self._save_button_handler).tooltip(
-                tooltip_msg)
+
+        with ui.row():
+            ui.button("OK", on_click=self._back_button_selected).tooltip("Save the pension details and go back to previous window.")
+            ui.button("Cancel", on_click=lambda: ui.navigate.back()).tooltip("Cancel entry and go back to previous window.")
+
+    def _back_button_selected(self):
+        """@brief Called when the back button is selected."""
+        if self._update_pension_from_gui():
+            ui.navigate.back()
 
     def _get_table_copy(self):
         """@brief Get a copy of the table from the dict that holds the pension table."""
@@ -1362,7 +1388,9 @@ class PensionGUI(GUIBase):
         self._display_table_rows()
 
     def _update_pension_from_gui(self):
-        """@brief Update the pension dict from the GUI fields."""
+        """@brief Update the pension dict from the GUI fields.
+           @return True if required fileds have been entered."""
+        valid = False
         duplicate_description = False
         if self._add:
             pension_dict_list = self._config.get_pension_dict_list()
@@ -1371,9 +1399,22 @@ class PensionGUI(GUIBase):
                     _descrip = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
                     if _descrip == self._description_field.value:
                         duplicate_description = True
-                        ui.notify(f"A pension with this description ('{_descrip}') is already present.", type='negative')
+        valid_pension_start_date = BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value,
+                                                    field_name=self._state_pension_state_date_field.props['label'])
 
-        if not duplicate_description:
+        if len(self._description_field.value) == 0:
+            ui.notify(f"No description entry.", type='negative')
+
+        elif not valid_pension_start_date:
+            pass
+
+        elif len(self._pension_owner_field.value) == 0:
+            ui.notify(f"Owner field not set.", type='negative')
+
+        elif duplicate_description:
+            ui.notify(f"A pension with this description ('{_descrip}') is already present.", type='negative')
+
+        else:
             state_pension = self._state_pension_checkbox.value
             self._pension_dict[PensionGUI.STATE_PENSION] = state_pension
             self._pension_dict[PensionGUI.PENSION_OWNER_LABEL] = self._pension_owner_field.value
@@ -1382,7 +1423,7 @@ class PensionGUI(GUIBase):
 
             if state_pension:
                 if BankAccountGUI.CheckValidDateString(self._state_pension_state_date_field.value,
-                                                       field_name=self._state_pension_state_date_field.props['label']):
+                                                    field_name=self._state_pension_state_date_field.props['label']):
                     self._pension_dict[PensionGUI.STATE_PENSION_START_DATE] = self._state_pension_state_date_field.value
 
                 # If a state pension but the start date is not entered correctly quit
@@ -1395,6 +1436,10 @@ class PensionGUI(GUIBase):
             self._state_pension_checkbox_callback()
 
             self._config.save_pensions()
+
+            valid = True
+
+        return valid
 
 
 class FuturePlotGUI(GUIBase):
