@@ -465,7 +465,7 @@ class Finances(GUIBase):
 
         tabNameList = ('Savings',
                        'Pensions',
-                       'Monthly Spend',
+                       'Monthly Spending',
                        'Reports',
                        'Configuration')
         # This must have the same number of elements as the above list
@@ -868,7 +868,7 @@ class Finances(GUIBase):
     MONTHLY_SPENDING_TABLE = "MONTHLY_SPENDING_TABLE"
 
     def _init_monthly_spend_tab(self):
-        with ui.row():
+        with ui.row().tooltip("Add the total amounts you actually spend each month here for your reference to compare with your predictions."):
             columns = [{'name': Finances.MONTHLY_SPEND_DATE, 'label': Finances.MONTHLY_SPEND_DATE, 'field': Finances.MONTHLY_SPEND_DATE},
                        {'name': Finances.MONTHLY_SPEND_AMOUNT, 'label': Finances.MONTHLY_SPEND_AMOUNT, 'field': Finances.MONTHLY_SPEND_AMOUNT},
                        ]
