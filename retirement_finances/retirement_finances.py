@@ -1541,7 +1541,7 @@ class PensionGUI(GUIBase):
 
     def _update_pension_from_gui(self):
         """@brief Update the pension dict from the GUI fields.
-           @return True if required fileds have been entered."""
+           @return True if required fields have been entered."""
         valid = False
         duplicate_description = False
         if self._add:
