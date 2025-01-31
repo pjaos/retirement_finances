@@ -866,17 +866,27 @@ class Finances(GUIBase):
     MONTHLY_SPEND_DATE = "Date"
     MONTHLY_SPEND_AMOUNT = "Amount"
     MONTHLY_SPENDING_TABLE = "MONTHLY_SPENDING_TABLE"
+    MONTHLY_SPENDING_NOTES = "Notes"
 
     def _init_monthly_spend_tab(self):
-        with ui.row().tooltip("Add the total amounts you actually spend each month here for your reference to compare with your predictions."):
-            columns = [{'name': Finances.MONTHLY_SPEND_DATE, 'label': Finances.MONTHLY_SPEND_DATE, 'field': Finances.MONTHLY_SPEND_DATE},
-                       {'name': Finances.MONTHLY_SPEND_AMOUNT, 'label': Finances.MONTHLY_SPEND_AMOUNT, 'field': Finances.MONTHLY_SPEND_AMOUNT},
-                       ]
-            self._monthly_spend_table = ui.table(columns=columns,
-                                                 rows=[],
-                                                 row_key=Finances.MONTHLY_SPEND_DATE,
-                                                 selection='single').classes('h-96').props('virtual-scroll').tooltip("This table allows you to record how much you spend each month.")
-            self._show_monthly_spending_list()
+        with ui.row():
+            with ui.column().tooltip("Add the amounts you actually spend each month here for your reference to compare with your predictions."):
+                columns = [{'name': Finances.MONTHLY_SPEND_DATE, 'label': Finances.MONTHLY_SPEND_DATE, 'field': Finances.MONTHLY_SPEND_DATE},
+                        {'name': Finances.MONTHLY_SPEND_AMOUNT, 'label': Finances.MONTHLY_SPEND_AMOUNT, 'field': Finances.MONTHLY_SPEND_AMOUNT},
+                        ]
+                self._monthly_spend_table = ui.table(columns=columns,
+                                                    rows=[],
+                                                    row_key=Finances.MONTHLY_SPEND_DATE,
+                                                    selection='single').classes('h-96').props('virtual-scroll')
+                self._show_monthly_spending_list()
+
+            monthly_spending_dict = self._get_monthly_spending_dict()
+
+            self._information_field = ui.textarea(label=Finances.MONTHLY_SPENDING_NOTES,
+                                                  value=monthly_spending_dict[Finances.MONTHLY_SPENDING_NOTES])
+            self._information_field.on('keydown', self._monthly_spend_notes_keypress)
+            self._information_field.style('width: 600px;')
+            self._information_field.tooltip("Notes on monthly spending.")
 
         with ui.row():
             ui.button('Add', on_click=lambda: self._add_monthly_spending()
@@ -885,6 +895,14 @@ class Finances(GUIBase):
                 'Delete from monthly spending table')
             ui.button('Edit', on_click=lambda: self._edit_monthly_spending()
                       ).tooltip('Edit monthly spending table')
+
+    def _monthly_spend_notes_keypress(self, event):
+        """@brief Called every time the user presses a key in the notes field to
+                  persistently save the contents of the nmotes field."""
+        monthly_spending_dict = self._get_monthly_spending_dict()
+        if Finances.MONTHLY_SPENDING_NOTES in monthly_spending_dict:
+            monthly_spending_dict[Finances.MONTHLY_SPENDING_NOTES] = self._information_field.value + event.args.get('key')
+            self._config._save_monthly_spending_dict()
 
     def _add_monthly_spending(self):
         """@brief Add to the monthly spending table."""
@@ -958,6 +976,10 @@ class Finances(GUIBase):
         monthly_spending_dict = self._config.get_monthly_spending_dict()
         if Finances.MONTHLY_SPENDING_TABLE not in monthly_spending_dict:
             monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE] = []
+
+        if Finances.MONTHLY_SPENDING_NOTES not in monthly_spending_dict:
+            monthly_spending_dict[Finances.MONTHLY_SPENDING_NOTES] = ""
+
         return monthly_spending_dict
 
     def _init_monthly_spending_dialog(self):
@@ -1005,7 +1027,7 @@ class Finances(GUIBase):
 
     def _init_config_tab(self):
         self._my_name_field = ui.input(label=Finances.MY_NAME_FIELD).style('width: 300px;').tooltip('Enter your name here.')
-        self._partner_name_field = ui.input(label=Finances.PARTNER_NAME_FIELD).style('width: 300px;').tooltip('If you have a partner enter their name here.')
+        self._partner_name_field = ui.input(label=Finances.PARTNER_NAME_FIELD).style('width: 300px;').tooltip('If you have a partner you may enter their name here.')
         with ui.row():
             ui.button('Save', on_click=self._save_config_button_selected)
 
@@ -1177,7 +1199,7 @@ class BankAccountGUI(GUIBase):
 
         with ui.row():
             bank_notes_field = ui.textarea(
-                label=BankAccountGUI.ACCOUNT_NOTES).style('width: 800px;').tooltip("Any notes you may wish to record regarding this avings acount.")
+                label=BankAccountGUI.ACCOUNT_NOTES).style('width: 800px;').tooltip("Any notes you may wish to record regarding this savings acount.")
 
         with ui.card().style("height: 300px; overflow-y: auto;"):
             self._table = self._get_table_copy()
