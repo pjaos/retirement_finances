@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "retirement-finances"
-version = "2.5"
+version = "2.8"
 description = ""
 authors = ["Paul Austen <pjaos@gmail.com>"]
 readme = "README.md"
@@ -20,6 +20,7 @@ plotly = "*"
 python-dateutil = "*"
 psutil = "*"
 pandas = "*"
+bcrypt = "*"
 
 [tool.poetry.scripts]
 retirement_finances = "retirement_finances.retirement_finances:main"
