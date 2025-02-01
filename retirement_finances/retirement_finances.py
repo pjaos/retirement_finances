@@ -471,7 +471,7 @@ class Finances(GUIBase):
                  the GUI."""
         # If the password has been setup
         if self._is_password_setup():
-           self._authenticate_password()
+            self._authenticate_password()
 
         # If the password has yet to be setup
         else:
