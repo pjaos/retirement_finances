@@ -52,9 +52,10 @@ class Config(object):
             os.makedirs(cfg_folder)
         return cfg_folder
 
-    def __init__(self, password, folder):
+    def __init__(self, password, folder, show_load_save_notifications=True):
         self._password = password
         self._config_folder = Config.GetConfigFolder(folder)
+        self._show_load_save_notifications = show_load_save_notifications
 
         self._global_configuration_name_file = self._getGlobalConfigurationFile()
         self._global_configuration_name_crypt_file = CryptFile(filename=self._global_configuration_name_file, password=self._password)
@@ -124,7 +125,8 @@ class Config(object):
         try:
             self._bank_accounts_dict_list = []
             self._bank_accounts_dict_list = self._bank_account_crypt_file.load()
-            ui.notify(f'Loaded from {self._bank_account_crypt_file.get_file()}')
+            if self._show_load_save_notifications:
+                ui.notify(f'Loaded from {self._bank_account_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
         except Exception:
             ui.notify(f'{self._bank_account_crypt_file.get_file()} file not found.', type='negative')
@@ -132,7 +134,8 @@ class Config(object):
     def save_bank_accounts(self):
         """@brief Save the bank accounts dict list persistently."""
         self._bank_account_crypt_file.save(self._bank_accounts_dict_list)
-        ui.notify(f'Saved {self._bank_account_crypt_file.get_file()}')
+        if self._show_load_save_notifications:
+            ui.notify(f'Saved {self._bank_account_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
     def add_bank_account(self, bank_account_dict):
         """@brief Add bank account.
@@ -158,7 +161,8 @@ class Config(object):
         try:
             self._pension_dict_list = []
             self._pension_dict_list = self._pensions_crypt_file.load()
-            ui.notify(f'Loaded from {self._pensions_crypt_file.get_file()}')
+            if self._show_load_save_notifications:
+                ui.notify(f'Loaded from {self._pensions_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
         except Exception:
             ui.notify(f'{self._pensions_crypt_file.get_file()} file not found.', type='negative')
@@ -166,7 +170,8 @@ class Config(object):
     def save_pensions(self):
         """@brief Save the pension dict list persistently."""
         self._pensions_crypt_file.save(self._pension_dict_list)
-        ui.notify(f'Saved {self._pensions_crypt_file.get_file()}')
+        if self._show_load_save_notifications:
+            ui.notify(f'Saved {self._pensions_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
     def add_pension(self, pension_dict):
         """@brief Add pension.bank account.
@@ -192,7 +197,8 @@ class Config(object):
         try:
             self._future_plot_attr_dict = {}
             self._future_plot_attr_dict = self._future_plot_crypt_file.load()
-            ui.notify(f'Loaded from {self._future_plot_crypt_file.get_file()}')
+            if self._show_load_save_notifications:
+                ui.notify(f'Loaded from {self._future_plot_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
         except Exception:
             ui.notify(f'{self._future_plot_crypt_file.get_file()} file not found.', type='negative')
@@ -200,7 +206,8 @@ class Config(object):
     def save_future_plot_attrs(self):
         """@brief Save the future plot parameters persistently."""
         self._future_plot_crypt_file.save(self._future_plot_attr_dict)
-        ui.notify(f'Saved {self._future_plot_crypt_file.get_file()}')
+        if self._show_load_save_notifications:
+            ui.notify(f'Saved {self._future_plot_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
     def get_future_plot_attrs_dict(self):
         """@brief Get the the future plot parameters dict."""
@@ -216,7 +223,8 @@ class Config(object):
         try:
             self._multiple_future_plot_attr_dict = {}
             self._multiple_future_plot_attr_dict = self._multiple_future_plot_crypt_file.load()
-            ui.notify(f'Loaded from {self._multiple_future_plot_crypt_file.get_file()}')
+            if self._show_load_save_notifications:
+                ui.notify(f'Loaded from {self._multiple_future_plot_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
         except Exception:
             ui.notify(f'{self._multiple_future_plot_crypt_file.get_file()} file not found.', type='negative')
@@ -224,7 +232,8 @@ class Config(object):
     def save_multiple_future_plot_attrs(self):
         """@brief Save the multiple_future plot parameters persistently."""
         self._multiple_future_plot_crypt_file.save(self._multiple_future_plot_attr_dict)
-        ui.notify(f'Saved {self._multiple_future_plot_crypt_file.get_file()}')
+        if self._show_load_save_notifications:
+            ui.notify(f'Saved {self._multiple_future_plot_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
     def get_multiple_future_plot_attrs_dict(self):
         """@brief Get the future plot parameters dict."""
@@ -237,7 +246,8 @@ class Config(object):
         try:
             self._selected_retirement_parameters_name_dict = {}
             self._selected_retirement_parameters_name_dict = self._selected_retirement_parameters_name_crypt_file.load()
-            ui.notify(f'Loaded from {self._selected_retirement_parameters_name_crypt_file.get_file()}')
+            if self._show_load_save_notifications:
+                ui.notify(f'Loaded from {self._selected_retirement_parameters_name_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
         except Exception:
             ui.notify(f'{self._selected_retirement_parameters_name_crypt_file.get_file()} file not found.', type='negative')
@@ -245,7 +255,8 @@ class Config(object):
     def _save_selected_retirement_parameters_name_attrs(self):
         """@brief Save the selected retirement parameters name parameters persistently."""
         self._selected_retirement_parameters_name_crypt_file.save(self._selected_retirement_parameters_name_dict)
-        ui.notify(f'Saved {self._selected_retirement_parameters_name_crypt_file.get_file()}')
+        if self._show_load_save_notifications:
+            ui.notify(f'Saved {self._selected_retirement_parameters_name_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
     def get_selected_retirement_parameters_name_dict(self):
         """@brief Get the selected retirement parameters name parameters dict."""
@@ -258,7 +269,8 @@ class Config(object):
         try:
             self._global_configuration_dict = {}
             self._global_configuration_dict = self._global_configuration_name_crypt_file.load()
-            ui.notify(f'Loaded from {self._global_configuration_name_crypt_file.get_file()}')
+            if self._show_load_save_notifications:
+                ui.notify(f'Loaded from {self._global_configuration_name_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
         except Exception:
             ui.notify(f'{self._global_configuration_name_crypt_file.get_file()} file not found.', type='negative')
@@ -267,7 +279,8 @@ class Config(object):
     def save_global_configuration(self):
         """@brief Save the global configuration parameters persistently."""
         self._global_configuration_name_crypt_file.save(self._global_configuration_dict)
-        ui.notify(f'Saved {self._global_configuration_name_crypt_file.get_file()}')
+        if self._show_load_save_notifications:
+            ui.notify(f'Saved {self._global_configuration_name_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
     def get_global_configuration_dict(self):
         """@brief Get the global configuration parameters name parameters dict."""
@@ -280,7 +293,8 @@ class Config(object):
         try:
             self._monthly_spending_dict = {}
             self._monthly_spending_dict = self._monthly_spending_crypt_file.load()
-            ui.notify(f'Loaded from {self._monthly_spending_crypt_file.get_file()}')
+            if self._show_load_save_notifications:
+                ui.notify(f'Loaded from {self._monthly_spending_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
         except Exception:
             ui.notify(f'{self._monthly_spending_crypt_file.get_file()} file not found.', type='negative')
@@ -288,7 +302,8 @@ class Config(object):
     def _save_monthly_spending_dict(self):
         """@brief Save the monthly spending dict to a file."""
         self._monthly_spending_crypt_file.save(self._monthly_spending_dict)
-        ui.notify(f'Saved {self._monthly_spending_crypt_file.get_file()}')
+        if self._show_load_save_notifications:
+            ui.notify(f'Saved {self._monthly_spending_crypt_file.get_file()}', type='positive', position='top', duration=2)
 
     def get_monthly_spending_dict(self):
         """@brief Get the the monthly spending dict."""
@@ -453,7 +468,10 @@ class Finances(GUIBase):
                reload=reload)
 
     def _init_top_level(self):
-        self._config = Config(self._password, self._folder)
+
+        self._config = Config(self._password,
+                              self._folder,
+                              show_load_save_notifications=self._uio.isDebugEnabled())
         self._load_global_config()
 
         self._last_selected_bank_account_index = None
@@ -570,9 +588,13 @@ class Finances(GUIBase):
             ui.button('Edit', on_click=lambda: self._edit_bank_account()).tooltip(
                 'Edit a bank/building society account')
             self._show_only_active_accounts_checkbox = ui.checkbox(
-                "Show only active accounts", value=True).tooltip("Deselect to show inactive accounts in the above list.")
+                "Show only active accounts", on_change=self.on_checkbox_change, value=True).tooltip("Deselect to show inactive accounts in the above list.")
 
         self._show_bank_account_list()
+
+    def on_checkbox_change(self, event):
+        show_only_active_accounts = event.value
+        self._show_bank_account_list(show_only_active_accounts=show_only_active_accounts)
 
     def _init_dialog2(self):
         """@brief Create a dialog presented to the user to check that they wish to delete a bank account."""
@@ -597,10 +619,10 @@ class Finances(GUIBase):
         """@brief Called when dialog 2 no button is selected."""
         self._dialog2.close()
 
-    def _show_bank_account_list(self):
-        """@brief Show a table of the configured bank accounts."""
+    def _show_bank_account_list(self, show_only_active_accounts=True):
+        """@brief Show a table of the configured bank accounts.
+           @param show_only_active_accounts If True don't show inactive accounts."""
         if self._bank_acount_table:
-            show_only_active_accounts = self._show_only_active_accounts_checkbox.value
             self._bank_acount_table.rows.clear()
             self._bank_acount_table.update()
             bank_accounts_dict_list = self._config.get_bank_accounts_dict_list()
@@ -872,12 +894,11 @@ class Finances(GUIBase):
         with ui.row():
             with ui.column().tooltip("Add the amounts you actually spend each month here for your reference to compare with your predictions."):
                 columns = [{'name': Finances.MONTHLY_SPEND_DATE, 'label': Finances.MONTHLY_SPEND_DATE, 'field': Finances.MONTHLY_SPEND_DATE},
-                        {'name': Finances.MONTHLY_SPEND_AMOUNT, 'label': Finances.MONTHLY_SPEND_AMOUNT, 'field': Finances.MONTHLY_SPEND_AMOUNT},
-                        ]
+                           {'name': Finances.MONTHLY_SPEND_AMOUNT, 'label': Finances.MONTHLY_SPEND_AMOUNT, 'field': Finances.MONTHLY_SPEND_AMOUNT}]
                 self._monthly_spend_table = ui.table(columns=columns,
-                                                    rows=[],
-                                                    row_key=Finances.MONTHLY_SPEND_DATE,
-                                                    selection='single').classes('h-96').props('virtual-scroll')
+                                                     rows=[],
+                                                     row_key=Finances.MONTHLY_SPEND_DATE,
+                                                     selection='single').classes('h-96').props('virtual-scroll')
                 self._show_monthly_spending_list()
 
             monthly_spending_dict = self._get_monthly_spending_dict()
