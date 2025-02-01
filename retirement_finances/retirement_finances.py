@@ -6,6 +6,7 @@ import os
 import copy
 import shutil
 import traceback
+import bcrypt
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -32,6 +33,7 @@ class Config(object):
     SELECTED_FUTURE_PLOT_NAME_ATTR_FILE = "selected_future_plot_name_attr.json"
     GLOBAL_CONFIGURATION_FILE = "global_configuration_parameters.json"
     MONTHLY_SPENDING_FILE = "monthly_spending.json"
+    PASSWORD_HASH_FILE = "password_hash.txt"
 
     @staticmethod
     def GetConfigFolder(folder):
@@ -52,39 +54,46 @@ class Config(object):
             os.makedirs(cfg_folder)
         return cfg_folder
 
-    def __init__(self, password, folder, show_load_save_notifications=True):
+    def load_config(self, password):
+        """@brief Load the encrypted config.
+           @param password The password used to encrypt and decrypt the config files."""
         self._password = password
+        self._global_configuration_name_crypt_file = CryptFile(filename=self._global_configuration_name_file, password=self._password)
+        self.load_global_configuration()
+
+        self._bank_account_crypt_file = CryptFile(filename=self._bank_accounts_file, password=self._password)
+        self._load_bank_accounts()
+
+        self._pensions_crypt_file = CryptFile(filename=self._pensions_file, password=self._password)
+        self._load_pensions()
+
+        self._future_plot_crypt_file = CryptFile(filename=self._future_plot_file, password=self._password)
+        self._load_future_plot_attrs()
+
+        self._multiple_future_plot_crypt_file = CryptFile(filename=self._multiple_future_plot_file, password=self._password)
+        self._load_multiple_future_plot_attrs()
+
+        self._selected_retirement_parameters_name_crypt_file = CryptFile(filename=self._selected_retirement_parameters_name_file, password=self._password)
+        self._load_selected_retirement_parameters_name_attrs()
+
+        self._monthly_spending_crypt_file = CryptFile(filename=self._monthly_spending_file, password=self._password)
+        self._load_monthly_spending_dict()
+
+    def __init__(self, folder, show_load_save_notifications=True):
         self._config_folder = Config.GetConfigFolder(folder)
         self._show_load_save_notifications = show_load_save_notifications
 
         self._global_configuration_name_file = self._getGlobalConfigurationFile()
-        self._global_configuration_name_crypt_file = CryptFile(filename=self._global_configuration_name_file, password=self._password)
-        self.load_global_configuration()
-
-        # Notify user of config location on startup
         self._bank_accounts_file = self._getBankAccountListFile()
-        self._bank_account_crypt_file = CryptFile(filename=self._bank_accounts_file, password=self._password)
-        self._load_bank_accounts()
-
         self._pensions_file = self._getPensionsListFile()
-        self._pensions_crypt_file = CryptFile(filename=self._pensions_file, password=self._password)
-        self._load_pensions()
-
         self._future_plot_file = self._getFuturePlotAttrFile()
-        self._future_plot_crypt_file = CryptFile(filename=self._future_plot_file, password=self._password)
-        self._load_future_plot_attrs()
-
         self._multiple_future_plot_file = self._getMultipleFuturePlotAttrFile()
-        self._multiple_future_plot_crypt_file = CryptFile(filename=self._multiple_future_plot_file, password=self._password)
-        self._load_multiple_future_plot_attrs()
-
         self._selected_retirement_parameters_name_file = self._getSelectedRequirementParametersNameFile()
-        self._selected_retirement_parameters_name_crypt_file = CryptFile(filename=self._selected_retirement_parameters_name_file, password=self._password)
-        self._load_selected_retirement_parameters_name_attrs()
-
         self._monthly_spending_file = self._getMonthlySpendingFile()
-        self._monthly_spending_crypt_file = CryptFile(filename=self._monthly_spending_file, password=self._password)
-        self._load_monthly_spending_dict()
+
+    def _getPasswordHashFile(self):
+        """@return The file used to store the password hash."""
+        return os.path.join(self._config_folder, Config.PASSWORD_HASH_FILE)
 
     def get_config_folder(self):
         """@return the folder used to store config files."""
@@ -117,6 +126,35 @@ class Config(object):
     def _getMonthlySpendingFile(self):
         """@return The file used to store monthly spending details."""
         return os.path.join(self._config_folder, Config.MONTHLY_SPENDING_FILE)
+
+    def hash_password(self, password: str) -> str:
+        """@brief Create a hash from a password in order to validate a password in a secure manner.
+           @param password The password to be hashed.
+           @return The hashed password."""
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode(), salt)
+        return hashed.decode()
+
+    def get_stored_password_hash(self):
+        """@brief Get the stored hashed password.
+           @return The hashed password or None if no password found."""
+        pw_hash = None
+        pw_hash_file = self._getPasswordHashFile()
+        if os.path.isfile(pw_hash_file):
+            with open(pw_hash_file, 'r') as fd:
+                pw_hash = fd.read()
+        return pw_hash
+
+    def store_password_hash(self, password):
+        """@brief Store the hash of the password to the passwords file.
+           @param pasword The password to store the hash of."""
+        hashed_password = self.hash_password(password)
+        pw_hash_file = self._getPasswordHashFile()
+        if os.path.isfile(pw_hash_file):
+            raise Exception(f"{pw_hash_file} password file already present.")
+        else:
+            with open(pw_hash_file, 'w') as fd:
+                fd.write(hashed_password)
 
     # --- methods for bank accounts ---
 
@@ -415,21 +453,83 @@ class Finances(GUIBase):
     MY_NAME_FIELD = "My Name"
     PARTNER_NAME_FIELD = "Partner Name"
 
-    def __init__(self, password, folder):
+    def __init__(self, uio, password, folder):
         super().__init__()
+        self._uio = uio
         self._password = password
         self._folder = folder
         self._bank_acount_table = None
         self._pension_table = None
         self._monthly_spend_table = None
+        self._first_password = None
+        self._authenticated_password = None
+        self._config = Config(self._folder,
+                              show_load_save_notifications=self._uio.isDebugEnabled())
+
+    def _open_main_window(self):
+        """@brief Called to allow the user to enter the password in order to access
+                 the GUI."""
+        # If the password has been setup
+        if self._is_password_setup():
+           self._authenticate_password()
+
+        # If the password has yet to be setup
+        else:
+            self._setup_password()
+
+    def _is_password_setup(self):
+        """@return True if the password has been set."""
+        password_set = False
+        stored_password_hash = self._config.get_stored_password_hash()
+        if stored_password_hash:
+            password_set = True
+        return password_set
+
+    def _setup_password(self):
+        """@brief Called if we have not saved a password hash in order to set one up."""
+        # If the user has entered the password once.
+        if self._first_password:
+            second_password = self._password_input.value
+            # If the first and second passwords match
+            if self._first_password == second_password:
+                self._config.store_password_hash(second_password)
+                self._authenticate_password()
+
+            else:
+                self._first_password = None
+                self._authenticated_password = None
+                # Remove entered password
+                self._password_input.value = ""
+                ui.notify('First and second passwords do not match. Try again.', type='negative')
+
+        else:
+            self._first_password = self._password_input.value
+            # Remove entered password
+            self._password_input.value = ""
+            ui.notify('Initialising password. Re-enter password to initialise all data.', type='positive')
+
+    def _authenticate_password(self):
+        """@brief Called when a password has been setup in order to authenticate it."""
+        password_entered = self._password_input.value
+        stored_password_hash = self._config.get_stored_password_hash()
+        valid_password = bcrypt.checkpw(password_entered.encode(), stored_password_hash.encode())
+        if valid_password:
+            # Use the password entered from the GUI
+            self._authenticated_password = password_entered
+            self._config.load_config(self._authenticated_password)
+            # Got to the
+            ui.run_javascript("window.open('/authenticated', '_blank')")
+
+        else:
+            ui.notify('Incorrect password.', type='negative')
+            # Remove entered password
+            self._password_input.value = ""
 
     def initGUI(self,
-                uio,
                 debugEnabled,
                 reload=True,
                 address='127.0.0.1',
                 port=9090):
-        self._uio = uio
         self._address = address
         self._port = port
         self._reload = reload
@@ -440,14 +540,17 @@ class Finances(GUIBase):
 
         # If not allow the user to enter the app password.
         # main page (password must be entered to decrypt data/config files)
-        @ui.page('/password_entered')
+        @ui.page('/authenticated')
         def password_entered_page():
-            self._init_top_level()
-            # Called every time this page is displayed
-            # i.e when the back button is selected
-            self._show_bank_account_list()
-            self._show_pension_list()
-            self._show_monthly_spending_list()
+            if self._authenticated_password:
+                self._init_top_level()
+                # Called every time this page is displayed
+                # i.e when the back button is selected
+                self._show_bank_account_list()
+                self._show_pension_list()
+                self._show_monthly_spending_list()
+            else:
+                ui.notify('Password required to access this page.', type='negative')
 
         # We open the password entry page first
         with ui.row():
@@ -468,10 +571,6 @@ class Finances(GUIBase):
                reload=reload)
 
     def _init_top_level(self):
-
-        self._config = Config(self._password,
-                              self._folder,
-                              show_load_save_notifications=self._uio.isDebugEnabled())
         self._load_global_config()
 
         self._last_selected_bank_account_index = None
@@ -511,13 +610,6 @@ class Finances(GUIBase):
         ui.timer(interval=Finances.GUI_TIMER_SECONDS, callback=self.gui_timer_callback)
 
         self._init_monthly_spending_dialog()
-
-    def _open_main_window(self):
-        """@brief Once the password has been entered by the user open the main
-                  window. File decryption will fail if the wrong password is entered."""
-        # Use the password entered from the GUI
-        self._password = self._password_input.value
-        ui.run_javascript("window.open('/password_entered', '_blank')")
 
     def _load_global_config(self):
         self._global_configuration_dict = self._ensure_default_global_config_keys()
@@ -3212,8 +3304,8 @@ def main():
                 uio.info("No gnome desktop application launcher was found to delete.")
 
         else:
-            finances = Finances(options.password, options.folder)
-            finances.initGUI(uio, options.debug, port=options.port, reload=options.reload)
+            finances = Finances(uio, options.password, options.folder)
+            finances.initGUI(options.debug, port=options.port, reload=options.reload)
 
     # If the program throws a system exit exception
     except SystemExit:
