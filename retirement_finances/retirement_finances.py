@@ -796,7 +796,7 @@ class Finances(GUIBase):
             set = True
 
         if not set:
-            ui.notify("Your name is unset in the configuration tab. Set and save it then restart the program.", type='negative')
+            ui.notify("Your name is unset in the configuration tab. Set your name, save it then try again.", type='negative')
 
         return set
 
@@ -1140,7 +1140,7 @@ class Finances(GUIBase):
 
     def _init_config_tab(self):
         self._my_name_field = ui.input(label=Finances.MY_NAME_FIELD).style('width: 300px;').tooltip('Enter your name here.')
-        self._partner_name_field = ui.input(label=Finances.PARTNER_NAME_FIELD).style('width: 300px;').tooltip('If you have a partner you may enter their name here.')
+        self._partner_name_field = ui.input(label=Finances.PARTNER_NAME_FIELD).style('width: 300px;').tooltip('If you have a partner you may enter their name here if you wish to combine your finances.')
         with ui.row():
             ui.button('Save', on_click=self._save_config_button_selected)
 
