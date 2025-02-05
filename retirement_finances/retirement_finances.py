@@ -2456,11 +2456,19 @@ class FuturePlotGUI(GUIBase):
                 # If we don't have the pension monies for the withdrawal pull it from savings
                 if total_pension_withdrawal > 0 and personal_pension_value <= 0:
                     savings_amount = savings_amount - total_pension_withdrawal
+                    # Savings can't go negative
+                    if savings_amount < 0:
+                        savings_amount = 0
+                        personal_pension_value = 0
                     personal_pension_value = 0
 
                 # If we don't have the savings monies for the withdrawal pull it from pensions
                 if total_savings_withdrawal > 0 and savings_amount <= 0:
                     personal_pension_value = personal_pension_value - total_savings_withdrawal
+                    # Pension can't go negative
+                    if personal_pension_value < 0:
+                        personal_pension_value = 0
+                        savings_amount = 0
                     savings_amount = 0
 
                 # Calc the total
