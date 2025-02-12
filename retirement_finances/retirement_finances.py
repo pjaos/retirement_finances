@@ -1731,12 +1731,12 @@ class FuturePlotGUI(GUIBase):
     """@brief Responsible for allowing the user to plot predictions about the way the savings and pensions will fare during retirement."""
     DEFAULT_MALE_MAX_AGE = 90
     # The default initial monthly budget/income including any monthly income from other sources
-    DEFAULT_MONTHLY_INCOME = 2850
+    DEFAULT_MONTHLY_INCOME = 0
     # The default amount other sources. E.G an adult child living at home pays pays towards household bills
     DEFAULT_MONTHLY_AMOUNT_FROM_CHILD = 0
     # Default list of savings interest rates and pension growth rates.
-    DEFAULT_RATE_LIST = "3"
-    DEFAULT_YEARLY_INCREASE_IN_INCOME = "2.5"
+    DEFAULT_RATE_LIST = ""
+    DEFAULT_YEARLY_INCREASE_IN_INCOME = ""
     DEFAULT_STATE_PENSION_YEARLY_INCREASE = DEFAULT_YEARLY_INCREASE_IN_INCOME
     MY_MAX_AGE = "My max age"
     MY_DATE_OF_BIRTH = "My date of birth"
@@ -3190,34 +3190,37 @@ class Plot1GUI(GUIBase):
         if reality_tables:
 
             totals_table = reality_tables[2]
-            x, y = zip(*totals_table)
-            # Convert from Timestamp instances to datetime instances
-            datetimes = [ts.to_pydatetime() for ts in x]
-            fig.add_trace(go.Scatter(name='Total (reality)',
-                                     x=datetimes,
-                                     y=y,
-                                     mode='lines',
-                                     line=dict(dash='solid')))
+            if len(totals_table) > 0:
+                x, y = zip(*totals_table)
+                # Convert from Timestamp instances to datetime instances
+                datetimes = [ts.to_pydatetime() for ts in x]
+                fig.add_trace(go.Scatter(name='Total (reality)',
+                                        x=datetimes,
+                                        y=y,
+                                        mode='lines',
+                                        line=dict(dash='solid')))
 
             pension_table = reality_tables[0]
-            x, y = zip(*pension_table)
-            # Convert from Timestamp instances to datetime instances
-            datetimes = [ts.to_pydatetime() for ts in x]
-            fig.add_trace(go.Scatter(name='Personal Pension (reality)',
-                                     x=datetimes,
-                                     y=y,
-                                     mode='lines',
-                                     line=dict(dash='solid')))
+            if len(pension_table) > 0:
+                x, y = zip(*pension_table)
+                # Convert from Timestamp instances to datetime instances
+                datetimes = [ts.to_pydatetime() for ts in x]
+                fig.add_trace(go.Scatter(name='Personal Pension (reality)',
+                                        x=datetimes,
+                                        y=y,
+                                        mode='lines',
+                                        line=dict(dash='solid')))
 
             savings_table = reality_tables[1]
-            x, y = zip(*savings_table)
-            # Convert from Timestamp instances to datetime instances
-            datetimes = [ts.to_pydatetime() for ts in x]
-            fig.add_trace(go.Scatter(name='Savings (reality)',
-                                     x=datetimes,
-                                     y=y,
-                                     mode='lines',
-                                     line=dict(dash='solid')))
+            if len(savings_table) > 0:
+                x, y = zip(*savings_table)
+                # Convert from Timestamp instances to datetime instances
+                datetimes = [ts.to_pydatetime() for ts in x]
+                fig.add_trace(go.Scatter(name='Savings (reality)',
+                                        x=datetimes,
+                                        y=y,
+                                        mode='lines',
+                                        line=dict(dash='solid')))
 
         # Prediction traces are always dotted lines
         # as this tends to indicate their unclear nature.
