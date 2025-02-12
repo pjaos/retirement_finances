@@ -2538,7 +2538,8 @@ class FuturePlotGUI(GUIBase):
                 final_year = int(self._last_year_to_plot_field.value)
                 now = datetime.now()
                 if final_year < now.year:
-                    raise Exception(f"Invalid year. The last year to plot must be greater than {now.year}")
+                    raise Exception(f"Invalid year. The last year to plot must be greater than or equal to {now.year}")
+
         except ValueError:
             raise Exception("Invalid last year to plot. This must be a year in the future.")
         return final_year
