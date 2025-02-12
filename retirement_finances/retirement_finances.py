@@ -1980,12 +1980,13 @@ class FuturePlotGUI(GUIBase):
                         'Delete the selected pension prediction parameters.')
 
         with ui.row():
-            ui.button('show prediction', on_click=lambda: self._calc()).tooltip(
+            ui.button('Show prediction', on_click=lambda: self._calc()).tooltip(
                 'Perform calculation and plot the results.')
             ui.button('Show progress', on_click=lambda: self._show_progress()).tooltip(
-                'Show the progress against a prediction.')
-            ui.button('Show progress this year', on_click=lambda: self._show_progress_this_year()).tooltip(
-                'Show the progress against a prediction.')
+                'Show your progress against a prediction.')
+            self._last_year_to_plot_field = ui.input(label="Last year to plot", value="").style(
+                        'width: 200px;').tooltip('The last year you wish to plot. Leave this blank to plot all years.')
+
         self._update_gui_from_dict()
         self._load_settings(retirement_predictions_settings_name)
 
@@ -2314,13 +2315,9 @@ class FuturePlotGUI(GUIBase):
     def _show_progress(self):
         self._calc(overlay_real_performance=True)
 
-    def _show_progress_this_year(self):
-        self._calc(overlay_real_performance=True, this_year_reality=True)
-
-    def _calc(self, overlay_real_performance=False, this_year_reality=False):
+    def _calc(self, overlay_real_performance=False):
         """@brief Perform calculation. This took ages to get right. I used the household_finances spreadsheet to validate the numbers it produces.
            @param overlay_real_performance If True then the plot shows the predictions overlaid with the real performance.
-           @param this_year_reality If plotting rel values of pension, savings and total only show current year.
 
            !!! This method is to large, work needed !!!"""
         try:
@@ -2511,7 +2508,7 @@ class FuturePlotGUI(GUIBase):
 
                 if total <= 0:
                     money_ran_out = True
-
+            final_year = self._get_final_year()
             if overlay_real_performance:
                 pp_table = self._get_personal_pension_table()
                 savings_table = self._get_savings_table()
@@ -2520,16 +2517,31 @@ class FuturePlotGUI(GUIBase):
                 self._do_plot(self._settings_name_select.value,
                               plot_table,
                               reality_tables=reality_tables,
-                              this_year_reality=this_year_reality,
-                              money_ran_out=money_ran_out)
+                              money_ran_out=money_ran_out,
+                              final_year=final_year)
             else:
                 self._do_plot(self._settings_name_select.value,
                               plot_table,
-                              money_ran_out=money_ran_out)
+                              money_ran_out=money_ran_out,
+                              final_year=final_year)
 
         except Exception as ex:
             traceback.print_tb(ex.__traceback__)
             ui.notify(str(ex), type='negative')
+
+    def _get_final_year(self):
+        """@brief Get the final year of the prediction.
+           @return The year to end the plot or -1 if not end is defined"""
+        final_year = -1
+        try:
+            if len(self._last_year_to_plot_field.value) > 0:
+                final_year = int(self._last_year_to_plot_field.value)
+                now = datetime.now()
+                if final_year < now.year:
+                    raise Exception(f"Invalid year. The last year to plot must be greater than {now.year}")
+        except ValueError:
+            raise Exception("Invalid last year to plot. This must be a year in the future.")
+        return final_year
 
     def _dead_before_75(self, report_date):
         """@brief Check to see if dead before 75'th birthday.
@@ -2577,7 +2589,12 @@ class FuturePlotGUI(GUIBase):
     def is_this_month(self, this_date, date_to_check):
         return (this_date.year == date_to_check.year and this_date.month == date_to_check.month)
 
-    def _do_plot(self, name, plot_table, reality_tables=None, this_year_reality=False, money_ran_out=False):
+    def _do_plot(self,
+                 name,
+                 plot_table,
+                 reality_tables=None,
+                 final_year=-1,
+                 money_ran_out=False):
         """@brief perform a plot of the data in the plot_table.
            @param name The name of the plot.
            @param plot_table Holds rows that comprise the following
@@ -2592,10 +2609,9 @@ class FuturePlotGUI(GUIBase):
                                   0 = personal_pension_table
                                   1 = savings table
                                   2 = total table
-           @param this_year_reality If plotting the real performance of pensions & savings you can either
-                                    show the entered pension,savings and total alongside the entire
-                                    prediction time period (False default)or if this param is set True limit
-                                    the X axis to end at the end of the current year.
+           @param final_year The final year to plot.
+                             This allows the caller to limit the length of the plot prediction.
+                             If -1 entered then no limit is placed on the plot.
            @param money_ran_out If True the money ran out."""
         # Define a secondary page
         @ui.page('/plot_1_page')
@@ -2603,7 +2619,7 @@ class FuturePlotGUI(GUIBase):
             Plot1GUI(name,
                      plot_table,
                      reality_tables,
-                     this_year_reality,
+                     final_year,
                      money_ran_out)
         # This will open in a separate browser window
         ui.run_javascript("window.open('/plot_1_page', '_blank')")
@@ -3042,7 +3058,7 @@ class Plot1GUI(GUIBase):
                  name,
                  plot_table,
                  reality_tables=None,
-                 this_year_reality=False,
+                 final_year=-1,
                  money_ran_out=False):
         """@param name The name of the plot.
            @param plot_table Holds rows that comprise the following
@@ -3060,16 +3076,15 @@ class Plot1GUI(GUIBase):
                                   0 = personal_pension_table
                                   1 = savings table
                                   2 = total table
-           @param this_year_reality If plotting the real performance of pensions & savings you can either
-                                    show the entered pension,savings and total alongside the entire
-                                    prediction time period (False default)or if this param is set True limit
-                                    the X axis to end at the end of the current year.
+           @param final_year The final year to plot.
+                             This allows the caller to limit the length of the plot prediction.
+                             If -1 entered then no limit is placed on the plot.
            @param money_ran_out If True the money ran out.
                              """
         self._name = name
         self._plot_table = plot_table
         self._reality_tables = reality_tables
-        self._this_year_reality = this_year_reality
+        self._final_year = final_year
         self._money_ran_out = money_ran_out
         self._init_gui()
 
@@ -3116,7 +3131,7 @@ class Plot1GUI(GUIBase):
             plot_dict[plot_names[1]].append((_date, personal_pension))
             plot_dict[plot_names[2]].append((_date, savings))
 
-        self._do_plot(plot_panel_1, plot_dict, reality_tables=self._reality_tables, this_year_reality=self._this_year_reality)
+        self._do_plot(plot_panel_1, plot_dict, reality_tables=self._reality_tables, final_year=self._final_year)
 
         plot_names = ['Monthly budget/income', 'Total state pension']
         plot_dict = {plot_names[0]: [],
@@ -3130,7 +3145,7 @@ class Plot1GUI(GUIBase):
             plot_dict[plot_names[0]].append((_date, monthly_income))
             plot_dict[plot_names[1]].append((_date, monthly_state_pension))
 
-        self._do_plot(plot_panel_2, plot_dict)
+        self._do_plot(plot_panel_2, plot_dict, final_year=self._final_year)
 
         plot_names = ['Savings Interest']
         plot_dict = {plot_names[0]: []}
@@ -3141,7 +3156,7 @@ class Plot1GUI(GUIBase):
 
             plot_dict[plot_names[0]].append((_date, savings_interest))
 
-        self._do_plot(plot_panel_3, plot_dict, bar_chart=True)
+        self._do_plot(plot_panel_3, plot_dict, bar_chart=True, final_year=self._final_year)
 
         plot_names = ['Savings withdrawal', 'Pension withdrawal']
         plot_dict = {plot_names[0]: [],
@@ -3155,24 +3170,22 @@ class Plot1GUI(GUIBase):
             plot_dict[plot_names[0]].append((_date, savings_withdrawal))
             plot_dict[plot_names[1]].append((_date, pensions_withdrawal))
 
-        self._do_plot(plot_panel_4, plot_dict, bar_chart=True)
+        self._do_plot(plot_panel_4, plot_dict, bar_chart=True, final_year=self._final_year)
 
-    def _do_plot(self, plot_pane, plot_dict, bar_chart=False, reality_tables=None, this_year_reality=False):
+    def _do_plot(self, plot_pane, plot_dict, bar_chart=False, reality_tables=None, final_year=-1):
         """@brief Perform a plot of the data in the plot_dict on the plot_pane.
            @param plot_pane The area to plot data on.
-           @param plot_dict The dict containing date to be plotted.
+           @param plot_dict The dict containing data to be plotted.
                             Each key in the dict is the name of the plot.
                             Each value is a row in the table
                             0 = The date.
                             1 = The value.
            @param bar_chart If True show a bar chart.
-           @param this_year_reality If plotting the real performance of pensions & savings you can either
-                                    show the entered pension,savings and total alongside the entire
-                                    prediction time period (False default)or if this param is set True limit
-                                    the X axis to end at the end of the current year."""
+           @param final_year The final year to plot.
+                             This allows the caller to limit the length of the plot prediction.
+                             If -1 entered then no limit is placed on the plot."""
         fig = go.Figure()
 
-        max_date = None
         if reality_tables:
 
             totals_table = reality_tables[2]
@@ -3205,10 +3218,6 @@ class Plot1GUI(GUIBase):
                                      mode='lines',
                                      line=dict(dash='solid')))
 
-            # If the user wants to limit the reality plot to just this year
-            if this_year_reality:
-                max_date = max(x)
-
         # Prediction traces are always dotted lines
         # as this tends to indicate their unclear nature.
         line_dict = dict(dash='dot')
@@ -3217,15 +3226,17 @@ class Plot1GUI(GUIBase):
         for plot_name in plot_dict:
             plot_table = plot_dict[plot_name]
             x, y = zip(*plot_table)
-            if max_date:
+            # If the caller wants to limit the number of year we plot over.
+            if final_year > 0:
                 value_count = 0
                 for _date in x:
-                    if _date.year > max_date.year:
+                    if _date.year > final_year:
                         break
                     value_count += 1
                 if value_count < len(x):
                     x = x[:value_count]
                     y = y[:value_count]
+
             my = max(y)
             if my > max_y:
                 max_y = my
