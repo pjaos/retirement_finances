@@ -3195,10 +3195,10 @@ class Plot1GUI(GUIBase):
                 # Convert from Timestamp instances to datetime instances
                 datetimes = [ts.to_pydatetime() for ts in x]
                 fig.add_trace(go.Scatter(name='Total (reality)',
-                                        x=datetimes,
-                                        y=y,
-                                        mode='lines',
-                                        line=dict(dash='solid')))
+                                         x=datetimes,
+                                         y=y,
+                                         mode='lines',
+                                         line=dict(dash='solid')))
 
             pension_table = reality_tables[0]
             if len(pension_table) > 0:
@@ -3206,10 +3206,10 @@ class Plot1GUI(GUIBase):
                 # Convert from Timestamp instances to datetime instances
                 datetimes = [ts.to_pydatetime() for ts in x]
                 fig.add_trace(go.Scatter(name='Personal Pension (reality)',
-                                        x=datetimes,
-                                        y=y,
-                                        mode='lines',
-                                        line=dict(dash='solid')))
+                                         x=datetimes,
+                                         y=y,
+                                         mode='lines',
+                                         line=dict(dash='solid')))
 
             savings_table = reality_tables[1]
             if len(savings_table) > 0:
@@ -3217,10 +3217,10 @@ class Plot1GUI(GUIBase):
                 # Convert from Timestamp instances to datetime instances
                 datetimes = [ts.to_pydatetime() for ts in x]
                 fig.add_trace(go.Scatter(name='Savings (reality)',
-                                        x=datetimes,
-                                        y=y,
-                                        mode='lines',
-                                        line=dict(dash='solid')))
+                                         x=datetimes,
+                                         y=y,
+                                         mode='lines',
+                                         line=dict(dash='solid')))
 
         # Prediction traces are always dotted lines
         # as this tends to indicate their unclear nature.
