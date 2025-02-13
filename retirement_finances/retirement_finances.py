@@ -2513,7 +2513,10 @@ class FuturePlotGUI(GUIBase):
                 pp_table = self._get_personal_pension_table()
                 savings_table = self._get_savings_table()
                 total_table = self._get_total_table()
-                reality_tables = (pp_table, savings_table, total_table)
+                monthly_spending_table = self._get_monthly_spending_table()
+                # These tables hold values entered by the users that are real values, not predicted.
+                reality_tables = [pp_table, savings_table, total_table, monthly_spending_table]
+
                 self._do_plot(self._settings_name_select.value,
                               plot_table,
                               reality_tables=reality_tables,
@@ -2528,6 +2531,12 @@ class FuturePlotGUI(GUIBase):
         except Exception as ex:
             traceback.print_tb(ex.__traceback__)
             ui.notify(str(ex), type='negative')
+
+    def _get_monthly_spending_table(self):
+        monthly_spending_dict = self._config.get_monthly_spending_dict()
+        monthly_spending_table = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
+
+        return monthly_spending_table
 
     def _get_final_year(self):
         """@brief Get the final year of the prediction.
@@ -2605,11 +2614,12 @@ class FuturePlotGUI(GUIBase):
                              3 = total of both the above
                              4 = monthly income
                              5 = monthly state pension total of both of us.
-            @param reality_tables If defined this is a list of three tables.
-                                  Each row in each table has a 0:Date and 1:Total column
+            @param reality_tables If defined this is a list the following tables.
+                                  Each row in each table has a 0:Date and 1:value column
                                   0 = personal_pension_table
                                   1 = savings table
                                   2 = total table
+                                  3 = monthly spending table
            @param final_year The final year to plot.
                              This allows the caller to limit the length of the plot prediction.
                              If -1 entered then no limit is placed on the plot.
@@ -3072,11 +3082,12 @@ class Plot1GUI(GUIBase):
                              6 = savings_interest (yearly)
                              7 = savings withdrawal this month
                              8 = pension withdrawal this month.
-           @param reality_tables If defined this is a list of three tables.
-                                  Each row in each table has a 0:Date and 1:Total column
+            @param reality_tables If defined this is a list the following tables.
+                                  Each row in each table has a 0:Date and 1:value column
                                   0 = personal_pension_table
                                   1 = savings table
                                   2 = total table
+                                  3 = monthly spending table
            @param final_year The final year to plot.
                              This allows the caller to limit the length of the plot prediction.
                              If -1 entered then no limit is placed on the plot.
@@ -3132,7 +3143,14 @@ class Plot1GUI(GUIBase):
             plot_dict[plot_names[1]].append((_date, personal_pension))
             plot_dict[plot_names[2]].append((_date, savings))
 
-        self._do_plot(plot_panel_1, plot_dict, reality_tables=self._reality_tables, final_year=self._final_year)
+        reality_tables = None
+        if self._reality_tables and len(self._reality_tables) == 4:
+            reality_tables = self._reality_tables[:3]
+
+        self._do_plot(plot_panel_1,
+                      plot_dict,
+                      reality_tables=reality_tables,
+                      final_year=self._final_year)
 
         plot_names = ['Monthly budget/income', 'Total state pension']
         plot_dict = {plot_names[0]: [],
@@ -3146,7 +3164,14 @@ class Plot1GUI(GUIBase):
             plot_dict[plot_names[0]].append((_date, monthly_income))
             plot_dict[plot_names[1]].append((_date, monthly_state_pension))
 
-        self._do_plot(plot_panel_2, plot_dict, final_year=self._final_year)
+        monthly_spending_table = None
+        if self._reality_tables and len(self._reality_tables) == 4:
+            monthly_spending_table = self._reality_tables[3]
+
+        self._do_plot(plot_panel_2,
+                      plot_dict,
+                      final_year=self._final_year,
+                      monthly_spending_table=monthly_spending_table)
 
         plot_names = ['Savings Interest']
         plot_dict = {plot_names[0]: []}
@@ -3157,7 +3182,10 @@ class Plot1GUI(GUIBase):
 
             plot_dict[plot_names[0]].append((_date, savings_interest))
 
-        self._do_plot(plot_panel_3, plot_dict, bar_chart=True, final_year=self._final_year)
+        self._do_plot(plot_panel_3,
+                      plot_dict,
+                      bar_chart=True,
+                      final_year=self._final_year)
 
         plot_names = ['Savings withdrawal', 'Pension withdrawal']
         plot_dict = {plot_names[0]: [],
@@ -3171,9 +3199,18 @@ class Plot1GUI(GUIBase):
             plot_dict[plot_names[0]].append((_date, savings_withdrawal))
             plot_dict[plot_names[1]].append((_date, pensions_withdrawal))
 
-        self._do_plot(plot_panel_4, plot_dict, bar_chart=True, final_year=self._final_year)
+        self._do_plot(plot_panel_4,
+                      plot_dict,
+                      bar_chart=True,
+                      final_year=self._final_year)
 
-    def _do_plot(self, plot_pane, plot_dict, bar_chart=False, reality_tables=None, final_year=-1):
+    def _do_plot(self,
+                 plot_pane,
+                 plot_dict,
+                 bar_chart=False,
+                 reality_tables=None,
+                 final_year=-1,
+                 monthly_spending_table=None):
         """@brief Perform a plot of the data in the plot_dict on the plot_pane.
            @param plot_pane The area to plot data on.
            @param plot_dict The dict containing data to be plotted.
@@ -3182,9 +3219,15 @@ class Plot1GUI(GUIBase):
                             0 = The date.
                             1 = The value.
            @param bar_chart If True show a bar chart.
+            @param reality_tables If defined this is a list the following tables.
+                                  Each row in each table has a 0:Date and 1:value column
+                                  0 = personal_pension_table
+                                  1 = savings table
+                                  2 = total table
            @param final_year The final year to plot.
                              This allows the caller to limit the length of the plot prediction.
-                             If -1 entered then no limit is placed on the plot."""
+                             If -1 entered then no limit is placed on the plot.
+           @param monthly_spending_table The monthly spending table."""
         fig = go.Figure()
 
         if reality_tables:
@@ -3222,6 +3265,40 @@ class Plot1GUI(GUIBase):
                                          mode='lines',
                                          line=dict(dash='solid')))
 
+
+        if monthly_spending_table:
+            x, y = zip(*monthly_spending_table)
+            # Convert date string list to datetime instances
+            datetimes = [datetime.strptime(date, "%d-%m-%Y") for date in x]
+
+            # If the caller wants to limit the number of years we plot over.
+            if final_year > 0:
+                value_count = 0
+                for _date in datetimes:
+                    if _date.year > final_year:
+                        break
+                    value_count += 1
+                if value_count < len(datetimes):
+                    datetimes = datetimes[:value_count]
+                    y = y[:value_count]
+
+            # Calculate the average
+            if y and len(y) > 0:
+                average_monthly_spending_table = sum(y) / len(y)
+            else:
+                average_monthly_spending_table = 0
+            fig.add_trace(go.Scatter(name='Monthly Spending (reality)',
+                                        x=datetimes,
+                                        y=y,
+                                        mode='lines',
+                                        line=dict(dash='solid')))
+            avgList = [average_monthly_spending_table,]*len(datetimes)
+            fig.add_trace(go.Scatter(name='Average monthly Spending (reality)',
+                                        x=datetimes,
+                                        y=avgList,
+                                        mode='lines',
+                                        line=dict(dash='solid', width=5)))
+
         # Prediction traces are always dotted lines
         # as this tends to indicate their unclear nature.
         line_dict = dict(dash='dot')
@@ -3230,7 +3307,7 @@ class Plot1GUI(GUIBase):
         for plot_name in plot_dict:
             plot_table = plot_dict[plot_name]
             x, y = zip(*plot_table)
-            # If the caller wants to limit the number of year we plot over.
+            # If the caller wants to limit the number of years we plot over.
             if final_year > 0:
                 value_count = 0
                 for _date in x:
