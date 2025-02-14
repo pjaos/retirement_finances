@@ -1871,7 +1871,7 @@ class FuturePlotGUI(GUIBase):
 
                 with ui.row():
                     self._pension_drawdown_start_date_field = GUIBase.GetInputDateField(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE).style(
-                        'width: 300px;').tooltip('The date at which we stop drawing out of savings and draw out of our pension to cover monthly income.')
+                        'width: 300px;').tooltip('The date at which we stop drawing out of savings and start regularly drawing money out of pensions to cover monthly spending. You may add planned withdrawals from your pension/s before this date in the Pension withdrawals table below if you wish.')
 
                 with ui.row():
                     self._my_dob_field = GUIBase.GetInputDateField(
@@ -1879,16 +1879,14 @@ class FuturePlotGUI(GUIBase):
                     my_dob = self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH]
                     self._my_dob_field.value = my_dob
                     my_max_age = self._future_plot_attr_dict[FuturePlotGUI.MY_MAX_AGE]
-                    self._my_max_age_field = ui.number(
-                        label=FuturePlotGUI.MY_MAX_AGE, value=my_max_age)
+                    self._my_max_age_field = ui.number(label=FuturePlotGUI.MY_MAX_AGE, value=my_max_age).tooltip("The maximum age to plan for.")
 
                     self._partner_dob_field = GUIBase.GetInputDateField(
                         FuturePlotGUI.PARTNER_DATE_OF_BIRTH)
                     partner_dob = self._future_plot_attr_dict[FuturePlotGUI.PARTNER_DATE_OF_BIRTH]
                     self._partner_dob_field.value = partner_dob
                     partner_max_age = self._future_plot_attr_dict[FuturePlotGUI.PARTNER_MAX_AGE]
-                    self._partner_max_age_field = ui.number(
-                        label=FuturePlotGUI.PARTNER_MAX_AGE, value=partner_max_age)
+                    self._partner_max_age_field = ui.number(label=FuturePlotGUI.PARTNER_MAX_AGE, value=partner_max_age).tooltip("The maximum age to plan for.")
 
                 with ui.row():
                     monthly_income = self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME]
@@ -2891,25 +2889,20 @@ class FuturePlotGUI(GUIBase):
             year_index = 0
             receiving_state_pension = False
             for this_datetime in datetime_list:
-                # If the state pension increases it occurs on 6 Apr.
-                # We approximate this to the 1 apr
-                adjusted_datetime = this_datetime - relativedelta(months=4)
-                # If the year hasn't changed
-                if adjusted_datetime.year == last_datetime.year:
-                    if adjusted_datetime >= state_pension_start_date:
-                        receiving_state_pension = True
-                    else:
-                        receiving_state_pension = False
+                # If the state pension changes, this occurs on 6 Apr for the new tax year.
+                # We approximate this to the 1 may as we won't get a full months pension until then.
+                # This means that the prediction will miss some of the first months state pension but
+                # we accept this for purposes of this report.
+                if this_datetime.month == 5:
+                    state_pension_amount = self._calc_new_account_value(state_pension_amount,
+                                                                        self._future_plot_attr_dict.get(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST),
+                                                                        year_index)
 
-                # If the year has rolled over
+                # Determine if the state pension has started yet
+                if this_datetime >= state_pension_start_date:
+                    receiving_state_pension = True
                 else:
-                    state_pension_amount = self._calc_new_account_value(state_pension_amount, self._future_plot_attr_dict.get(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST), year_index)
-                    if adjusted_datetime >= state_pension_start_date:
-                        receiving_state_pension = True
-                    else:
-                        receiving_state_pension = False
-                    last_datetime = adjusted_datetime
-                    year_index = year_index + 1
+                    receiving_state_pension = False
 
                 # We assume that if the owner is not alive they are not receiving state pension
                 # We assume that the partner receives none of the state pension. This may not be
@@ -2927,6 +2920,11 @@ class FuturePlotGUI(GUIBase):
                     future_table.append([this_datetime, state_pension_amount])
                 else:
                     future_table.append([this_datetime, 0.0])
+
+                # If the year has rolled over
+                if this_datetime.year != last_datetime.year:
+                    last_datetime = this_datetime
+                    year_index = year_index + 1
 
         return future_table
 
