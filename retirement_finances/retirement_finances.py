@@ -1744,7 +1744,7 @@ class FuturePlotGUI(GUIBase):
     SAVINGS_INTEREST_RATE_LIST = "Savings interest rate (%)"
     PENSION_GROWTH_RATE_LIST = "Pension growth rate (%)"
     STATE_PENSION_YEARLY_INCREASE_LIST = "State pension yearly increase (%)"
-    MONTHLY_AMOUNT_FROM_CHILDREN = "Monthly from other sources (£)"
+    MONTHLY_AMOUNT_FROM_OTHER_SOURCES = "Monthly from other sources (£)"
     MONTHLY_INCOME = "Monthly budget/income (£)"
     YEARLY_INCREASE_IN_INCOME = "Yearly budget/income increase (%)"
     REPORT_START_DATE = "Prediction start date"
@@ -1815,8 +1815,8 @@ class FuturePlotGUI(GUIBase):
         if FuturePlotGUI.PENSION_GROWTH_RATE_LIST not in future_plot_attr_dict:
             future_plot_attr_dict[FuturePlotGUI.PENSION_GROWTH_RATE_LIST] = FuturePlotGUI.DEFAULT_RATE_LIST
 
-        if FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN] = FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES
+        if FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES not in future_plot_attr_dict:
+            future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES] = FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES
 
         if FuturePlotGUI.MONTHLY_INCOME not in future_plot_attr_dict:
             future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME] = FuturePlotGUI.DEFAULT_MONTHLY_INCOME
@@ -1895,10 +1895,9 @@ class FuturePlotGUI(GUIBase):
                         'The total monthly budget/income target amount including money from other sources. This is taken from savings prior to drawdown start date. Then from pension drawdown.'
                         ' If the pension runs out then money is taken from savings to cover this.')
 
-                    monthly_amount_from_children = self._future_plot_attr_dict[
-                        FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN]
-                    self._monthly_amount_from_children_field = ui.number(label=FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN, value=monthly_amount_from_children, min=0).tooltip(
-                        'A monthly amount from non savings/pension sources. E.G Adult children living at home contributing to household finances.')
+                    monthly_amount_from_other_sources = self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES]
+                    self._monthly_amount_from_other_sources_field = ui.number(label=FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES, value=monthly_amount_from_other_sources, min=0).tooltip(
+                        'A monthly amount from non savings/pension sources. E.G Part time jobs or adult children living at home contributing to household finances.')
 
                 with ui.row():
                     yearly_increase_in_income = self._future_plot_attr_dict[
@@ -2264,7 +2263,7 @@ class FuturePlotGUI(GUIBase):
             self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST] = self._savings_interest_rates_field.value
             self._future_plot_attr_dict[FuturePlotGUI.PENSION_GROWTH_RATE_LIST] = self._pension_growth_rate_list_field.value
             self._future_plot_attr_dict[FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST] = self._state_pension_growth_rate_list_field.value
-            self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN] = self._monthly_amount_from_children_field.value
+            self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES] = self._monthly_amount_from_other_sources_field.value
             self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME] = self._monthly_income_field.value
             self._future_plot_attr_dict[FuturePlotGUI.YEARLY_INCREASE_IN_INCOME] = self._yearly_increase_in_income_field.value
             self._future_plot_attr_dict[FuturePlotGUI.REPORT_START_DATE] = self._start_date_field.value
@@ -2290,8 +2289,8 @@ class FuturePlotGUI(GUIBase):
             FuturePlotGUI.PENSION_GROWTH_RATE_LIST, FuturePlotGUI.DEFAULT_RATE_LIST)
         self._state_pension_growth_rate_list_field.value = self._future_plot_attr_dict.get(
             FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST, FuturePlotGUI.DEFAULT_STATE_PENSION_YEARLY_INCREASE)
-        self._monthly_amount_from_children_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN, FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES)
+        self._monthly_amount_from_other_sources_field.value = self._future_plot_attr_dict.get(
+            FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES, FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES)
         self._monthly_income_field.value = self._future_plot_attr_dict.get(
             FuturePlotGUI.MONTHLY_INCOME, FuturePlotGUI.DEFAULT_MONTHLY_INCOME)
         self._yearly_increase_in_income_field.value = self._future_plot_attr_dict.get(
@@ -2342,8 +2341,7 @@ class FuturePlotGUI(GUIBase):
                 datetime_list, report_start_date)
             if predicted_state_pension_table is None:
                 raise Exception('No state pension defined in the pension list.')
-            monthly_from_children = float(
-                self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN])
+            monthly_from_other_sources = float(self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES])
             lump_sum_savings_withdrawals_table = self._convert_table(
                 self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE])
 
@@ -2385,7 +2383,7 @@ class FuturePlotGUI(GUIBase):
                     continue
 
                 income_this_month = row[1]
-                income_after_deduction_c = income_this_month - monthly_from_children
+                income_after_deduction_c = income_this_month - monthly_from_other_sources
                 state_pension_this_month = self._get_state_pension_this_month(
                     this_date, predicted_state_pension_table)
 
