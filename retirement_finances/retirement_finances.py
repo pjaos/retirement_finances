@@ -1732,8 +1732,7 @@ class FuturePlotGUI(GUIBase):
     DEFAULT_MALE_MAX_AGE = 90
     # The default initial monthly budget/income including any monthly income from other sources
     DEFAULT_MONTHLY_INCOME = 0
-    # The default amount other sources. E.G an adult child living at home pays pays towards household bills
-    DEFAULT_MONTHLY_AMOUNT_FROM_CHILD = 0
+    DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES = 0
     # Default list of savings interest rates and pension growth rates.
     DEFAULT_RATE_LIST = ""
     DEFAULT_YEARLY_INCREASE_IN_INCOME = ""
@@ -1817,7 +1816,7 @@ class FuturePlotGUI(GUIBase):
             future_plot_attr_dict[FuturePlotGUI.PENSION_GROWTH_RATE_LIST] = FuturePlotGUI.DEFAULT_RATE_LIST
 
         if FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN] = FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_CHILD
+            future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN] = FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES
 
         if FuturePlotGUI.MONTHLY_INCOME not in future_plot_attr_dict:
             future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME] = FuturePlotGUI.DEFAULT_MONTHLY_INCOME
@@ -1871,7 +1870,9 @@ class FuturePlotGUI(GUIBase):
 
                 with ui.row():
                     self._pension_drawdown_start_date_field = GUIBase.GetInputDateField(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE).style(
-                        'width: 300px;').tooltip('The date at which we stop drawing out of savings and start regularly drawing money out of pensions to cover monthly spending. You may add planned withdrawals from your pension/s before this date in the Pension withdrawals table below if you wish.')
+                        'width: 300px;').tooltip('The date at which we stop drawing out of savings and start regularly drawing money out of pensions '
+                                                 'to cover monthly spending. You may add planned withdrawals from your pension/s before this date in '
+                                                 'the Pension withdrawals table below if you wish.')
 
                 with ui.row():
                     self._my_dob_field = GUIBase.GetInputDateField(
@@ -2290,7 +2291,7 @@ class FuturePlotGUI(GUIBase):
         self._state_pension_growth_rate_list_field.value = self._future_plot_attr_dict.get(
             FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST, FuturePlotGUI.DEFAULT_STATE_PENSION_YEARLY_INCREASE)
         self._monthly_amount_from_children_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN, FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_CHILD)
+            FuturePlotGUI.MONTHLY_AMOUNT_FROM_CHILDREN, FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES)
         self._monthly_income_field.value = self._future_plot_attr_dict.get(
             FuturePlotGUI.MONTHLY_INCOME, FuturePlotGUI.DEFAULT_MONTHLY_INCOME)
         self._yearly_increase_in_income_field.value = self._future_plot_attr_dict.get(
@@ -2668,15 +2669,33 @@ class FuturePlotGUI(GUIBase):
         monthly_increase = yearly_increase / 12
         return monthly_increase
 
+    def _get_monthly_growth(self, principal, annual_rate):
+        """
+            @brief Calculate the new balance after one month with daily compounding interest.
+            @param principal: Initial amount (float)
+            @param annual_rate: Annual interest rate as a decimal (e.g., 10% -> 0.10)
+            @return: New balance after one month and increase.
+        """
+        days_in_year = 365  # May be 364 but this make only a small difference to calculations so we use 365
+        days_in_month = 30.4167  # Average days in a month
+        # Calculate the growth factor
+        growth_factor = (1 + (annual_rate / days_in_year)) ** days_in_month
+        # Calculate new balance
+        new_balance = principal * growth_factor
+        # Interest earned in one month
+        interest_earned = new_balance - principal
+        return new_balance, interest_earned
+
     def _get_pension_increase_this_month(self, personal_pension_value, year_index):
         """@brief Get the increase in the pension this month using the predicted growth rate.
-           @param savings_amount The current value of our savings.
+                  This assumes that growth compounds daily.
+           @param personal_pension_value The current value of our pensions.
            @param year_index An index from the start of the report to this year. Used to determine the predicted interest rate.
-           @return As per the brief."""
+           @return The increase in the pension value."""
         yearly_rate_list = self._future_plot_attr_dict[FuturePlotGUI.PENSION_GROWTH_RATE_LIST]
         yearly_rate = self._get_yearly_rate(yearly_rate_list, year_index)
-        yearly_increase = personal_pension_value * (yearly_rate/100)
-        monthly_increase = yearly_increase / 12
+        yearly_rate = yearly_rate / 100
+        _, monthly_increase = self._get_monthly_growth(personal_pension_value, yearly_rate)
         return monthly_increase
 
     def _get_compound_growth_table(self, initial_value, growth_rate_list, datetime_list):
