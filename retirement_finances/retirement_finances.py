@@ -1897,7 +1897,7 @@ class FuturePlotGUI(GUIBase):
                     self._pension_drawdown_start_date_field = GUIBase.GetInputDateField(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE).style(
                         'width: 300px;').tooltip('The date at which we stop drawing out of savings and start regularly drawing money out of pensions '
                                                  'to cover monthly spending. You may add planned withdrawals from your pension/s before this date in '
-                                                 'the Pension withdrawals table below if you wish.')
+                                                 'the Pension withdrawals table if you wish.')
                     self._pension_drawdown_start_date_field.disable()
 
                 with ui.row():
