@@ -563,12 +563,20 @@ class Finances(GUIBase):
         with ui.row():
             ui.button('OK', on_click=self._open_main_window)
 
+        self._show_config_location()
+
         ui.run(host=address,
                port=port,
                title="Retirement Finances",
                dark=True,
                uvicorn_logging_level=self._guiLogLevel,
                reload=reload)
+
+    def _show_config_location(self, location='top'):
+        """@brief Display a message for the user to show where the files are held."""
+        msg = f'All files are stored in {self._config.get_config_folder()} folder.'
+        with ui.footer():
+            ui.label(msg)
 
     def _init_top_level(self):
         self._load_global_config()
@@ -610,6 +618,8 @@ class Finances(GUIBase):
         ui.timer(interval=Finances.GUI_TIMER_SECONDS, callback=self.gui_timer_callback)
 
         self._init_monthly_spending_dialog()
+
+        self._show_config_location(location='bottom')
 
     def _load_global_config(self):
         self._global_configuration_dict = self._ensure_default_global_config_keys()
