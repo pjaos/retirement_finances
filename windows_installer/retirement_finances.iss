@@ -40,7 +40,7 @@ Name: "{group}\Retirement_Finances"; Filename: "{app}\retirement_finances.bat"; 
 Name: "{group}\Uninstall Retirement Finances"; Filename: "{uninstallexe}"
 
 [Files]
-Source: "../installers/retirement_finances-3.6-py3-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion
+Source: "../installers/retirement_finances-3.7-py3-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../pyproject.toml"; DestDir: "{app}"; Flags: ignoreversion
