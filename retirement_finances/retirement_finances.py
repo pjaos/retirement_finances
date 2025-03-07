@@ -1186,7 +1186,7 @@ class Finances(GUIBase):
         """@brief Save configuration."""
         self._update_config_from_gui()
         self._config.save_global_configuration()
-        ui.notify(f'Saved Configuration.', type='positive', position='bottom')
+        ui.notify('Saved Configuration.', type='positive', position='bottom')
 
     def _ensure_default_global_config_keys(self):
         self._config.load_global_configuration()
@@ -1391,7 +1391,7 @@ class BankAccountGUI(GUIBase):
     def _save_button_selected(self):
         """@brief Called when the back button is selected."""
         if self._update_bank_account_from_gui():
-            ui.notify(f'Saved savings account details.', type='positive', position='bottom')
+            ui.notify('Saved savings account details.', type='positive', position='bottom')
 
     def _get_table_copy(self):
         """@brief Get a copy of the table from the dict that holds the balance table."""
@@ -1614,7 +1614,7 @@ class PensionGUI(GUIBase):
     def _save_button_selected(self):
         """@brief Called when the back button is selected."""
         if self._update_pension_from_gui():
-            ui.notify(f'Saved pension account details.', type='positive', position='bottom')
+            ui.notify('Saved pension account details.', type='positive', position='bottom')
 
     def _get_table_copy(self):
         """@brief Get a copy of the table from the dict that holds the pension table."""
