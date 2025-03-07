@@ -503,10 +503,16 @@ class Finances(GUIBase):
                 ui.notify('First and second passwords do not match. Try again.', type='negative')
 
         else:
-            self._first_password = self._password_input.value
-            # Remove entered password
-            self._password_input.value = ""
-            ui.notify('Initialising password. Re-enter password to initialise all data.', type='positive')
+            error_message = self._valid_password(self._password_input.value)
+            if error_message is None:
+                self._first_password = self._password_input.value
+                # Remove entered password
+                self._password_input.value = ""
+                ui.notify('Initialising valid password. Re-enter password to initialise all data.', type='positive')
+
+            else:
+                # Show the error message to the user and restart password setup.
+                ui.notify(error_message)
 
     def _authenticate_password(self):
         """@brief Called when a password has been setup in order to authenticate it."""
@@ -559,6 +565,7 @@ class Finances(GUIBase):
             ui.label('Password:')
         with ui.row():
             self._password_input = ui.input(password=True).props("autofocus").on("keydown.enter", lambda e: self._open_main_window())
+            self._password_input.tooltip("The password must be at least 16 characters long. It must contain upper and lowercase characters with at least one number.")
             self._password_input.value = self._password
         with ui.row():
             ui.button('OK', on_click=self._open_main_window)
@@ -571,6 +578,27 @@ class Finances(GUIBase):
                dark=True,
                uvicorn_logging_level=self._guiLogLevel,
                reload=reload)
+
+    def _valid_password(self, password):
+        """@brief Check if the password is valid. I.E meets the complexity criteria.
+           @param password The password to check.
+           @return None if valid password is entered, else it may return an error message."""
+        if len(password) < 16:
+            return "The password must be at least 16 characters long."
+        has_upper = any(char.isupper() for char in password)
+        has_lower = any(char.islower() for char in password)
+        has_digit = any(char.isdigit() for char in password)
+
+        if not has_upper:
+            return "The password must contain at least one upper case character."
+
+        if not has_lower:
+            return "The password must contain at least one lower case character."
+
+        if not has_digit:
+            return "The password must contain at least one number."
+
+        return None
 
     def _show_config_location(self, location='top'):
         """@brief Display a message for the user to show where the files are held."""
@@ -1158,6 +1186,7 @@ class Finances(GUIBase):
         """@brief Save configuration."""
         self._update_config_from_gui()
         self._config.save_global_configuration()
+        ui.notify(f'Saved Configuration.', type='positive', position='bottom')
 
     def _ensure_default_global_config_keys(self):
         self._config.load_global_configuration()
@@ -1345,8 +1374,8 @@ class BankAccountGUI(GUIBase):
                 'Delete a row from the balance table.')
 
         with ui.row():
-            ui.button("OK", on_click=self._back_button_selected).tooltip("Save the account details and go back to previous window.")
-            ui.button("Cancel", on_click=lambda: ui.navigate.back()).tooltip("Cancel entry and go back to previous window.")
+            ui.button("Save", on_click=self._save_button_selected).tooltip("Save the account details.")
+            ui.button("Back", on_click=lambda: ui.navigate.back()).tooltip("Go back to previous window.")
 
         self._bank_account_field_list = [bank_account_bank_name_field,
                                          bank_account_name_field,
@@ -1359,10 +1388,10 @@ class BankAccountGUI(GUIBase):
                                          bank_active_checkbox,
                                          bank_notes_field]
 
-    def _back_button_selected(self):
+    def _save_button_selected(self):
         """@brief Called when the back button is selected."""
         if self._update_bank_account_from_gui():
-            ui.navigate.back()
+            ui.notify(f'Saved savings account details.', type='positive', position='bottom')
 
     def _get_table_copy(self):
         """@brief Get a copy of the table from the dict that holds the balance table."""
@@ -1579,13 +1608,13 @@ class PensionGUI(GUIBase):
                 'Delete a row from the pension table.')
 
         with ui.row():
-            ui.button("OK", on_click=self._back_button_selected).tooltip("Save the pension details and go back to previous window.")
-            ui.button("Cancel", on_click=lambda: ui.navigate.back()).tooltip("Cancel entry and go back to previous window.")
+            ui.button("Save", on_click=self._save_button_selected).tooltip("Save the pension details.")
+            ui.button("Back", on_click=lambda: ui.navigate.back()).tooltip("Go back to previous window.")
 
-    def _back_button_selected(self):
+    def _save_button_selected(self):
         """@brief Called when the back button is selected."""
         if self._update_pension_from_gui():
-            ui.navigate.back()
+            ui.notify(f'Saved pension account details.', type='positive', position='bottom')
 
     def _get_table_copy(self):
         """@brief Get a copy of the table from the dict that holds the pension table."""
