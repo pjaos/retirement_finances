@@ -1,35 +1,42 @@
 # Retirement finances
-I designed this tool to see if I had enough money to retire. Such tools
-classically use mote carlo analysis to project a likelyhood of success. I started
-down this route but decided such an approach didn't serve my purpose , E.G a percentage
-of success.
+I designed this tool to give me some idea if I had enough money to retire. Such tools
+classically use Monte Carlo analysis to project a likelihood of success. I started
+down this route but decided such an approach didn't serve my purpose.
 
 I used spreadsheets to do some projections and these were useful but it appeared
-it would be easier and more flexible to have the functionality included in a SW package.
+it would be easier and more flexible to have the functionality included in a software package.
 
 I wanted a tool that I could use to project various scenario's based on what I considered
 possible parameters (E.G pension growth rates, savings interest rates etc). People with
-much more knowledge of such predictions/guesses appear to have little ability to get close
-and they are usually wrong (often very wrong) so I wanted the tool to track the progression
-of my finances so that I can adjust my spending as early as possible so I don't get into
-sticky situations.
+much more knowledge of such predictions/guesses than I appear not to be able to make
+remotely accurate predictions (particularly over longer timescales).
+Therefore I wanted the tool to track the progression of my finances so that I can adjust
+my spending as early as possible if required.
 
-This tool must be used with care, the choices you make are yours alone. You may wish to
+This tool must be used with care, the retirement choices you make are yours alone. You may wish to
 consult a financial advisor to understand your options so that you make the best decisions
 with regard to your retirement as mistakes could be very costly. The UK money and pensions
 service (https://maps.org.uk/en) has useful information when considering retirement.
 
+It is unclear to me if this tool will be useful to others given it was designed to my
+requirements. It is offered as is, you can make the judgement on whether it is useful to you.
 
 # Assumptions this tool makes
+These are the assumptions it makes are
 
-- Savings interest is added at the start of each year for the previous year.
-- Pensions funds grow/fall in value daily.
-- State pension will change in April for the new financial year. The first full month of the changed
-  state pension will be in May.
-- This tool does not take your tax situation into account. You'll need to understand this to make any
-  decisions with regard to your pensions.
-- Generally we either take money from savings or pensions to meet our outgoings during retirement.
-- This tool deals with a drawdown approach to pensions.
+- Savings interest accrues daily but is added at the start of each year for the previous year.
+
+- Pensions funds accrue (growth/drop) daily and are added daily.
+
+- State pension changes (hopefully increases) in April for the new financial year. The first
+  full month of the changed state pension will be in May.
+
+- This tool does not take tax into account.
+
+- Money is taken from either savings or pensions to meet outgoings during retirement.
+
+- This tool deals with draw down pensions only.
+
 
 # Installing the software
 The 'Retirement Finances' software can be installed on Linux and Windows platforms.
@@ -40,14 +47,15 @@ You will need to have permission to install programs onto your Windows PC before
 Before installing the software on Windows you will need to install the python environment. To do this follow the steps below.
 
 - Open the Microsoft Store (suitcase in the Windows toolbar that has the Windows logo on the side).
-- Enter python into the 'Search apps, games, movies, and more' field at the top of the window.
+- Enter [python](https://www.python.org/about/) into the 'Search apps, games, movies, and more' field at the top of the window.
 - Select 'Python 3.12' option from the displayed list.
+- Select the Get button to install python onto your PC.
 
 Python should then be installed onto your Windows PC. When this successfully completes you may install the Retirement Finances application.
 
 Double click on the Retirement_Finances_3.5.exe file. The version number in the filename may change.
 
-This will start a standard Windowws program installer.
+This will start a standard Windows program installer.
 
 - The first windows shows the Open Source License agreement. This contains the MIT License text. Once you are happy, select the 'I accept the agreement' radio button and then select the Next button.
 - Select the Install button.
@@ -98,11 +106,26 @@ Once started the software runs the same on Linux and Windows PC's. Therefore fro
 the software on different platforms.
 
 ## Entering your password
-When you start the software you are asked to enter the password. This password is used to encrypt and decrypt the files in which data is stored. The first time you start the software you must setup this password. It is recommended you use a complex password as this protects your data. This password is used to encrypt all data stored.
+When you start the software you are asked to enter the password. This password is used to encrypt and decrypt the files in which data is stored. The first time you start the software you must setup this password. The password you enter must be
+
+ - At least 16 characters long.
+ - Include at least one uppercase character.
+ - Include at least one lowercase character.
+ - Include at least one numerical digit.
+
+This password is used to encrypt all data stored.
 
 Once entered you will be asked to enter the password again. If they match this is the password used to encrypt your data.
 
-When you start the program a second time you will be asked to enter this password again. If you forget this password you will loose access to the data !!!
+When you start the program a second time you will be asked to enter this password again.
+
+```
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! If you forget this password you will loose access to your data !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+```
+
+If you do forget your password you will need to delete the folder where all data is held. This folder is detailed in the blue bar at bottom of the password entry window.
 
 ## Initial Window
 After entering the password a browser window is displayed with SAVINGS, PENSIONS, MONTHLY SPENDING, REPORTS and CONFIGURATION along the top.
@@ -210,7 +233,7 @@ This table allows you to record the total amount you spend each month as time pr
 
 The table on the left details the date and the amount spent. Select the ADD button to add the date set to the 1'st of the month. The amount entered should be the total amount you spent in that month.
 
-The Notes field is a tyext field to allow you to enter any information you wish about your monthly spending.
+The Notes field is a  field to allow you to enter any information you wish about your monthly spending.
 
 
 ## REPORTS
@@ -242,7 +265,7 @@ This is where you can check predictions and your progress against your predictio
 
   The date you wish the prediction to start. This would typically be the date at which you wish to retire.
 
-- Pension drawdown start date
+- Pension draw down start date
 
   The checkbox to the left of this field must be selected to allow you to enter this date. When entered the date defines the point at which you start regularly drawing down from your pension to fund your retirement. Before this date your savings are used to fund your retirement.
 
@@ -267,10 +290,10 @@ State pension yearly increase (%)
 This is a list (comma separated) of yearly state pension increases to be applied to all state pensions (max of two, you and your partner). Each comma separated value is applied to each year from your prediction start date. Enter your guesses here.
 
 
-To the right of the above fields two tables are displayed. 'Savings Withdrawals' and 'Pension Withdrawals'. These allow you to enter dates and amounts to deduct from savings or pensions. You may want to enter values here if you plan to spend a lump of savings or pensions. This could be to go on holiday from savings. Alternatively to drawdown on your pensions at a level below your HMRC personal allowance so as to avoid paying tax. You may select the ADD button to add one or more deductions from either savings or pensions.
+To the right of the above fields two tables are displayed. 'Savings Withdrawals' and 'Pension Withdrawals'. These allow you to enter dates and amounts to deduct from savings or pensions. You may want to enter values here if you plan to spend a lump of savings or pensions. This could be to go on holiday from savings. Alternatively to draw down on your pensions at a level below your HMRC personal allowance so as to avoid paying tax. You may select the ADD button to add one or more deductions from either savings or pensions.
 
 
-Near the bottom of the page a highlighted section allows you to save all the above parameters to different names. You may want to enter best case and worst case (probably more granular than this) scenarios to allow you to try out the effect of changing different values of, for example, savings interest rates or pension growth rates. A Default option is present and you may enter a name into the 'New name' field and select the save button to add to the pulldown list. You may delete these using the DELETE button.
+Near the bottom of the page a highlighted section allows you to save all the above parameters to different names. You may want to enter best case and worst case (probably more granular than this) scenarios to allow you to try out the effect of changing different values of, for example, savings interest rates or pension growth rates. A Default option is present and you may enter a name into the 'New name' field and select the save button to add to the pull down list. You may delete these using the DELETE button.
 
 At the bottom of the following buttons exist.
 
@@ -307,7 +330,3 @@ The actual value can only be plotted as time progresses and you update these tab
 By default the plots continue up to max date. You can truncate this to view a shorter period of time by entering a year before the max year.
 
 The plots allow you to zoom in on points of interest at any time but this field allows the plots to be truncated if required.
-
-
-
-
