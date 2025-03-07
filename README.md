@@ -19,7 +19,7 @@ with regard to your retirement as mistakes could be very costly. The UK money an
 service (https://maps.org.uk/en) has useful information when considering retirement.
 
 It is unclear to me if this tool will be useful to others given it was designed to my
-requirements. It is offered as is, you can make the judgement on whether it is useful to you.
+requirements. It is offered as is, you can make the judgment on whether it is useful to you.
 
 # Assumptions this tool makes
 These are the assumptions it makes are
@@ -36,6 +36,9 @@ These are the assumptions it makes are
 - Money is taken from either savings or pensions to meet outgoings during retirement.
 
 - This tool deals with draw down pensions only.
+
+- If you die before age 75 then your personal pension (if you have one) will be available
+  to your partner as a lump sum.
 
 
 # Installing the software
@@ -79,7 +82,7 @@ done! ✨ 🌟 ✨
 # Using the software
 
 ## Overview
-The software stores details of all your savings accounts and pensions. This information is only stored locally on your PC and all the files in which this information is stored is encrypted.
+The software stores details of all your savings accounts and pensions. This information is only stored locally on your PC and all the files in which this information is stored are encrypted.
 
 The capabilities are listed below.
 
