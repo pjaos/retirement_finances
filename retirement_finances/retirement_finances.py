@@ -7,6 +7,7 @@ import copy
 import shutil
 import traceback
 import bcrypt
+import platform
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -3472,22 +3473,15 @@ def main():
     try:
         parser = argparse.ArgumentParser(description="ngt examples.",
                                          formatter_class=argparse.RawDescriptionHelpFormatter)
-        parser.add_argument(
-            "-d", "--debug",  action='store_true', help="Enable debugging.")
-        parser.add_argument(
-            "-enable_syslog", action='store_true', help="Enable syslog.")
-        parser.add_argument(
-            "-p", "--password", help="Password use for encrypting savings and pension details.")
-        parser.add_argument(
-            "-f", "--folder",   help="The folder to store the retirement finances files in.")
-        parser.add_argument(
-            "--port", type=int, help="The TCP IP port to serve the GUI on (default = 9090).", default=9090)
-        parser.add_argument(
-            "--reload",  action='store_true', help="Set nicegui reload = True.")
-        parser.add_argument(
-            "-a", "--add_gnome_desktop_launcher",  action='store_true', help="Add a gnome desktop launcher.")
-        parser.add_argument(
-            "-r", "--remove_gnome_desktop_launcher",  action='store_true', help="Remove a gnome desktop launcher.")
+        parser.add_argument("-d", "--debug",  action='store_true', help="Enable debugging.")
+        parser.add_argument("-enable_syslog", action='store_true', help="Enable syslog.")
+        parser.add_argument("-p", "--password", help="Password use for encrypting savings and pension details.")
+        parser.add_argument("-f", "--folder",   help="The folder to store the retirement finances files in.")
+        parser.add_argument("--port", type=int, help="The TCP IP port to serve the GUI on (default = 9090).", default=9090)
+        parser.add_argument("--reload",  action='store_true', help="Set nicegui reload = True.")
+        if platform.system() == 'Linux':
+            parser.add_argument("-a", "--add_gnome_desktop_launcher",  action='store_true', help="Add a gnome desktop launcher.")
+            parser.add_argument("-r", "--remove_gnome_desktop_launcher",  action='store_true', help="Remove a gnome desktop launcher.")
 
         options = parser.parse_args()
         uio.enableDebug(options.debug)
@@ -3496,19 +3490,23 @@ def main():
         if options.enable_syslog:
             uio.info("Syslog enabled")
 
-        if options.add_gnome_desktop_launcher:
-            gda = GnomeDesktopApp('savings.png')
-            gda.create()
-            uio.info("Created gnome desktop application launcher")
+        setup_launcher = False
+        if platform.system() == 'Linux':
+            if options.add_gnome_desktop_launcher:
+                gda = GnomeDesktopApp('savings.png')
+                gda.create()
+                uio.info("Created gnome desktop application launcher")
+                setup_launcher = True
 
-        elif options.remove_gnome_desktop_launcher:
-            gda = GnomeDesktopApp('savings.png')
-            if gda.delete():
-                uio.info("Deleted gnome desktop application launcher")
-            else:
-                uio.info("No gnome desktop application launcher was found to delete.")
+            elif options.remove_gnome_desktop_launcher:
+                gda = GnomeDesktopApp('savings.png')
+                if gda.delete():
+                    uio.info("Deleted gnome desktop application launcher")
+                else:
+                    uio.info("No gnome desktop application launcher was found to delete.")
+                setup_launcher = True
 
-        else:
+        if not setup_launcher:
             finances = Finances(uio, options.password, options.folder)
             finances.initGUI(options.debug, port=options.port, reload=options.reload)
 
