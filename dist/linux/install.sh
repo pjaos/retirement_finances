@@ -15,14 +15,16 @@ REM Ensure we have the latest pip version
 python -m pip install --upgrade pip
 if  errorlevel 1 goto CMD_ERROR
 
-REM Install poetry
-python -m pip install poetry
+REM Ensure we have pipx installed
+python -m pip install pipx
 if  errorlevel 1 goto CMD_ERROR
 
-REM Create the python poetry env
-python -m poetry lock
+REM Ensure the path is set to reach application installed with pipx
+python -m pipx ensurepath
 if  errorlevel 1 goto CMD_ERROR
-python -m poetry install
+
+REM Install the retirement finances app via pipx, this may take a while...
+python -m pipx install installers/retirement_finances-3.7-py3-none-any.whl
 if  errorlevel 1 goto CMD_ERROR
 
 exit /b 0
@@ -35,6 +37,7 @@ exit /b 1
 :NO_PYTHON_ERROR
 REM Python not installed. Install Python and try again.
 REM The python command below should allow the user to start the Windows Python installer.
+REM Ensure you install python 3.12
 python
 pause
 exit /b 2
