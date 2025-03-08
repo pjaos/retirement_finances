@@ -24,7 +24,7 @@ python -m pipx ensurepath
 if  errorlevel 1 goto CMD_ERROR
 
 REM Install the retirement finances app via pipx, this may take a while...
-python -m pipx install installers/retirement_finances-3.7-py3-none-any.whl
+python -m pipx install retirement_finances-3.7-py3-none-any.whl
 if  errorlevel 1 goto CMD_ERROR
 
 exit /b 0
