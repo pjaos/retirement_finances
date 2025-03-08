@@ -93,7 +93,7 @@ The capabilities are listed below.
 - Check your expenditure as time progresses to see how you are doing against the above predictions.
 
 As stated previously the predictions are based on your guesses regarding future growth of pension
-funds, interest rates and spending. The first two of these are largley outside your control. Due
+funds, interest rates and spending. The first two of these are largely outside your control. Due
 to the wide variations in these, this tool allows you to see as early as possible how this
 is going sop that you can make changes if required.
 
