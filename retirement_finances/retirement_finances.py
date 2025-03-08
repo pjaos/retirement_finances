@@ -1575,12 +1575,12 @@ class PensionGUI(GUIBase):
 
     def _init_page(self):
         ui.label("Pension").style('font-size: 32px; font-weight: bold;')
-        self._state_pension_checkbox = ui.checkbox(PensionGUI.STATE_PENSION, value=True).on(
+        self._state_pension_checkbox = ui.checkbox(PensionGUI.STATE_PENSION, value=False).on(
             'click', self._state_pension_checkbox_callback).tooltip("This should be checked if this is a state pension. If not then this should be unchecked.")
         self._provider_field = ui.input(
-            label=PensionGUI.PENSION_PROVIDER_LABEL, value=PensionGUI.GOV).tooltip("The name of the pension provider.")
+            label=PensionGUI.PENSION_PROVIDER_LABEL, value="").tooltip("The name of the pension provider.")
         self._description_field = ui.input(
-            label=PensionGUI.PENSION_DESCRIPTION_LABEL, value=PensionGUI.STATE_PENSION).style('width: 400px;').tooltip("A description of the pension.")
+            label=PensionGUI.PENSION_DESCRIPTION_LABEL, value="").style('width: 400px;').tooltip("A description of the pension.")
         self._state_pension_state_date_field = GUIBase.GetInputDateField(
             PensionGUI.STATE_PENSION_START_DATE)
         self._pension_owner_field = ui.select(self._owner_list,
