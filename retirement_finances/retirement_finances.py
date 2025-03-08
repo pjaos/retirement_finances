@@ -1554,13 +1554,13 @@ class PensionGUI(GUIBase):
     def _ensure_default_pension_keys(self, pension_dict):
         """@brief Ensure the pension dict has the required keys."""
         if PensionGUI.STATE_PENSION not in pension_dict:
-            pension_dict[PensionGUI.STATE_PENSION] = True
+            pension_dict[PensionGUI.STATE_PENSION] = False
 
         if PensionGUI.PENSION_PROVIDER_LABEL not in pension_dict:
-            pension_dict[PensionGUI.PENSION_PROVIDER_LABEL] = PensionGUI.GOV
+            pension_dict[PensionGUI.PENSION_PROVIDER_LABEL] = ""
 
         if PensionGUI.PENSION_DESCRIPTION_LABEL not in pension_dict:
-            pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL] = PensionGUI.STATE_PENSION
+            pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL] = ""
 
         if PensionGUI.PENSION_OWNER_LABEL not in pension_dict:
             pension_dict[PensionGUI.PENSION_OWNER_LABEL] = ""
