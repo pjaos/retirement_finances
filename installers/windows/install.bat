@@ -36,8 +36,8 @@ exit /b 1
 
 :NO_PYTHON_ERROR
 REM Python not installed. Install Python and try again.
-REM The python command below should allow the user to start the Windows Python installer.
-REM Ensure you install python 3.12
+REM The python command below should allow you to start the Windows Python installer.
+REM Ensure you install python 3.12 or greater.
 python
 pause
 exit /b 2

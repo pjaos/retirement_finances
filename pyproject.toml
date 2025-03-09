@@ -22,6 +22,9 @@ psutil = "*"
 pandas = "*"
 bcrypt = "*"
 
+pywin32 = "*"
+winshell = "*"
+
 [tool.poetry.scripts]
 retirement_finances = "retirement_finances.retirement_finances:main"
 
