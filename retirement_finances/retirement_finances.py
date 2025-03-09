@@ -4,7 +4,6 @@
 import os
 import sys
 import argparse
-import os
 import copy
 import shutil
 import traceback
@@ -26,6 +25,7 @@ from p3lib.helper import getAbsFile
 from nicegui import ui
 
 import plotly.graph_objects as go
+
 
 class Config(object):
     """@brief Responsible for loading and saving the app config."""
@@ -3467,6 +3467,7 @@ class Plot1GUI(GUIBase):
         if self._money_ran_out:
             ui.notify("You ran out of money", type='negative')
 
+
 class WindowsApp():
 
     def __init__(self, uio=None):
@@ -3481,13 +3482,13 @@ class WindowsApp():
     def _get_startup_file(self):
         """@return Get the abs name of the program first started."""
         return os.path.abspath(sys.argv[0])
-    
+
     def _get_app_name(self):
         """@return The name of the running program without the .py extension."""
         app_name = self._get_startup_file()
         app_name = os.path.basename(app_name)
-        return app_name.replace(".py","")
-    
+        return app_name.replace(".py", "")
+
     def _get_shortcut_folder(self):
         temp_dir = os.path.join(os.getenv("TEMP"), "my_temp_shortcuts")
         os.makedirs(temp_dir, exist_ok=True)
@@ -3503,7 +3504,6 @@ class WindowsApp():
         """@brief Create a start menu item to launch a program.
            @param package_name The name of the package.
            @param icon_filename The name of the icon file."""
-        import winshell
         from win32com.client import Dispatch
         package_name = self._get_app_name()
         exe_name = f"{package_name}.exe"
@@ -3515,7 +3515,7 @@ class WindowsApp():
 
         icon_path = None
         if icon_filename:
-            icon_path = getAbsFile(icon_filename)      
+            icon_path = getAbsFile(icon_filename)
         if icon_path:
             if os.path.isfile(icon_path):
                 self.info(f"{icon_path} icon file found.")
@@ -3534,11 +3534,10 @@ class WindowsApp():
 
         if not os.path.isfile(shortcut_path):
             raise Exception(f"{shortcut_path} shortcut file missing after creation.")
-               
+
         self.info(f"{shortcut_path} shortcut created.")
 
     def delete(self):
-        import winshell
         shortcut_path = self._get_shortcut()
 
         if os.path.exists(shortcut_path):
@@ -3546,6 +3545,7 @@ class WindowsApp():
             self.info(f"Removed '{shortcut_path}' shortcut.")
         else:
             raise Exception(f"{shortcut_path} file not found.")
+
 
 def main():
     """@brief Program entry point"""
