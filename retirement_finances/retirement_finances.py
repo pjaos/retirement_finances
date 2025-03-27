@@ -22,7 +22,7 @@ from p3lib.file_io import CryptFile
 
 from p3lib.helper import getAbsFile
 
-from nicegui import ui
+from nicegui import ui, app
 
 import plotly.graph_objects as go
 
@@ -607,7 +607,10 @@ class Finances(GUIBase):
         """@brief Display a message for the user to show where the files are held."""
         msg = f'All files are stored in {self._config.get_config_folder()} folder.'
         with ui.footer():
-            ui.label(msg)
+            # Put label on left and button on the right.
+            with ui.row().classes('w-full justify-between items-center'):
+                ui.label(msg)
+                ui.button('Quit', on_click=app.shutdown).tooltip("Select to shutdown the Retirement Finances program.")
 
     def _init_top_level(self):
         self._load_global_config()
