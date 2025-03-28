@@ -25,7 +25,7 @@ DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE.txt
 ; Remove the following line to run in administrative install mode (install for all users.)
 PrivilegesRequired=lowest
-OutputDir=..\installers
+OutputDir=..\installers\windows
 OutputBaseFilename=Retirement_Finances_{#MyAppVersion}
 SetupIconFile=../assets/savings.ico
 Compression=lzma
@@ -40,7 +40,7 @@ Name: "{group}\Retirement_Finances"; Filename: "{app}\retirement_finances.bat"; 
 Name: "{group}\Uninstall Retirement Finances"; Filename: "{uninstallexe}"
 
 [Files]
-Source: "../installers/retirement_finances-3.7-py3-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion
+Source: "../installers/windows/retirement_finances-3.8-py3-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../pyproject.toml"; DestDir: "{app}"; Flags: ignoreversion
