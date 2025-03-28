@@ -45,25 +45,23 @@ These are the assumptions it makes are
 The 'Retirement Finances' software can be installed on Linux and Windows platforms.
 
 # Installing on Windows
-You will need to have permission to install programs onto your Windows PC before starting the installation.
+Double click on the install.bat file. If python is not installed on your PC, then the first time you run this, you will be prompted to install python.
 
-Before installing the software on Windows you will need to install the python environment. To do this follow the steps below.
+You can install python as shown below
 
 - Open the Microsoft Store (suitcase in the Windows toolbar that has the Windows logo on the side).
+
 - Enter [python](https://www.python.org/about/) into the 'Search apps, games, movies, and more' field at the top of the window.
+
 - Select 'Python 3.12' option from the displayed list.
-- Select the Get button to install python onto your PC.
 
-Python should then be installed onto your Windows PC. When this successfully completes you may install the Retirement Finances application.
+- Select the Get or Install button to install python onto your PC.
 
-Double click on the Retirement_Finances_3.5.exe file. The version number in the filename may change.
+Once python is installed, double click the install.bat file again, to install the retirement finances application.
 
-This will start a standard Windows program installer.
+The installation may take several minutes to complete.
 
-- The first windows shows the Open Source License agreement. This contains the MIT License text. Once you are happy, select the 'I accept the agreement' radio button and then select the Next button.
-- Select the Install button.
-- The install should proceed. A black command window will open and take some time to complete.
-- When this completes successfully, select the Finish button.
+When complete double click on the create_launcher.bat file. This will create an icon on the desktop to allow you to launch the Retirement Finances application.
 
 # Installing on Linux
 To install onto a Linux PC ensure you have python 3.12 or greater installed. Details of how to do this can be found [here](https://docs.python-guide.org/starting/install3/linux/).

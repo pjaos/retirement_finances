@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Retirement_Finances"
-#define MyAppVersion "3.7"
+#define MyAppVersion "3.8"
 #define MyAppPublisher "Paul Austen"
 #define MyAppURL "https://github.com/pjaos/retirement_finances"
 
