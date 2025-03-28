@@ -20,7 +20,7 @@ from p3lib.helper import logTraceBack
 from p3lib.pconfig import DotConfigManager
 from p3lib.file_io import CryptFile
 
-from p3lib.helper import getAbsFile
+from p3lib.helper import getAbsFile, getProgramVersion
 
 from nicegui import ui, app
 
@@ -468,6 +468,7 @@ class Finances(GUIBase):
         self._authenticated_password = None
         self._config = Config(self._folder,
                               show_load_save_notifications=self._uio.isDebugEnabled())
+        self._program_version = getProgramVersion()
 
     def _open_main_window(self):
         """@brief Called to allow the user to enter the password in order to access
@@ -606,11 +607,13 @@ class Finances(GUIBase):
     def _show_config_location(self, location='top'):
         """@brief Display a message for the user to show where the files are held."""
         msg = f'All files are stored in {self._config.get_config_folder()} folder.'
-        with ui.footer():
+        with ui.footer().style('height: 60px;'):
             # Put label on left and button on the right.
             with ui.row().classes('w-full justify-between items-center'):
                 ui.label(msg)
-                ui.button('Quit', on_click=app.shutdown).tooltip("Select to shutdown the Retirement Finances program.")
+                with ui.row():
+                    ui.label(f"Software Version: {self._program_version}")
+                    ui.button('Quit', on_click=app.shutdown).tooltip("Select to shutdown the Retirement Finances program.")
 
     def _init_top_level(self):
         self._load_global_config()
