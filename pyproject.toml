@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "retirement-finances"
-version = "3.7"
+version = "3.8"
 description = ""
 authors = ["Paul Austen <pjaos@gmail.com>"]
 readme = "README.md"
@@ -12,6 +12,7 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
+cryptography = "*"
 click = "*"
 p3lib = "^1.1.105"
 requests = "*"
@@ -21,8 +22,8 @@ python-dateutil = "*"
 psutil = "*"
 pandas = "*"
 bcrypt = "*"
-
-pywin32 = "*"
+# Need this on a windows platform
+#pywin32 = "*"
 
 [tool.poetry.scripts]
 retirement_finances = "retirement_finances.retirement_finances:main"
