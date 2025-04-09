@@ -613,7 +613,15 @@ class Finances(GUIBase):
                 ui.label(msg)
                 with ui.row():
                     ui.label(f"Software Version: {self._program_version}")
-                    ui.button('Quit', on_click=app.shutdown).tooltip("Select to shutdown the Retirement Finances program.")
+                    ui.button('Quit', on_click=self.close).tooltip("Select to shutdown the Retirement Finances program.")
+
+    def close(self):
+        """@brief Close down the app server."""
+        ui.notify("Server shutting down. Close browser window (click x on browser tab).")
+        try:
+            app.shutdown()
+        except AttributeError:
+            pass
 
     def _init_top_level(self):
         self._load_global_config()
