@@ -50,8 +50,8 @@ class Config(object):
             else:
                 raise Exception("{folder} folder not found.")
         else:
-            cfg_filename = DotConfigManager.GetConfigFile(DotConfigManager.GetDefaultConfigFilename())
-            cfg_folder = cfg_filename.replace(".cfg", "")
+            default_cfg_folder = DotConfigManager.GetDefaultConfigFolder()
+            cfg_folder = os.path.join(default_cfg_folder, 'retirement_finances')
 
         if not os.path.isdir(cfg_folder):
             os.makedirs(cfg_folder)
