@@ -1927,7 +1927,7 @@ class FuturePlotGUI(GUIBase):
             ui.label("Drawdown Retirement Prediction").style('font-size: 32px; font-weight: bold;')
         with ui.row():
             ui.label(
-                "The following parameters can be change to alter your retirement prediction.")
+                "The following parameters can be changed to alter your retirement prediction.")
 
         with ui.row():
             with ui.column():
