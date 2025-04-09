@@ -2557,7 +2557,6 @@ class FuturePlotGUI(GUIBase):
                 total_savings_withdrawal = savings_withdrawal_amount + lump_sum_savings_withdrawal
 
                 # Calc the new savings and pension amounts
-                personal_pension_value = personal_pension_value - total_pension_withdrawal
 
                 savings_amount = savings_amount - total_savings_withdrawal
                 # Calc the increase/decrease on savings this month given the predicted interest rate.
@@ -2565,9 +2564,44 @@ class FuturePlotGUI(GUIBase):
                 # We assume savings interest accrues monthly but is added yearly. Therefore add to a list for use later.
                 monthly_savings_interest_list.append(increase_this_month)
 
+                personal_pension_value = personal_pension_value - total_pension_withdrawal
                 # Calc increase/decrease of pension this month due to growth/decline. We assume this acru's monthly
                 personal_pension_increase = self._get_pension_increase_this_month(personal_pension_value, year_index)
                 personal_pension_value = personal_pension_value + personal_pension_increase
+
+                # If we have no pension left but expect to withdraw from it
+                if personal_pension_value <= 0 and total_pension_withdrawal > 0:
+                    # Check to see if we can take what we need from savings.
+                    if total_pension_withdrawal < savings_amount:
+                        savings_amount = savings_amount - total_pension_withdrawal
+                        total_savings_withdrawal += total_pension_withdrawal
+                        total_pension_withdrawal = 0
+                        personal_pension_value = 0
+
+                    # We have no savings or pension left
+                    else:
+                        total_savings_withdrawal = 0
+                        total_pension_withdrawal = 0
+                        # Income drops to the state pension if we run out of money as this is the only other source.
+                        predicted_income_this_month = state_pension_this_month
+                        money_ran_out = True
+
+                # If we have no savings left but expect to withdraw from it
+                if savings_amount <= 0 and total_savings_withdrawal > 0:
+                    # Check to see if we can take what we need from pensions.
+                    if total_savings_withdrawal < personal_pension_value:
+                        personal_pension_value = personal_pension_value - total_savings_withdrawal
+                        total_pension_withdrawal += total_savings_withdrawal
+                        total_savings_withdrawal = 0
+                        savings_amount = 0
+
+                    # We have no savings or pension left
+                    else:
+                        total_savings_withdrawal = 0
+                        total_pension_withdrawal = 0
+                        # Income drops to the state pension if we run out of money as this is the only other source.
+                        predicted_income_this_month = state_pension_this_month
+                        money_ran_out = True
 
                 # Calc the total spending this month
                 spending_this_month = total_savings_withdrawal + total_pension_withdrawal + state_pension_this_month + monthly_from_other_sources
@@ -2608,6 +2642,7 @@ class FuturePlotGUI(GUIBase):
 
                 if total <= 0:
                     money_ran_out = True
+
             final_year = self._get_final_year()
             if overlay_real_performance:
                 pp_table = self._get_personal_pension_table()
