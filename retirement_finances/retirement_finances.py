@@ -2543,23 +2543,30 @@ class FuturePlotGUI(GUIBase):
                         # No pension drop as we are now we are drawing down on savings.
                         pension_withdrawal_amount = 0
 
-                # Calc the withdrawal from savings and pension
-                total_pension_withdrawal = pension_withdrawal_amount + lump_sum_pension_withdrawal
+                # We can't take money from a pension that's reached zero
+                if personal_pension_value > 0:
+                    # Calc the withdrawal from savings and pension
+                    total_pension_withdrawal = pension_withdrawal_amount + lump_sum_pension_withdrawal
 
                 total_savings_withdrawal = savings_withdrawal_amount + lump_sum_savings_withdrawal
 
-                # Calc the new savings and pension amounts
-                personal_pension_value = personal_pension_value - total_pension_withdrawal
+                # We can't take money from a pension that's reached zero
+                if personal_pension_value > 0:
+                    # Calc the new savings and pension amounts
+                    personal_pension_value = personal_pension_value - total_pension_withdrawal
+
                 savings_amount = savings_amount - total_savings_withdrawal
                 # Calc the increase/decrease on savings this month given the predicted interest rate.
                 increase_this_month = self._get_savings_increase_this_month(savings_amount, year_index)
                 # We assume savings interest accrues monthly but is added yearly. Therefore add to a list for use later.
                 monthly_savings_interest_list.append(increase_this_month)
 
-                # Calc increase/decrease of pension this month due to growth/decline. We assume this acru's monthly
-                personal_pension_increase = self._get_pension_increase_this_month(personal_pension_value,
+                # We can't take money from a pension that's reached zero
+                if personal_pension_value > 0:
+                    # Calc increase/decrease of pension this month due to growth/decline. We assume this acru's monthly
+                    personal_pension_increase = self._get_pension_increase_this_month(personal_pension_value,
                                                                                   year_index)
-                personal_pension_value = personal_pension_value + personal_pension_increase
+                    personal_pension_value = personal_pension_value + personal_pension_increase
 
                 # Calc the total spending this month
                 spending_this_month = total_savings_withdrawal + total_pension_withdrawal + state_pension_this_month + monthly_from_other_sources
@@ -2574,6 +2581,9 @@ class FuturePlotGUI(GUIBase):
                         # Transfer all pension funds to savings tax free
                         savings_amount = savings_amount + personal_pension_value
                         personal_pension_value = 0
+                        # As pension fund is now zero set this to None to
+                        # stop any further pension fund withdrawals
+                        pension_drawdown_start_date = None
                         tax_free_pension_event = True
 
                 if total <= 0:
