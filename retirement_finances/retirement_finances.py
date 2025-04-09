@@ -2564,8 +2564,7 @@ class FuturePlotGUI(GUIBase):
                 # We can't take money from a pension that's reached zero
                 if personal_pension_value > 0:
                     # Calc increase/decrease of pension this month due to growth/decline. We assume this acru's monthly
-                    personal_pension_increase = self._get_pension_increase_this_month(personal_pension_value,
-                                                                                  year_index)
+                    personal_pension_increase = self._get_pension_increase_this_month(personal_pension_value, year_index)
                     personal_pension_value = personal_pension_value + personal_pension_increase
 
                 # Calc the total spending this month
