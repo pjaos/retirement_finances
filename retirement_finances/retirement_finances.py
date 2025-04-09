@@ -569,7 +569,7 @@ class Finances(GUIBase):
             ui.label('Password:')
         with ui.row():
             self._password_input = ui.input(password=True).props("autofocus").on("keydown.enter", lambda e: self._open_main_window())
-            self._password_input.tooltip("The password must be at least 16 characters long. It must contain upper and lowercase characters with at least one number.")
+            self._password_input.tooltip("The password must be at least 8 characters long. It must contain upper and lowercase characters with at least one number.")
             self._password_input.value = self._password
         with ui.row():
             ui.button('OK', on_click=self._open_main_window)
@@ -587,8 +587,8 @@ class Finances(GUIBase):
         """@brief Check if the password is valid. I.E meets the complexity criteria.
            @param password The password to check.
            @return None if valid password is entered, else it may return an error message."""
-        if len(password) < 16:
-            return "The password must be at least 16 characters long."
+        if len(password) < 8:
+            return "The password must be at least 8 characters long."
         has_upper = any(char.isupper() for char in password)
         has_lower = any(char.islower() for char in password)
         has_digit = any(char.isdigit() for char in password)
