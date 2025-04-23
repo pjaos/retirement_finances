@@ -21,8 +21,9 @@ service (https://maps.org.uk/en) has useful information when considering retirem
 It is unclear to me if this tool will be useful to others given it was designed to my
 requirements. It is offered as is, you can make the judgment on whether it is useful to you.
 
+
 # Assumptions this tool makes
-These are the assumptions it makes are
+The assumptions made by this tool are shown below. These assumptions define the constraints I chose when designing this tool. They may not be directly applicable to your situation.
 
 - Savings interest accrues daily but is added at the start of each year for the previous year.
 
@@ -31,7 +32,7 @@ These are the assumptions it makes are
 - State pension changes (hopefully increases) in April for the new financial year. The first
   full month of the changed state pension will be in May.
 
-- This tool does not take tax into account.
+- This tool does not take tax into account. Therefore you must be aware of the tax implications of your pension decisions.
 
 - Money is taken from either savings or pensions to meet outgoings during retirement.
 
