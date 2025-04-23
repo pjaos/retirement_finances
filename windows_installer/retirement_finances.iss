@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Retirement_Finances"
-#define MyAppVersion "4.0"
+#define MyAppVersion "4.1"
 #define MyAppPublisher "Paul Austen"
 #define MyAppURL "https://github.com/pjaos/retirement_finances"
 
@@ -40,7 +40,7 @@ Name: "{group}\Retirement_Finances"; Filename: "{app}\retirement_finances.bat"; 
 Name: "{group}\Uninstall Retirement Finances"; Filename: "{uninstallexe}"
 
 [Files]
-Source: "../installers/windows/retirement_finances-4.0-py3-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion
+Source: "../installers/windows/retirement_finances-4.1-py3-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../pyproject.toml"; DestDir: "{app}"; Flags: ignoreversion
