@@ -2435,8 +2435,12 @@ class FuturePlotGUI(GUIBase):
                 pension_drawdown_start_date = datetime.strptime(self._future_plot_attr_dict[FuturePlotGUI.PENSION_DRAWDOWN_START_DATE], '%d-%m-%Y')
             else:
                 pension_drawdown_start_date = None
-            predicted_state_pension_table = self._get_predicted_state_pension(
-                datetime_list, report_start_date)
+            predicted_state_pension_table = self._get_predicted_state_pension(datetime_list, report_start_date)
+            # DEBUG
+            #print("PJA: predicted_state_pension_table")
+            #for row in  predicted_state_pension_table:
+            #    print(f"PJA: row = {row}")
+
             if predicted_state_pension_table is None:
                 raise Exception('No state pension defined in the pension list.')
             monthly_from_other_sources = float(self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES])
@@ -2444,8 +2448,9 @@ class FuturePlotGUI(GUIBase):
                 self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE])
 
             # Get the initial value of our personal pension
-            personal_pension_value = self._get_initial_value(
-                pp_table, report_start_date)
+            personal_pension_value = self._get_initial_value(pp_table, report_start_date)
+            # DEBUG
+            # print(f"PJA: INITIAL personal_pension_value={personal_pension_value}")
             savings_amount = self._get_savings_total(report_start_date)
             state_pension_this_month = self._get_state_pension_this_month(
                 first_date, predicted_state_pension_table)
@@ -2460,6 +2465,8 @@ class FuturePlotGUI(GUIBase):
             total = savings_amount + personal_pension_value
             predicted_income_this_month = monthly_budget_table[0][1]
             state_pension_this_month = self._get_state_pension_this_month(first_date, predicted_state_pension_table)
+            # DEBUG
+            # print(f"PJA: state_pension_this_month={state_pension_this_month}")
             tax_free_pension_event = False
             money_ran_out = False
             # We assume our spending matches our income for the first month.
@@ -2782,10 +2789,8 @@ class FuturePlotGUI(GUIBase):
         for bank_account_dict in bank_account_dict_list:
             active = bank_account_dict[BankAccountGUI.ACCOUNT_ACTIVE]
             if active:
-                date_value_table = self._convert_table(
-                    bank_account_dict[BankAccountGUI.TABLE])
-                account_amount = self._get_initial_value(
-                    date_value_table, initial_date=at_date)
+                date_value_table = self._convert_table(bank_account_dict[BankAccountGUI.TABLE])
+                account_amount = self._get_initial_value(date_value_table, initial_date=at_date)
                 savings_total += account_amount
         return savings_total
 
@@ -3052,7 +3057,7 @@ class FuturePlotGUI(GUIBase):
                 # We approximate this to the 1 may as we won't get a full months pension until then.
                 # This means that the prediction will miss some of the first months state pension but
                 # we accept this for purposes of this report.
-                if this_datetime.month == 5:
+                if this_datetime.month == 5 and year_index > 0:
                     state_pension_amount = self._calc_new_account_value(state_pension_amount,
                                                                         self._future_plot_attr_dict.get(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST),
                                                                         year_index)
@@ -3151,17 +3156,27 @@ class FuturePlotGUI(GUIBase):
             return 0
 
         else:
-            initial_value = date_value_table[0][1]
+            initial_value = None
             if initial_date:
                 for row in date_value_table:
                     _date = row[0]
                     _value = row[1]
+                    # DEBUG print(f"PJA: initial_date={initial_date}, _date={_date}, _value={_value}, previous_value={previous_value}")
+                    # We could linterp this data to try and predict the value at the given initial date. However
+                    # this may not be correct due to values not increasing in this fashion (I.E savings accounts
+                    # interest paid on a date each year). Therefore as we may not have the data, we choose the
+                    # closest value we have.
                     if _date >= initial_date:
                         initial_value = _value
                         break
                     else:
                         initial_value = _value
+                    previous_value = _value
 
+            if initial_value is None:
+                raise Exception("Start date to early. Data is missing for this start date.")
+
+            # DEBUG print(f"PJA: _get_initial_value(): initial_value={initial_value}")
             return initial_value
 
     def _get_monthly_budget_table(self, datetime_list):
@@ -3465,6 +3480,9 @@ class Plot1GUI(GUIBase):
 
         max_y = 0
         for plot_name in plot_dict:
+            # Skip the monthly budget/income trace as it's the same as the Predicted Spending plot
+            if plot_name == 'Monthly budget/income':
+                continue
             plot_table = plot_dict[plot_name]
             x, y = zip(*plot_table)
             # If the caller wants to limit the number of years we plot over.
