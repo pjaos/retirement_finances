@@ -3171,7 +3171,6 @@ class FuturePlotGUI(GUIBase):
                         break
                     else:
                         initial_value = _value
-                    previous_value = _value
 
             if initial_value is None:
                 raise Exception("Start date to early. Data is missing for this start date.")
