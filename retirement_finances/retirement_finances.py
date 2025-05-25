@@ -2437,8 +2437,8 @@ class FuturePlotGUI(GUIBase):
                 pension_drawdown_start_date = None
             predicted_state_pension_table = self._get_predicted_state_pension(datetime_list, report_start_date)
             # DEBUG
-            #print("PJA: predicted_state_pension_table")
-            #for row in  predicted_state_pension_table:
+            # print("PJA: predicted_state_pension_table")
+            # for row in  predicted_state_pension_table:
             #    print(f"PJA: row = {row}")
 
             if predicted_state_pension_table is None:
