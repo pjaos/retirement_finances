@@ -1850,6 +1850,7 @@ class FuturePlotGUI(GUIBase):
         self._init_gui()
         self._init_add_row_dialog()
         self._init_ok_to_delete_dialog()
+        self._report_start_date = None
 
     def _ensure_keys_present(self):
         """@brief Ensure the required keys are present in the config dict that relate to the future plot attrs."""
@@ -2419,6 +2420,8 @@ class FuturePlotGUI(GUIBase):
             max_planning_date = self._get_max_date()
             report_start_date = datetime.strptime(
                 self._future_plot_attr_dict[FuturePlotGUI.REPORT_START_DATE], '%d-%m-%Y')
+            # Set parameter to be used later
+            self._report_start_date = report_start_date
             # A list of the dates to be plotted (monthly)
             datetime_list = FuturePlotGUI.GetDateTimeList(
                 report_start_date, max_planning_date)
@@ -2876,7 +2879,8 @@ class FuturePlotGUI(GUIBase):
         return self._get_amalgamated_table(pp_dfl)
 
     def _get_savings_table(self):
-        """@return A table that contains the total amounts in all our savings accounts
+        """@param start_date The start date. Dates before this are ignored.
+           @return A table that contains the total amounts in all our savings accounts
                    over time. This is not predicted but comprises the total of all
                    savings accounts."""
         savings_dfl = self._get_savings_pd_dfl()
@@ -2954,9 +2958,7 @@ class FuturePlotGUI(GUIBase):
         for pension_dict in pension_dict_list:
             state_pension = pension_dict[PensionGUI.STATE_PENSION]
             if not state_pension:
-                table = pension_dict[PensionGUI.PENSION_TABLE]
-                dates, values = zip(*table)
-                data_dict = {"Date": dates, "Value": values}
+                data_dict = self._get_data_dict(pension_dict[PensionGUI.PENSION_TABLE])
                 pd_dataframe = pd.DataFrame(data_dict)
                 pd_dataframe_list.append(pd_dataframe)
         return pd_dataframe_list
@@ -2988,6 +2990,34 @@ class FuturePlotGUI(GUIBase):
 
         return self._convert_table(table2.values.tolist())
 
+    def _get_data_dict(self, table):
+        # We want to limit data in the table to dates on or after the report start date
+        if self._report_start_date:
+            # Filter based on parsed date
+            filtered = [
+                (date_str, value)
+                for date_str, value in table
+                if datetime.strptime(date_str, '%d-%m-%Y') >= self._report_start_date
+            ]
+
+            # Unpack results
+            if filtered:
+                new_dates, new_values = zip(*filtered)
+            else:
+                # If unable to select a date on or after the report start date use the latest data we have.
+                dates, values = zip(*table)
+                new_dates = dates[-1]
+                new_values = values[-1]
+            dates = new_dates
+            values = new_values
+
+        else:
+            # If no report start date then use all the data we have
+            # We should never really get here as a report start date is required.
+            dates, values = zip(*table)
+
+        return {"Date": dates, "Value": values}
+
     def _get_savings_pd_dfl(self):
         # Build a list of pandas dataframes
         pd_dataframe_list = []
@@ -2995,9 +3025,7 @@ class FuturePlotGUI(GUIBase):
         for bank_accounts_dict in bank_accounts_dict_list:
             active = bank_accounts_dict[BankAccountGUI.ACCOUNT_ACTIVE]
             if active:
-                table = bank_accounts_dict[BankAccountGUI.TABLE]
-                dates, values = zip(*table)
-                data_dict = {"Date": dates, "Value": values}
+                data_dict = self._get_data_dict(bank_accounts_dict[BankAccountGUI.TABLE])
                 pd_dataframe = pd.DataFrame(data_dict)
                 pd_dataframe_list.append(pd_dataframe)
         return pd_dataframe_list
