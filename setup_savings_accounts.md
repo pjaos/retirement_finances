@@ -23,11 +23,11 @@ These are
 
   This should be selected if this account should be included in your retirement planning finances.
   Typically this would be checked initially but can be unchecked if the account is no longer used
-  or has funds that you don't wish to be included in funding your retirement.
+  or contains money that you don't wish to be included in funding your retirement.
 
 - Bank/Building Society Name
 
-  The name of the organisation where the savings are held. This is a required field (I.E you must enter something) but again, initially, when getting used to how this program can be used you may wish to enter dummy data. You can repeat this for all fields on all the forms presented if you wish.
+  The name of the organisation where the savings are held. This is a required field (I.E you must enter something). Initially, when getting used to how this program can be used you may wish to enter dummy data.
 
 - Account Name
 
@@ -43,7 +43,7 @@ These are
 
 - Owner
 
-  You may select the owner of this account from the drop down list. This is either you or your partner.
+  You may select the owner of this account from the drop down list. This is either you, your partner or Joint.
 
 - Interest rate
 
@@ -55,7 +55,7 @@ These are
 
 - Open Date
 
-  This should be the date when the account was opened. This is a required field as before this date the account should not have any money in it. The date format is DD-MM-YYYY.
+  This should be the date when the account was opened. This is a required field. The date format is DD-MM-YYYY.
 
 - Notes
 
@@ -63,7 +63,7 @@ This is a free form text field that allows you to enter any information you wish
 
 - Date/Balance Table.
 
-  Initially this will be empty. Select the ADD button and enter a date and balance and then select the OK button to add a balance to the savings account. This value is used as part of your total savings when making predictions.
+  Initially this will be empty. Select the ADD button and enter a date and balance and then select the OK button to add a balance to the savings account. Values in this table are used as part of your total savings when making predictions.
 
 
 Once you have finished filling in this form select the SAVE button to save the savings account details. The BACK button will take you to the previous window.

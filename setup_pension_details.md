@@ -1,7 +1,7 @@
 ## PENSIONS Tab
 This is similar to the SAVINGS tab but allows you to add all your pensions (State and Personal). The list of pensions will initially be empty. Select the ADD button to add details of a pension to the list.
 
-The initial state with no pensions defined is shown below.
+Before any pensions are added this should appear as shown below.
 
 ![alt text](images/pensions_tab_empty.png "Empty savings tab")
 
@@ -25,7 +25,7 @@ This contains the following fields.
 
 - Description
 
-  This allows you to enter a description of the pension if you wish. This is a required field.
+  This allows you to enter a description of the pension. This is a required field.
 
 - State Pension State Date
 
