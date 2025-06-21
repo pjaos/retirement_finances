@@ -10,21 +10,21 @@ software package. As I have worked as a software engineer for some time I though
 I would give this a go.
 
 I wanted a tool that I could use to project various scenario's based on what I considered
-possible parameters (E.G pension growth rates, savings interest rates etc). People with
-much more knowledge of such predictions/guesses than I appear not to be able to make
-very accurate predictions (particularly over longer timescales). Therefore I wanted
-the tool to track the progression of my finances so that I can adjust my spending
-as early as possible if required.
+possible parameters (E.G pension growth rates, savings interest rates etc). Professionals with
+much more knowledge of such predictions/guesses than I, appear not to be able to make
+very accurate predictions (particularly over longer timescales).
+
+Therefore I (who have no background in finance) wanted a tool to track the progression of
+my finances over time so that I can adjust my spending as early as possible if required.
 
 This tool must be used with care, the retirement choices you make are yours alone. You may wish to
 consult a financial advisor to understand your options so that you make the best decisions
 with regard to your retirement as mistakes can be very costly. Also the UK money and pensions
 service (https://maps.org.uk/en) has useful information when considering retirement.
 
-It is unclear to me if this tool will be useful to others given it was designed for
-requirements.
+It is unclear to me if this tool will be useful to others given it was designed for requirements.
 
-It is offered as is under the MIT license, you can make the judgment on whether it is useful to you.
+It is offered as is under the MIT license, you can make the judgment on whether it may be useful to you.
 
 
 # Assumptions this tool makes
@@ -45,21 +45,12 @@ The assumptions made by this tool are shown below. These assumptions define the 
 
 - This tool deals with draw down pensions only.
 
-- If you die before age 75 then your personal pension (if you have one) will be available
-  to your partner as a lump sum.
+- If you die before age 75 then your personal pension will be available
+  to your partner (if you have one) as a tax free lump sum.
 
 
 # Installing the software
-The 'Retirement Finances' software can be installed on Linux and Windows platforms.
-
-# Installing on Windows
-
-- To install onto a Linux PC ensure you have python 3.12 installed. Details of how to install python can be found [here](https://docs.python.org/3.12/using/windows.html). When the initial screen is displayed you mus select the 'Add Python to PATH' checkbox.
-
-- Double click on installers/windows/Retirement_Finances_4.4.exe (4.4 version may change) file and step through the installation.
-
-The installation may take several minutes to complete. When complete the Retirement_Finances launcher can be found from the Windows Start button.
-
+The 'Retirement Finances' software (the App) can be installed on Linux and Windows platforms.
 
 # Installing on Linux
 To install onto a Linux PC ensure you have python 3.12 installed. Details of how to install python can be found [here](https://docs.python.org/3.12/using/unix.html). pipx must also be installed onto the Linux PC. Details of how to install pipx can be found [here](https://pipx.pypa.io/latest/installation/)
@@ -75,23 +66,30 @@ done! ✨ 🌟 ✨
 ```
 
 
+# Installing on Windows
+
+- To install onto a Linux PC ensure you have python 3.12 installed. Details of how to install python can be found [here](https://docs.python.org/3.12/using/windows.html). When the initial screen is displayed you mus select the 'Add Python to PATH' checkbox.
+
+- Double click on installers/windows/Retirement_Finances_4.4.exe (4.4 version may change) file and step through the installation.
+
+The installation may take several minutes to complete. When complete the Retirement_Finances launcher can be found from the Windows Start button.
+
+
 # Using the software
 
 ## Overview
 The software stores details of your savings and pension accounts. This information is only stored locally on your PC and all the files in which this information is stored are encrypted.
 
-The capabilities are listed below.
+A general overview of the Apps functionality is listed below.
 
 - Enter your savings details.
 - Enter your pension details.
 - Enter details of your spending as time progresses.
-- Make predictions of how long these will last you given details you enter.
+- Make predictions of how long these will last.
 - Check your expenditure as time progresses to see how you are doing against the above predictions.
 
 As stated previously the predictions are based on your guesses regarding future growth of pension
-funds, interest rates and spending. The first two of these are largely outside your control. Due
-to the wide variations in these, this tool allows you to see as early as possible how this
-is going sop that you can make changes if required.
+funds, interest rates and spending.
 
 
 # Starting the software
@@ -120,7 +118,7 @@ The startup icon has now been created. To access the gnome launcher icon on Ubun
 
 
 ## On Windows
-Type 'Retirement_Finances' into the windows search bar in the taskbar (normally at the bottom of the main windows screen) and select 'Retirement_Finances' under 'best match'. This opens a window indicating the the application is starting up. Shortly afterwards (the time will depend how fast your PC is) a 'Retirement Finances' browser window should open asking you to enter a password as shown below under 'Initial browser window'.
+Type 'Retirement_Finances' after selecting the Windows Start button and select 'Retirement_Finances' under 'best match'. This opens a window indicating that the application is starting up. Shortly afterwards (the time will depend how fast your PC is) a 'Retirement Finances' browser window should open asking you to enter a password as shown below under 'Initial browser window'.
 
 
 # Initial browser window
@@ -133,11 +131,11 @@ This will open your systems default web browser as shown below
 
 - Quit button
 
-This must be selected to shut down the program. If you just close the browser window the Retirement Finances (App) will stay running. You can reconnect to it by entering 127.0.0.1:9090. The app will only be accessible from your local machine.
+This must be selected to shut down the program. If you just close the browser window the Retirement Finances (App) will stay running. You can reconnect to it by entering 127.0.0.1:9090 into the browsers address bar. The app will only be accessible from your local machine.
 
 - Software Version
 
-To the left of the Quit button the Apps software version is displayed.
+To the left of the Quit button the Retirement Finances App software version is displayed.
 
 - Storage Folder
 
@@ -149,11 +147,10 @@ As detailed above all the files created by the App are encrypted and you must en
 
 The first time you open the App no password will have been set.
 
-To create a password enter the password that you wish to set in the Password field and select the OK button. If you select the Password field with your mouse then a tooltip is displayed indicating what to enter into the field as shown below.
+To create a password enter the password that you wish to set in the Password field and select the OK button. If you select the Password field with your mouse then a tooltip is displayed indicating what to enter into the field as shown below. When using the App all fields should have tooltips associated with them to indicated the expected input.
 
 ![alt text](images/initial_window_enter_password.png "Initial Window, Enter Password")
 
-When using the App all fields should have tooltips associated with them to indicated the expected input.
 
 Enter a password that you wish to use. The following message will then be displayed
 
@@ -222,21 +219,18 @@ Once the initial configuration (as detailed above) is complete the following ste
 ## Enter Monthly Spending
 
 The 'MONTHLY SPENDING' tab allows you to enter the total amount you spend each month as time goes by.
-This is not your predicted monthly spending, but your total monthly spending. Ideally this would be an
-amount on the first of the month that you spent in the previous month. Over time this data builds up
-and is used to plot your actual spending each month, you average spending each month and can be
+This is not your predicted monthly spending but the actual amount your spend each month. Over time this data builds up
+and is used to plot your actual spending each month and your average spending each month and can be
 displayed against your predicted spending each month. This is useful to show you how much a
 'grasp' you have on your outgoings.
 
-This Amount of spending each month should be updated regularly (E.G monthly), ideally on the
-same date each month.
+This monthly spending table should be updated regularly (E.G monthly).
 
 - For details of how to use the 'Enter Monthly Spending tab click [here](./monthly_spending.md)
 
 ## REPORTS
 
 This is where you can see the total state of your finances and try out different predictions
-including predictive plots. This is where the useful functionality is.
-
+including predictive plots.
 
 - For details of how to use the reports functionality click [here](./reports.md)
