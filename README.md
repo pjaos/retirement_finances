@@ -22,7 +22,7 @@ consult a financial advisor to understand your options so that you make the best
 with regard to your retirement as mistakes can be very costly. Also the UK money and pensions
 service (https://maps.org.uk/en) has useful information when considering retirement.
 
-It is unclear to me if this tool will be useful to others given it was designed for requirements.
+It is unclear to me if this tool will be useful to others given it was designed for my requirements.
 
 It is offered as is under the MIT license, you can make the judgment on whether it may be useful to you.
 
