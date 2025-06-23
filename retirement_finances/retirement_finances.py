@@ -798,9 +798,9 @@ class Finances(GUIBase):
 
             # Add last empty row to show the totals
             self._bank_acount_table.add_row({BankAccountGUI.ACCOUNT_OWNER: "",
-                                                BankAccountGUI.BANK: "",
-                                                BankAccountGUI.ACCOUNT_NAME_LABEL: "Total",
-                                                BankAccountGUI.BALANCE: total})
+                                             BankAccountGUI.BANK: "",
+                                             BankAccountGUI.ACCOUNT_NAME_LABEL: "Total",
+                                             BankAccountGUI.BALANCE: total})
             self._bank_acount_table.run_method(
                 'scrollTo', len(self._bank_acount_table.rows)-1)
 
