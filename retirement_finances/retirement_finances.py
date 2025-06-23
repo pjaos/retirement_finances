@@ -716,10 +716,9 @@ class Finances(GUIBase):
 
         with ui.row():
             columns = [{'name': BankAccountGUI.ACCOUNT_OWNER, 'label': BankAccountGUI.ACCOUNT_OWNER, 'field': BankAccountGUI.ACCOUNT_OWNER},
-                       {'name': BankAccountGUI.BANK, 'label': BankAccountGUI.BANK,
-                           'field': BankAccountGUI.BANK},
-                       {'name': BankAccountGUI.ACCOUNT_NAME_LABEL, 'label': BankAccountGUI.ACCOUNT_NAME_LABEL,
-                           'field': BankAccountGUI.ACCOUNT_NAME_LABEL},
+                       {'name': BankAccountGUI.BANK, 'label': BankAccountGUI.BANK, 'field': BankAccountGUI.BANK},
+                       {'name': BankAccountGUI.ACCOUNT_NAME_LABEL, 'label': BankAccountGUI.ACCOUNT_NAME_LABEL, 'field': BankAccountGUI.ACCOUNT_NAME_LABEL},
+                       {'name': BankAccountGUI.BALANCE, 'label': BankAccountGUI.BALANCE, 'field': BankAccountGUI.BALANCE}
                        ]
             self._bank_acount_table = ui.table(columns=columns,
                                                rows=[],
@@ -773,17 +772,35 @@ class Finances(GUIBase):
             self._bank_acount_table.rows.clear()
             self._bank_acount_table.update()
             bank_accounts_dict_list = self._config.get_bank_accounts_dict_list()
+            total = 0
             for bank_account_dict in bank_accounts_dict_list:
                 owner = bank_account_dict[BankAccountGUI.ACCOUNT_OWNER]
                 bank = bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL]
                 account_name = bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
                 active_account = bank_account_dict[BankAccountGUI.ACCOUNT_ACTIVE]
+                balanceTable = bank_account_dict[BankAccountGUI.TABLE]
+                balance = ""
+                if active_account:
+                    balance = 0
+                    if len(balanceTable) > 0:
+                        lastRow = balanceTable[-1]
+                        if len(lastRow) == 2:
+                            balance = float(lastRow[1])
+                            total += balance
                 show_account = True
                 if show_only_active_accounts and not active_account:
                     show_account = False
                 if show_account:
-                    self._bank_acount_table.add_row(
-                        {BankAccountGUI.ACCOUNT_OWNER: owner, BankAccountGUI.BANK: bank, BankAccountGUI.ACCOUNT_NAME_LABEL: account_name})
+                    self._bank_acount_table.add_row({BankAccountGUI.ACCOUNT_OWNER: owner,
+                                                     BankAccountGUI.BANK: bank,
+                                                     BankAccountGUI.ACCOUNT_NAME_LABEL: account_name,
+                                                     BankAccountGUI.BALANCE: balance})
+
+            # Add last empty row to show the totals
+            self._bank_acount_table.add_row({BankAccountGUI.ACCOUNT_OWNER: "",
+                                                BankAccountGUI.BANK: "",
+                                                BankAccountGUI.ACCOUNT_NAME_LABEL: "Total",
+                                                BankAccountGUI.BALANCE: total})
             self._bank_acount_table.run_method(
                 'scrollTo', len(self._bank_acount_table.rows)-1)
 
@@ -877,10 +894,9 @@ class Finances(GUIBase):
 
         with ui.row():
             columns = [{'name': PensionGUI.PENSION_PROVIDER_LABEL, 'label': PensionGUI.PENSION_PROVIDER_LABEL, 'field': PensionGUI.PENSION_PROVIDER_LABEL},
-                       {'name': PensionGUI.PENSION_DESCRIPTION_LABEL, 'label': PensionGUI.PENSION_DESCRIPTION_LABEL,
-                           'field': PensionGUI.PENSION_DESCRIPTION_LABEL},
-                       {'name': PensionGUI.PENSION_OWNER_LABEL, 'label': PensionGUI.PENSION_OWNER_LABEL,
-                           'field': PensionGUI.PENSION_OWNER_LABEL},
+                       {'name': PensionGUI.PENSION_DESCRIPTION_LABEL, 'label': PensionGUI.PENSION_DESCRIPTION_LABEL, 'field': PensionGUI.PENSION_DESCRIPTION_LABEL},
+                       {'name': PensionGUI.PENSION_OWNER_LABEL, 'label': PensionGUI.PENSION_OWNER_LABEL, 'field': PensionGUI.PENSION_OWNER_LABEL},
+                       {'name': PensionGUI.VALUE, 'label': PensionGUI.VALUE, 'field': PensionGUI.VALUE}
                        ]
             self._pension_table = ui.table(columns=columns,
                                            rows=[],
@@ -924,13 +940,34 @@ class Finances(GUIBase):
             self._pension_table.rows.clear()
             self._pension_table.update()
             pension_dict_list = self._config.get_pension_dict_list()
+            total = 0
             for pension_dict in pension_dict_list:
                 provider = pension_dict[PensionGUI.PENSION_PROVIDER_LABEL]
                 description = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
                 owner = pension_dict[PensionGUI.PENSION_OWNER_LABEL]
+                statePension = pension_dict[PensionGUI.STATE_PENSION]
+                value = ""
+                if not statePension:
+                    value = 0
+                    # We assume the last row in the table is the most up to date
+                    valueTable = pension_dict[PensionGUI.PENSION_TABLE]
+                    if len(valueTable) > 0:
+                        lastRow = valueTable[-1]
+                        if len(lastRow) == 2:
+                            value = lastRow[1]
+                            total += value
+
                 self._pension_table.add_row({PensionGUI.PENSION_PROVIDER_LABEL: provider,
-                                            PensionGUI.PENSION_DESCRIPTION_LABEL: description,
-                                            PensionGUI.PENSION_OWNER_LABEL: owner})
+                                             PensionGUI.PENSION_DESCRIPTION_LABEL: description,
+                                             PensionGUI.PENSION_OWNER_LABEL: owner,
+                                             PensionGUI.VALUE: value})
+
+            # Add last empty row to show the totals
+            self._pension_table.add_row({PensionGUI.PENSION_PROVIDER_LABEL: "",
+                                         PensionGUI.PENSION_DESCRIPTION_LABEL: "",
+                                         PensionGUI.PENSION_OWNER_LABEL: "Total",
+                                         PensionGUI.VALUE: total})
+
             self._pension_table.run_method(
                 'scrollTo', len(self._bank_acount_table.rows)-1)
 
@@ -1554,6 +1591,7 @@ class PensionGUI(GUIBase):
     STATE_PENSION_START_DATE = "State Pension Start Date"
     PENSION_TABLE = "table"
     PENSION_OWNER = "Owner"
+    VALUE = "Value (£)"
 
     def __init__(self, add, pension_dict, config, owner_list):
         """@brief Constructor.
