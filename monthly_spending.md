@@ -1,4 +1,4 @@
-## MONTHLY SPENDING
+# MONTHLY SPENDING {#monthly_spending}
 This table allows you to record the total amount you spend each month as time progresses. When predicting how long your savings and pensions will last, this is used to plot against the predicted monthly spending.
 
 The table details the date and the amount spent. Select the ADD button to add the date set to the 1'st of the month. The amount entered should be the total amount you spent in that month.

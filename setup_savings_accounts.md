@@ -1,4 +1,4 @@
-## SAVINGS Tab
+# SAVINGS Tab {#setup_savings_accounts}
 
 The savings tab displays a list of your savings accounts.
 

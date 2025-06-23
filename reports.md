@@ -1,4 +1,4 @@
-## REPORTS
+# REPORTS  {#reports_start}
 This contains two buttons as detailed below.
 
 ### TOTALS
@@ -148,4 +148,4 @@ The third row on the plot shows the predicted amount received from interest on s
 
 The final row shows how money is used from either pensions or savings to meet your monthly budget/income. The castellated effect is due to the gap between the start of the year when an increment in spending is shown and the change in the state pension (April). The increase on the right hand side is because the App assumes that when one of you dies their state pension will stop. Therefore money to meet your monthly budget/income has to come from other sources.
 
-Click [here](./reality_report.md) if you wish to see how to compare the predictions with reality.
+Click [here](./reality_report.md#reality_report) if you wish to see how to compare the predictions with reality.
