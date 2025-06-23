@@ -211,9 +211,9 @@ Enter the name/s as required and select the OK button to save them, as shown bel
 
 Once the initial configuration (as detailed above) is complete the following steps should be performed.
 
-- Setup savings accounts as details [here](./setup_savings_accounts.md)
+- Setup savings accounts as details [here](setup_savings_accounts.md#setup_savings_accounts)
 
-- Setup pensions information as detailed [here](./setup_pension_details.md)
+- Setup pensions information as detailed [here](./setup_pension_details.md#setup_pension_details)
 
 
 ## Enter Monthly Spending
@@ -226,11 +226,11 @@ displayed against your predicted spending each month. This is useful to show you
 
 This monthly spending table should be updated regularly (E.G monthly).
 
-- For details of how to use the 'Enter Monthly Spending tab click [here](./monthly_spending.md)
+- For details of how to use the 'Enter Monthly Spending tab click [here](./monthly_spending.md#monthly_spending)
 
 ## REPORTS
 
 This is where you can see the total state of your finances and try out different predictions
 including predictive plots.
 
-- For details of how to use the reports functionality click [here](./reports.md)
+- For details of how to use the reports functionality click [here](./reports.md#reports_start)

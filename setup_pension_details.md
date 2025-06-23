@@ -1,4 +1,4 @@
-## PENSIONS Tab
+# PENSIONS Tab {#setup_pension_details}
 This is similar to the SAVINGS tab but allows you to add all your pensions (State and Personal). The list of pensions will initially be empty. Select the ADD button to add details of a pension to the list.
 
 Before any pensions are added this should appear as shown below.
