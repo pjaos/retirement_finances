@@ -11,5 +11,6 @@ pycodestyle --max-line-length=250 retirement_finances/*.py
 poetry -vvv build
 cp dist/*.whl installers/linux
 cp dist/*.whl installers/windows
-
+# Generate new docx readme file
+./create_single_docx_readme.sh
 
