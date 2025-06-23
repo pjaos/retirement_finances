@@ -17,6 +17,9 @@ The second plot now shows the 'Monthly Spending (Reality)' and 'Average monthly 
 
 This shows data over a few months. It should become more useful as time progresses and more real data is available.
 
+### Note
+Any of the traces can be hidden if required by clicking on the legend name on the right hand side of the plot area.
+
 # Checking your pensions and savings performance.
 
 In order to compare the predictions with reality you must, over time, enter data into the App that details how each Savings account and pension changes. At any time you can update the value in a savings or pension tables and this is then used to show how the real values in your savings and pensions change.
