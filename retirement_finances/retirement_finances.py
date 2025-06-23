@@ -1482,9 +1482,21 @@ class BankAccountGUI(GUIBase):
                                                field_name=self._date_input_field.props['label']) and \
            BankAccountGUI.CheckGreaterThanZero(self._amount_field.value,
                                                field_name=self._amount_field.props['label']):
-            row = (self._date_input_field.value, self._amount_field.value)
-            self._add_table_row(row)
-            self._display_table_rows()
+            # Check that the date entered is not already in the table
+            found = False
+            table = self._bank_account_dict[BankAccountGUI.TABLE]
+            for row in table:
+                if row[0] == self._date_input_field.value:
+                    found = True
+                    break
+
+            if found:
+                ui.notify(f"{self._date_input_field.value} is already present.", type='negative')
+
+            else:
+                row = (self._date_input_field.value, self._amount_field.value)
+                self._add_table_row(row)
+                self._display_table_rows()
 
     def _display_table_rows(self):
         """@brief Show a table of the configured bank accounts."""
@@ -1751,9 +1763,21 @@ class PensionGUI(GUIBase):
                                            field_name=self._date_input_field.props['label']) and \
            PensionGUI.CheckGreaterThanZero(self._amount_field.value,
                                            field_name=self._amount_field.props['label']):
-            row = (self._date_input_field.value, self._amount_field.value)
-            self._add_table_row(row)
-            self._display_table_rows()
+            # Check that the date entered is not already in the table
+            found = False
+            table = self._pension_dict[PensionGUI.PENSION_TABLE]
+            for row in table:
+                if row[0] == self._date_input_field.value:
+                    found = True
+                    break
+
+            if found:
+                ui.notify(f"{self._date_input_field.value} is already present.", type='negative')
+
+            else:
+                row = (self._date_input_field.value, self._amount_field.value)
+                self._add_table_row(row)
+                self._display_table_rows()
 
     def _add_row_dialog_cancel_button_press(self):
         self._add_row_dialog.close()
