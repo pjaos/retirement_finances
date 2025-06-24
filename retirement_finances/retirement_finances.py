@@ -442,6 +442,23 @@ class GUIBase(object):
 
         return valid
 
+    @staticmethod
+    def CheckDuplicateDate(table, date_str):
+        """@brief check that the dateStr is not already present in the table.
+           @param table A table in which the first column is the date (string format) in the form DD-HH-YYYY.
+           @param date_str A date (string format) in the form DD-HH-YYYY."""
+        # Check that the date entered is not already in the table
+        valid = True
+        for row in table:
+            if row[0] == date_str:
+                valid = False
+                break
+
+        if not valid:
+            ui.notify(f"{date_str} is already present.", type='negative')
+
+        return valid
+
     def __init__(self):
         """@brief Constructor"""
         pass
@@ -1481,22 +1498,11 @@ class BankAccountGUI(GUIBase):
         if BankAccountGUI.CheckValidDateString(self._date_input_field.value,
                                                field_name=self._date_input_field.props['label']) and \
            BankAccountGUI.CheckGreaterThanZero(self._amount_field.value,
-                                               field_name=self._amount_field.props['label']):
-            # Check that the date entered is not already in the table
-            found = False
-            table = self._bank_account_dict[BankAccountGUI.TABLE]
-            for row in table:
-                if row[0] == self._date_input_field.value:
-                    found = True
-                    break
-
-            if found:
-                ui.notify(f"{self._date_input_field.value} is already present.", type='negative')
-
-            else:
-                row = (self._date_input_field.value, self._amount_field.value)
-                self._add_table_row(row)
-                self._display_table_rows()
+                                               field_name=self._amount_field.props['label']) and \
+           BankAccountGUI.CheckDuplicateDate(self._bank_account_dict[BankAccountGUI.TABLE], self._date_input_field.value):
+            row = (self._date_input_field.value, self._amount_field.value)
+            self._add_table_row(row)
+            self._display_table_rows()
 
     def _display_table_rows(self):
         """@brief Show a table of the configured bank accounts."""
@@ -1762,22 +1768,11 @@ class PensionGUI(GUIBase):
         if PensionGUI.CheckValidDateString(self._date_input_field.value,
                                            field_name=self._date_input_field.props['label']) and \
            PensionGUI.CheckGreaterThanZero(self._amount_field.value,
-                                           field_name=self._amount_field.props['label']):
-            # Check that the date entered is not already in the table
-            found = False
-            table = self._pension_dict[PensionGUI.PENSION_TABLE]
-            for row in table:
-                if row[0] == self._date_input_field.value:
-                    found = True
-                    break
-
-            if found:
-                ui.notify(f"{self._date_input_field.value} is already present.", type='negative')
-
-            else:
-                row = (self._date_input_field.value, self._amount_field.value)
-                self._add_table_row(row)
-                self._display_table_rows()
+                                           field_name=self._amount_field.props['label']) and \
+           PensionGUI.CheckDuplicateDate(self._pension_dict[PensionGUI.PENSION_TABLE], self._date_input_field.value):
+            row = (self._date_input_field.value, self._amount_field.value)
+            self._add_table_row(row)
+            self._display_table_rows()
 
     def _add_row_dialog_cancel_button_press(self):
         self._add_row_dialog.close()
