@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Retirement_Finances"
-#define MyAppVersion "4.8"
+#define MyAppVersion "4.9"
 #define MyAppPublisher "Paul Austen"
 #define MyAppURL "https://github.com/pjaos/retirement_finances"
 
@@ -40,7 +40,7 @@ Name: "{group}\Retirement_Finances"; Filename: "{app}\retirement_finances.bat"; 
 Name: "{group}\Uninstall Retirement Finances"; Filename: "{uninstallexe}"
 
 [Files]
-Source: "../installers/windows/retirement_finances-4.8-py3-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion
+Source: "../installers/windows/retirement_finances-4.9-py3-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../pyproject.toml"; DestDir: "{app}"; Flags: ignoreversion
@@ -84,17 +84,24 @@ begin
     end;
   end;
 end;
+procedure OpenURL(Sender: TObject);
+var
+  ResultCode: Integer;
+begin
+  ShellExec('open', 'https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe', '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
+end;
 function InitializeSetup(): Boolean;
 begin
   if not IsPythonOrgInstalled() then begin
     MsgBox(
-      'Python is not installed.' + #13#13 +
-      'You May have Microsoft Python installed but this program needs the python.org version. Please install it from:' + #13#13 +
-      'https://www.python.org/downloads/windows/' + #13#13 +
-      'Selecting "Use admin privalages when installing py.exe" and "Add python.exe to PATH" checkboxes.' + #13#13 +
-      'Setup will now exit.',
+      'Python is not installed but is needed for the Retirement Finances program.' + #13#13 +
+      'The Python installer will be downloaded into the Downloads folder from' + #13#13 +
+      'https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe when you select the OK button below.' + #13#13 +
+      'When it has downloaded run it to install Python, selecting the "Use admin privalages when installing py.exe" and "Add python.exe to PATH" checkboxes.' + #13#13 +
+      'Once Python is installed please try again.',
       mbError, MB_OK
     );
+    OpenURL(nil);
     Result := False;
   end else begin
     Result := True;
