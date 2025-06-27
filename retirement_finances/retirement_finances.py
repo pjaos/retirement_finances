@@ -3757,6 +3757,7 @@ def main():
                 setup_launcher = True
 
         if not setup_launcher:
+            uio.info("Starting up, please wait...")
             finances = Finances(uio, options.password, options.folder)
             finances.initGUI(options.debug, port=options.port, reload=options.reload)
 
