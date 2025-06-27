@@ -17,13 +17,13 @@ click = "*"
 p3lib = "^1.1.124"
 requests = "*"
 nicegui = "*"
+matplotlib = "*"
 plotly = "*"
 python-dateutil = "*"
 psutil = "*"
 pandas = "*"
 bcrypt = "*"
-# Need this on a windows platform
-#pywin32 = "*"
+PyInstaller = "*"
 
 [tool.poetry.scripts]
 retirement_finances = "retirement_finances.retirement_finances:main"

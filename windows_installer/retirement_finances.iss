@@ -12,13 +12,14 @@
 AppId={{712C4993-033F-4784-8991-0C29453B4B30}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-;AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 ; Add Python Programs this folder
-DefaultDirName={sd}\Python_Program_Files\{#MyAppName}
+;DefaultDirName={sd}\Python_Program_Files\{#MyAppName}
+; Install only for local user.
+DefaultDirName={localappdata}\Python_Program_Files\{#MyAppName}
 DisableDirPage=yes
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
@@ -32,124 +33,27 @@ Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 
+
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Icons]
-Name: "{group}\Retirement_Finances"; Filename: "{app}\retirement_finances.bat"; WorkingDir: "{app}"; IconFilename: "{app}\assets\savings.ico"
-Name: "{group}\Uninstall Retirement Finances"; Filename: "{uninstallexe}"
+Name: "{group}\Retirement_Finances"; Filename: "{app}\retirement_finances.exe"; WorkingDir: "{app}"; IconFilename: "{app}\assets\savings.ico"
+Name: "{userdesktop}\Retirement Finances"; Filename: "{app}\retirement_finances.exe"; WorkingDir: "{app}"; IconFilename: "{app}\assets\savings.ico"; Tasks: desktopicon
+Name: "{group}\Retirement Finances (Uninstall)"; Filename: "{uninstallexe}"; IconFilename: "{app}\assets\savings.ico"
 
 [Files]
-Source: "../installers/windows/retirement_finances-4.9-py3-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../pyproject.toml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../assets/*"; DestDir: "{app}/assets/"; Flags: ignoreversion
-Source: "../retirement_finances/*"; DestDir: "{app}/retirement_finances/"; Flags: ignoreversion recursesubdirs
-Source: "retirement_finances.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "install.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "uninstall.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "retirement_finances.exe"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: "launch.bat"; DestDir: "{app}"; Flags: ignoreversion
 
-;[Run]
-;Filename: "{app}\install.bat"; Parameters: "install"; Check: CheckReturnCode
+[Tasks]
+Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"
 
-[UninstallRun]
-Filename: "{app}\uninstall.bat"; RunOnceId: "uninstall"
-; Flags: runhidden;
-
-[Code]
-// Check for Python.org Python (checks 64-bit and 32-bit registry keys)
-function IsPythonOrgInstalled(): Boolean;
-var
-  KeyNames: TArrayOfString;
-  I: Integer;
-  InstallPath: string;
-begin
-  Result := False;
-
-  // Check current user install
-  if RegGetSubkeyNames(HKEY_CURRENT_USER, 'Software\Python\PythonCore', KeyNames) then
-  begin
-    for I := 0 to GetArrayLength(KeyNames) - 1 do
-    begin
-      if RegQueryStringValue(HKEY_CURRENT_USER, 
-          'Software\Python\PythonCore\' + KeyNames[I] + '\InstallPath', '', InstallPath) then
-      begin
-        if FileExists(InstallPath + 'python.exe') then
-        begin
-          Result := True;
-          Exit;
-        end;
-      end;
-    end;
-  end;
-end;
-procedure OpenURL(Sender: TObject);
-var
-  ResultCode: Integer;
-begin
-  ShellExec('open', 'https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe', '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
-end;
-function InitializeSetup(): Boolean;
-begin
-  if not IsPythonOrgInstalled() then begin
-    MsgBox(
-      'Python is not installed but is needed for the Retirement Finances program.' + #13#13 +
-      'The Python installer will be downloaded into the Downloads folder from' + #13#13 +
-      'https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe when you select the OK button below.' + #13#13 +
-      'When it has downloaded run it to install Python, selecting the "Use admin privalages when installing py.exe" and "Add python.exe to PATH" checkboxes.' + #13#13 +
-      'Once Python is installed please try again.',
-      mbError, MB_OK
-    );
-    OpenURL(nil);
-    Result := False;
-  end else begin
-    Result := True;
-  end;
-end;
-var
-  BatchFileResultCode: Integer;
-  msg: String;
-function ExecuteBatchFileAndCheck: Boolean;
-begin
-  // Execute the batch file
-  if Exec(ExpandConstant('{app}\install.bat'), '', '', SW_SHOWNORMAL , ewWaitUntilTerminated, BatchFileResultCode) then
-  begin
-    Result := False;
-    // Check the return code
-    if BatchFileResultCode = 0 then
-    begin
-      Result := True;
-    end
-    else if BatchFileResultCode = 2 then
-    begin
-      msg := 'Now python is installed please try again.';
-      Log(msg);
-      MsgBox(msg, mbError, MB_OK);
-    end
-    else
-    begin
-      msg := 'Installation failed.'
-      Log(msg);
-      MsgBox(msg, mbError, MB_OK);
-    end;
-  end
-  else
-  begin
-    msg := 'Failed to execute install.bat file.'
-    Log(msg);
-    MsgBox(msg, mbError, MB_OK);
-  end;
-end;
-
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-  if CurStep = ssPostInstall then
-  begin
-    if not ExecuteBatchFileAndCheck then
-    begin
-      // If the batch file execution fails, abort the setup
-      WizardForm.Close;
-    end;
-  end;
-end;
+[Run]
+Filename: "{app}\launch.bat"; \
+  Description: "Launch Retirement Finances"; \
+  Flags: postinstall skipifsilent runascurrentuser
