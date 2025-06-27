@@ -68,11 +68,11 @@ done! ✨ 🌟 ✨
 
 # Installing on Windows
 
-- To install onto a Linux PC ensure you have python 3.12 installed. Details of how to install python can be found [here](https://docs.python.org/3.12/using/windows.html). When the initial screen is displayed you mus select the 'Add Python to PATH' checkbox.
+Installing the retirement finances package onto a Windows PC no longer requires that Python is installed.
 
-- Double click on installers/windows/Retirement_Finances_4.4.exe (4.4 version may change) file and step through the installation.
+- Double click on the installers/windows/Retirement_Finances_5.0.exe and step through the installation wizard.
 
-The installation may take several minutes to complete. When complete the Retirement_Finances launcher can be found from the Windows Start button.
+When complete the Retirement_Finances launcher can be found from the Windows Start button.
 
 
 # Using the software
