@@ -53,26 +53,13 @@ The assumptions made by this tool are shown below. These assumptions define the 
 The 'Retirement Finances' software (the App) can be installed on Linux and Windows platforms.
 
 # Installing on Linux
-To install onto a Linux PC ensure you have python 3.12 installed. Details of how to install python can be found [here](https://docs.python.org/3.12/using/unix.html). pipx must also be installed onto the Linux PC. Details of how to install pipx can be found [here](https://pipx.pypa.io/latest/installation/)
 
-To install the 'Retirements Finances' application open a terminal window in the installers/linux folder and enter
-
-```
-pipx install retirement_finances-3.5-py3-none-any.whl
-  installed package retirement-finances 3.5, installed using Python 3.12.3
-  These apps are now globally available
-    - retirement_finances
-done! ✨ 🌟 ✨
-```
+Click [here](installers/linux/README.md#linux_installer) for details of how to install the software on Linux platforms.
 
 
 # Installing on Windows
 
-Installing the retirement finances package onto a Windows PC no longer requires that Python is installed.
-
-- Double click on the installers/windows/Retirement_Finances_5.0.exe and step through the installation wizard.
-
-When complete the Retirement_Finances launcher can be found from the Windows Start button.
+Click [here](installers/windows/README.md#windows_installer) for details of how to install the software on Windows platforms.
 
 
 # Using the software
