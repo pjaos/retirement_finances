@@ -2202,7 +2202,7 @@ class FuturePlotGUI(GUIBase):
         with ui.dialog() as self._add_row_dialog, ui.card().style('width: 400px;'):
             self._date_input_field = GUIBase.GetInputDateField(
                 FuturePlotGUI.DATE)
-            self._amount_field = ui.number(label=FuturePlotGUI.AMOUNT, min=0)
+            self._amount_field = ui.number(label=FuturePlotGUI.AMOUNT)
             self._repeat_field = ui.select(
                 [FuturePlotGUI.YEARLY, FuturePlotGUI.MONTHLY], value='Yearly')
             self._repeat_count_field = ui.number(
@@ -2282,8 +2282,6 @@ class FuturePlotGUI(GUIBase):
     def _add_row_dialog_ok_button_press(self):
         if FuturePlotGUI.CheckValidDateString(self._date_input_field.value,
                                               field_name=self._date_input_field.props['label']) and \
-           FuturePlotGUI.CheckGreaterThanZero(self._amount_field.value,
-                                              field_name=self._amount_field.props['label']) and \
            FuturePlotGUI.CheckGreaterThanZero(self._repeat_count_field.value,
                                               field_name=self._repeat_count_field.props['label']):
 
