@@ -811,8 +811,7 @@ class Finances(GUIBase):
                     self._bank_acount_table.add_row({BankAccountGUI.ACCOUNT_OWNER: owner,
                                                      BankAccountGUI.BANK: bank,
                                                      BankAccountGUI.ACCOUNT_NAME_LABEL: account_name,
-                                                     BankAccountGUI.BALANCE:f"{balance:.2f}"})
-
+                                                     BankAccountGUI.BALANCE: f"{balance:.2f}"})
             # Add last empty row to show the totals
             self._bank_acount_table.add_row({BankAccountGUI.ACCOUNT_OWNER: "",
                                              BankAccountGUI.BANK: "",
@@ -2595,7 +2594,7 @@ class FuturePlotGUI(GUIBase):
                 # However the savings withdrawal table should be used by the user to define savings withdrawals
                 # on top of those required to meet the monthly income.
                 # Therefore it should not be used so that, if set, it results in an increase in the monthly spending.
-                #if lump_sum_savings_withdrawal > 0:
+                # if lump_sum_savings_withdrawal > 0:
                 #    # Note that this may result in more than the monthly budget.
                 #    remaining_income_this_month = remaining_income_this_month - lump_sum_savings_withdrawal
 
