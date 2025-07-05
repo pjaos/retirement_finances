@@ -811,13 +811,13 @@ class Finances(GUIBase):
                     self._bank_acount_table.add_row({BankAccountGUI.ACCOUNT_OWNER: owner,
                                                      BankAccountGUI.BANK: bank,
                                                      BankAccountGUI.ACCOUNT_NAME_LABEL: account_name,
-                                                     BankAccountGUI.BALANCE: balance})
+                                                     BankAccountGUI.BALANCE:f"{balance:.2f}"})
 
             # Add last empty row to show the totals
             self._bank_acount_table.add_row({BankAccountGUI.ACCOUNT_OWNER: "",
                                              BankAccountGUI.BANK: "",
                                              BankAccountGUI.ACCOUNT_NAME_LABEL: "Total",
-                                             BankAccountGUI.BALANCE: total})
+                                             BankAccountGUI.BALANCE: f"{total:.2f}"})
             self._bank_acount_table.run_method(
                 'scrollTo', len(self._bank_acount_table.rows)-1)
 
@@ -983,7 +983,7 @@ class Finances(GUIBase):
             self._pension_table.add_row({PensionGUI.PENSION_PROVIDER_LABEL: "",
                                          PensionGUI.PENSION_DESCRIPTION_LABEL: "",
                                          PensionGUI.PENSION_OWNER_LABEL: "Total",
-                                         PensionGUI.VALUE: total})
+                                         PensionGUI.VALUE: f"{total:.2f}"})
 
             self._pension_table.run_method(
                 'scrollTo', len(self._bank_acount_table.rows)-1)
