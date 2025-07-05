@@ -2590,9 +2590,14 @@ class FuturePlotGUI(GUIBase):
                                                           savings_amount,
                                                           lump_sum_savings_withdrawals_table)
                 lump_sum_savings_withdrawal = savings_amount_before - new_savings_amount
-                if lump_sum_savings_withdrawal > 0:
-                    # Note that this may result in more than the monthly budget.
-                    remaining_income_this_month = remaining_income_this_month - lump_sum_savings_withdrawal
+
+                # Previously we used the lump sum savings withdrawal to reduce the required income.
+                # However the savings withdrawal table should be used by the user to define savings withdrawals
+                # on top of those required to meet the monthly income.
+                # Therefore it should not be used so that, if set, it results in an increase in the monthly spending.
+                #if lump_sum_savings_withdrawal > 0:
+                #    # Note that this may result in more than the monthly budget.
+                #    remaining_income_this_month = remaining_income_this_month - lump_sum_savings_withdrawal
 
                 # If we want to draw lump sum/s from our pension.
                 previous_personal_pension_value = personal_pension_value
