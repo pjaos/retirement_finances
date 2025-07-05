@@ -3696,16 +3696,16 @@ class Plot1GUI(GUIBase):
 
             else:
                 fig.add_trace(go.Scatter(name='Monthly Spending (reality)',
-                                        x=datetimes,
-                                        y=y,
-                                        mode='lines',
-                                        line=dict(dash='solid')))
+                                         x=datetimes,
+                                         y=y,
+                                         mode='lines',
+                                         line=dict(dash='solid')))
                 avgList = [average_monthly_spending_table,]*len(datetimes)
                 fig.add_trace(go.Scatter(name='Average monthly Spending (reality)',
-                                        x=datetimes,
-                                        y=avgList,
-                                        mode='lines',
-                                        line=dict(dash='solid', width=5)))
+                                         x=datetimes,
+                                         y=avgList,
+                                         mode='lines',
+                                         line=dict(dash='solid', width=5)))
 
         # Prediction traces are always dotted lines
         # as this tends to indicate their unclear nature.
