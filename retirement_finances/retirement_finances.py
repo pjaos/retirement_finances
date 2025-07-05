@@ -1880,6 +1880,9 @@ class FuturePlotGUI(GUIBase):
     YEARLY = 'Yearly'
     MONTHLY = 'Monthly'
 
+    BY_MONTH = "By Month"
+    BY_YEAR = "By Year"
+
     @staticmethod
     def GetDateTimeList(start_datetime, stop_datetime):
         """@brief Get a list of datetime instances (by month) starting from the start of the current month
@@ -2105,10 +2108,11 @@ class FuturePlotGUI(GUIBase):
         with ui.row():
             ui.button('Show prediction', on_click=lambda: self._calc()).tooltip(
                 'Perform calculation and plot the results.')
-            ui.button('Show progress', on_click=lambda: self._show_progress()).tooltip(
+            self._show_progress_button = ui.button('Show progress', on_click=lambda: self._show_progress()).tooltip(
                 'Show your progress against a prediction.')
             self._last_year_to_plot_field = ui.input(label="Last year to plot", value="").style(
                         'width: 200px;').tooltip('The last year you wish to plot. Leave this blank to plot all years.')
+            self._interval_radio = ui.radio([FuturePlotGUI.BY_MONTH, FuturePlotGUI.BY_YEAR], value=FuturePlotGUI.BY_MONTH).props('inline')
 
         self._update_gui_from_dict()
         self._load_settings(retirement_predictions_settings_name)
@@ -2828,6 +2832,11 @@ class FuturePlotGUI(GUIBase):
                              This allows the caller to limit the length of the plot prediction.
                              If -1 entered then no limit is placed on the plot.
            @param money_ran_out If True the money ran out."""
+
+        plot_by_year = False
+        if self._interval_radio.value == FuturePlotGUI.BY_YEAR:
+            plot_by_year = True
+
         # Define a secondary page
         @ui.page('/plot_1_page')
         def plot_1_page():
@@ -2835,7 +2844,8 @@ class FuturePlotGUI(GUIBase):
                      plot_table,
                      reality_tables,
                      final_year,
-                     money_ran_out)
+                     money_ran_out,
+                     plot_by_year)
         # This will open in a separate browser window
         ui.run_javascript("window.open('/plot_1_page', '_blank')")
 
@@ -3327,7 +3337,8 @@ class Plot1GUI(GUIBase):
                  plot_table,
                  reality_tables=None,
                  final_year=-1,
-                 money_ran_out=False):
+                 money_ran_out=False,
+                 plot_by_year=False):
         """@param name The name of the plot.
            @param plot_table Holds rows that comprise the following
                              0 = date
@@ -3350,13 +3361,118 @@ class Plot1GUI(GUIBase):
                              This allows the caller to limit the length of the plot prediction.
                              If -1 entered then no limit is placed on the plot.
            @param money_ran_out If True the money ran out.
+           @param plot_by_year If True the yearly rather than month changes are plotted.
                              """
         self._name = name
         self._plot_table = plot_table
         self._reality_tables = reality_tables
         self._final_year = final_year
         self._money_ran_out = money_ran_out
+        self._plot_by_year = plot_by_year
+
+        # If plotting by year make changes to the tables.
+        if self._plot_by_year:
+            self._plot_table, self._reality_tables = self._group_by_year(self._plot_table, self._reality_tables)
+
         self._init_gui()
+
+    def _group_plot_table_by_year(self, plot_table):
+        """@brief group the values in the plot_table by year and return the resultant table.
+           @param plot_table A 2D table (list of rows) containing the predictions.
+           @return plot_table The resultant plot table."""
+        # First we convert the plot_table to sum the columns excluding the date, total, pension total and savings total columns.
+        # The last value for each year is returned in the total, pension total and savings total columns.
+
+        # Convert to DataFrame
+        df = pd.DataFrame(plot_table, columns=[
+            'date',
+            'total',
+            'pension total',
+            'savings total',
+            'monthly income',
+            'monthly state pension total of both of us.',
+            'savings_interest (yearly)',
+            'savings withdrawal this month',
+            'pension withdrawal this month',
+            'spending_this_month'
+        ])
+
+        # Extract year
+        df['year'] = df['date'].dt.year
+
+        last_cols = ['total',
+                     'pension total',
+                     'savings total']
+
+        # Set which columns to sum and which to take last value
+        sum_cols = ['monthly income',
+                    'monthly state pension total of both of us.',
+                    'savings_interest (yearly)',
+                    'savings withdrawal this month',
+                    'pension withdrawal this month',
+                    'spending_this_month']
+
+        # Step 1: Get the last value per year (based on latest date)
+        last_vals = df.sort_values('date').groupby('year').last()[last_cols]
+
+        # Step 1: Get the last value per year (based on latest date)
+        last_vals = df.sort_values('date').groupby('year').last()[last_cols]
+
+        # Step 2: Sum the remaining columns per year
+        sum_vals = df.groupby('year')[sum_cols].sum()
+
+        # Step 3: Combine
+        yearly_summary = pd.concat([last_vals, sum_vals], axis=1)
+
+        # convert to list of rows (tuples)
+        rows = [(year, *row) for year, row in yearly_summary.iterrows()]
+
+        return rows
+
+    def _update_reality_plot_tables_per_year(self, reality_tables):
+        """@brief Modify the reality (historical data) tables to show results per year.
+           @param reality_tables A list of four tables.
+                  Each row in each table has a 0:Date and 1:value column.
+            0 = personal_pension_table
+            1 = savings table
+            2 = total table
+            3 = monthly spending table
+            """
+        table = reality_tables[3]
+
+        # Load into a DataFrame
+        df = pd.DataFrame(table, columns=['date', 'value'])
+
+        # Convert 'date' to datetime
+        df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+
+        # Extract year
+        df['year'] = df['date'].dt.year
+
+        # Group by year and sum
+        yearly_sum = df.groupby('year')['value'].sum()
+
+        # Convert to list of (year, sum) tuples
+        output_table = list(yearly_sum.items())
+
+        # Update the monthly spending table with a single value that is the real amount spent each year
+        # Initially all years are 0 as they are in the future. As time progresses we have the data to fill in the values.
+        # Note that if you are part of the way through the current year the value is the total spent to date.
+        reality_tables[3] = output_table
+
+    def _group_by_year(self, plot_table, reality_tables):
+        """@brief Table two tables that have dates in them, sum all the columns by year and return the resultant tables.
+           @param plot_table A 2D table (list of rows) containing the predictions.
+           @param reality_tables A list of tables"""
+
+        plot_table = self._group_plot_table_by_year(plot_table)
+        # reality_tables will be None if the show progress button was not selected.
+        # Only calculate if set
+        if reality_tables:
+            self._update_reality_plot_tables_per_year(reality_tables)
+
+        # Currently we don't process reality tables
+        return (plot_table, reality_tables)
 
     def _overlay_reality(self):
         """@return True if the plot shows predicted and real values overlaid."""
@@ -3405,8 +3521,13 @@ class Plot1GUI(GUIBase):
         if self._reality_tables and len(self._reality_tables) == 4:
             reality_tables = self._reality_tables[:3]
 
+        bar_chart = False
+        if self._plot_by_year:
+            bar_chart = True
+
         self._do_plot(plot_panel_1,
                       plot_dict,
+                      bar_chart=bar_chart,
                       reality_tables=reality_tables,
                       final_year=self._final_year)
 
@@ -3431,6 +3552,7 @@ class Plot1GUI(GUIBase):
 
         self._do_plot(plot_panel_2,
                       plot_dict,
+                      bar_chart=bar_chart,
                       final_year=self._final_year,
                       monthly_spending_table=monthly_spending_table)
 
@@ -3464,6 +3586,18 @@ class Plot1GUI(GUIBase):
                       plot_dict,
                       bar_chart=True,
                       final_year=self._final_year)
+
+    def _get_year(self, obj):
+        """@brief Get the year from an object.
+           @param obj The obj may be a datetime instance or an int.
+           @return The year as an int value."""
+        if isinstance(obj, datetime):
+            year = obj.year
+        elif isinstance(obj, int):
+            year = obj
+        else:
+            raise Exception(f"{obj} is not a datetime or an int object")
+        return year
 
     def _do_plot(self,
                  plot_pane,
@@ -3528,15 +3662,21 @@ class Plot1GUI(GUIBase):
 
         if monthly_spending_table:
             x, y = zip(*monthly_spending_table)
-            # Convert date string list to datetime instances
-            datetimes = [datetime.strptime(date, "%d-%m-%Y") for date in x]
+            try:
+                # Convert date string list to datetime instances
+                datetimes = [datetime.strptime(date, "%d-%m-%Y") for date in x]
+            except TypeError:
+                years = [int(s) for s in x]
+                datetimes = years
 
             # If the caller wants to limit the number of years we plot over.
             if final_year > 0:
                 value_count = 0
                 for _date in datetimes:
-                    if _date.year > final_year:
+                    year = self._get_year(_date)
+                    if year > final_year:
                         break
+
                     value_count += 1
                 if value_count < len(datetimes):
                     datetimes = datetimes[:value_count]
@@ -3547,17 +3687,25 @@ class Plot1GUI(GUIBase):
                 average_monthly_spending_table = sum(y) / len(y)
             else:
                 average_monthly_spending_table = 0
-            fig.add_trace(go.Scatter(name='Monthly Spending (reality)',
+            if self._plot_by_year:
+                # When plotting yuearly results we sum the monthly spending per year
+                # and display this and we don't display the average.
+                fig.add_trace(go.Bar(name='Yearly Spending (reality)',
                                      x=datetimes,
-                                     y=y,
-                                     mode='lines',
-                                     line=dict(dash='solid')))
-            avgList = [average_monthly_spending_table,]*len(datetimes)
-            fig.add_trace(go.Scatter(name='Average monthly Spending (reality)',
-                                     x=datetimes,
-                                     y=avgList,
-                                     mode='lines',
-                                     line=dict(dash='solid', width=5)))
+                                     y=y))
+
+            else:
+                fig.add_trace(go.Scatter(name='Monthly Spending (reality)',
+                                        x=datetimes,
+                                        y=y,
+                                        mode='lines',
+                                        line=dict(dash='solid')))
+                avgList = [average_monthly_spending_table,]*len(datetimes)
+                fig.add_trace(go.Scatter(name='Average monthly Spending (reality)',
+                                        x=datetimes,
+                                        y=avgList,
+                                        mode='lines',
+                                        line=dict(dash='solid', width=5)))
 
         # Prediction traces are always dotted lines
         # as this tends to indicate their unclear nature.
@@ -3574,7 +3722,8 @@ class Plot1GUI(GUIBase):
             if final_year > 0:
                 value_count = 0
                 for _date in x:
-                    if _date.year > final_year:
+                    year = self._get_year(_date)
+                    if year > final_year:
                         break
                     value_count += 1
                 if value_count < len(x):
