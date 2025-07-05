@@ -1811,7 +1811,7 @@ class PensionGUI(GUIBase):
         if len(self._description_field.value) == 0:
             ui.notify("No description entry.", type='negative')
 
-        elif len(self._pension_owner_field.value) == 0:
+        elif self._pension_owner_field.value is None:
             ui.notify("Owner field not set.", type='negative')
 
         elif duplicate_description:
@@ -2303,15 +2303,31 @@ class FuturePlotGUI(GUIBase):
             for _ in range(0, int(occurrence_count)):
                 row = (the_date, self._amount_field.value)
                 if self._button_selected == FuturePlotGUI.ADD_SAVINGS_WITHDRAWAL_BUTTON:
-                    self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE].append(
-                        row)
+                    rows = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
+                    if self._check_date_in_table(the_date, rows):
+                        ui.notify(f"{the_date} is already in the table.", type='negative')
+                        return
+
+                    else:
+                        rows.append(row)
+                        # Sort table in ascending date order
+                        sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
+                        self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = sorted_rows
 
                 elif self._button_selected == FuturePlotGUI.ADD_PENSION_WITHDRAWAL_BUTTON:
-                    self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE].append(
-                        row)
+                    rows = self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]
+                    if self._check_date_in_table(the_date, rows):
+                        ui.notify(f"{the_date} is already in the table.", type='negative')
+                        return
+
+                    else:
+                        rows.append(row)
+                        # Sort table in ascending date order
+                        sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
+                        self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = sorted_rows
+
                 else:
-                    raise Exception(
-                        "BUG: Neither the add savings or add pensions button was selected.")
+                    raise Exception("BUG: Neither the add savings or add pensions button was selected.")
 
                 if yearly:
                     the_date = self._get_next_date_str(the_date, 12)
@@ -2319,6 +2335,11 @@ class FuturePlotGUI(GUIBase):
                     the_date = self._get_next_date_str(the_date, 1)
 
             self._update_gui_tables()
+
+    def _check_date_in_table(self, _date, table):
+        """@brief Check if a date is in a table. Col 0 = date.
+           @return True if it is."""
+        return any(row[0] == _date for row in table)
 
     def _get_next_date_str(self, start_date_str, months):
         """@brief Get the start date + the number of months.
