@@ -1,14 +1,11 @@
 #!/bin/bash
 
-# If you wish to remove the poetry python env uncomment this
-#pe=$(poetry env info -p)
-#if [ -n "$pe" ]; then
-#  echo "Removing $pe"
-#  rm -rf $pe
-#fi
+# Remove existing python env
+# Uncomment this if you want to rebuild the python env from scratch
+# python3 -m poetry env remove python3
 
 # Date just used to show how long the env takes to create
 date
-poetry lock
-poetry install
+python3 -m poetry lock
+python3 -m poetry install
 date
