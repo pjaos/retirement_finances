@@ -61,6 +61,9 @@ Click [here](installers/linux/README.md#linux_installer) for details of how to i
 
 Click [here](installers/windows/README.md#windows_installer) for details of how to install the software on Windows platforms.
 
+# Installing on macOS
+
+Click [here](installers/macos/README.md#macos_installer) for details of how to install the software onto macOS platforms.
 
 # Using the software
 
@@ -88,7 +91,7 @@ funds, interest rates and spending.
 retirement_finances
 ```
 
-Shortly afterwards (the time will depend how fast your PC is) a 'Retirement Finances' browser window should open asking you to enter a password as shown below under 'Initial browser window'.
+Shortly afterwards (the time will depend how fast your PC is) a 'Retirement Finances' browser window should open asking you to enter a password as shown below under 'Initial browser window'. Command line help text is displayed if you use the -h argument.
 
 ### Creating a gnome startup icon
 
@@ -106,6 +109,28 @@ The startup icon has now been created. To access the gnome launcher icon on Ubun
 
 ## On Windows
 Type 'Retirement_Finances' after selecting the Windows Start button and select 'Retirement_Finances' under 'best match'. This opens a window indicating that the application is starting up. Shortly afterwards (the time will depend how fast your PC is) a 'Retirement Finances' browser window should open asking you to enter a password as shown below under 'Initial browser window'.
+
+
+## On macOS
+- If your default browser is Safari then you should change the Safari settings to allow popup windows from local applications.
+
+  - With Safari running go to Safari > Settings > Websites > Pop-up Windows
+
+  - Look for 127.0.0.1 or localhost
+
+  - Set it to "Allow"
+
+If your default web browser is google chrome or Firefox then no changes are required to the default configuration.
+
+- Open a Terminal window (Launcher / Other / Terminal)
+- Enter the following command
+
+```
+retirement_finances
+```
+
+Command line help text is displayed if you use the -h argument.
+
 
 
 # Initial browser window
