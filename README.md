@@ -116,7 +116,7 @@ Type 'Retirement_Finances' after selecting the Windows Start button and select '
 
   - With Safari running go to Safari > Settings > Websites > Pop-up Windows
 
-  - Look for 127.0.0.1 or localhost
+  - Look for 127.0.0.1 or localhost. Note that this may not be present until retirement finances is launched for the first time.
 
   - Set it to "Allow"
 
