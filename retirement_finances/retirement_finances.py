@@ -1290,7 +1290,7 @@ class Finances(GUIBase):
             if owner not in savings_totals_dict:
                 savings_totals_dict[owner] = []
 
-            active = bank_accounts_dict[BankAccountGUI.ACCOUNT_ACTIVE] # type: ignore
+            active = bank_accounts_dict[BankAccountGUI.ACCOUNT_ACTIVE]
             # Only include active accounts.
             if active:
                 last_row = bank_accounts_dict[BankAccountGUI.TABLE][-1]
@@ -1322,7 +1322,7 @@ class Finances(GUIBase):
         row = ('Total', f'£{savings_total:0.2f}')
         table_rows.append(row)
 
-        row = ('','')
+        row = ('', '')
         table_rows.append(row)
 
         table_rows.append(['Pensions', ''])
@@ -1336,7 +1336,7 @@ class Finances(GUIBase):
         row = ('Total', f'£{pensions_total:0.2f}')
         table_rows.append(row)
 
-        row = ('','')
+        row = ('', '')
         table_rows.append(row)
 
         grand_total = savings_total + pensions_total
