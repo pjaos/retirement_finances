@@ -1284,28 +1284,66 @@ class Finances(GUIBase):
         bank_accounts_dict_list = self._config.get_bank_accounts_dict_list()
         pension_dict_list = self._config.get_pension_dict_list()
 
-        savings_total = 0.0
+        savings_totals_dict = {}
         for bank_accounts_dict in bank_accounts_dict_list:
-            active = bank_accounts_dict[BankAccountGUI.ACCOUNT_ACTIVE]
+            owner = bank_accounts_dict[BankAccountGUI.ACCOUNT_OWNER]
+            if owner not in savings_totals_dict:
+                savings_totals_dict[owner] = []
+
+            active = bank_accounts_dict[BankAccountGUI.ACCOUNT_ACTIVE] # type: ignore
             # Only include active accounts.
             if active:
                 last_row = bank_accounts_dict[BankAccountGUI.TABLE][-1]
                 amount = float(last_row[1])
-                savings_total = savings_total + amount
+                savings_totals_dict[owner].append(amount)
 
-        pension_total = 0.0
+        pensions_totals_dict = {}
         for pension_dict in pension_dict_list:
+            owner = bank_accounts_dict[PensionGUI.PENSION_OWNER_LABEL]
+            if owner not in pensions_totals_dict:
+                pensions_totals_dict[owner] = []
+
+            # We can't sum values of state pensions. If not a state pension assume a
+            # personal pension fund.
             if not pension_dict[PensionGUI.STATE_PENSION]:
                 last_row = pension_dict[PensionGUI.PENSION_TABLE][-1]
-                pension_total += float(last_row[1])
+                value = float(last_row[1])
+                pensions_totals_dict[owner].append(value)
 
-        total = pension_total + savings_total
+        table_rows = [['Savings', '']]
+        savings_total = 0
+        for owner in savings_totals_dict:
+            if owner:
+                owner_total = sum(savings_totals_dict[owner])
+                row = (owner, f'£{owner_total:0.2f}')
+                table_rows.append(row)
+                savings_total += owner_total
 
-        table = [['Savings',  f'£{savings_total:0.2f}'],
-                 ['Pensions', f'£{pension_total:0.2f}'],
-                 ['Total',    f'£{total:0.2f}'],
-                 ]
-        self._init_table_dialog(table)
+        row = ('Total', f'£{savings_total:0.2f}')
+        table_rows.append(row)
+
+        row = ('','')
+        table_rows.append(row)
+
+        table_rows.append(['Pensions', ''])
+        pensions_total = 0
+        for owner in pensions_totals_dict:
+            owner_total = sum(pensions_totals_dict[owner])
+            row = (owner, f'£{owner_total:0.2f}')
+            table_rows.append(row)
+            pensions_total += owner_total
+
+        row = ('Total', f'£{pensions_total:0.2f}')
+        table_rows.append(row)
+
+        row = ('','')
+        table_rows.append(row)
+
+        grand_total = savings_total + pensions_total
+        row = ('Grand Total', f'£{grand_total:0.2f}')
+        table_rows.append(row)
+
+        self._init_table_dialog(table_rows)
         self._table_dialog.open()
 
     def _future_plot(self):
