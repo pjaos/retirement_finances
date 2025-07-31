@@ -1903,6 +1903,7 @@ class FuturePlotGUI(GUIBase):
 
     DATE = BankAccountGUI.DATE
     AMOUNT = "Amount"
+    INFO = "Info"
 
     SAVINGS_WITHDRAWAL_TABLE = "Savings withdrawal table"
     PENSION_WITHDRAWAL_TABLE = "Pensions withdrawal table"
@@ -1939,6 +1940,12 @@ class FuturePlotGUI(GUIBase):
     def Datetime2String(_datetime):
         return _datetime.strftime("%Y-%m-%d %H:%M:%S")
 
+    @staticmethod
+    def GetDate(date_str):
+        """@brief convert a string to a datetime instance.
+           @param date_str The string to be converted into a date."""
+        return datetime.strptime(date_str, '%d-%m-%Y')
+
     def __init__(self, config, pension_owner_list):
         self._config = config
         self._pension_owner_list = pension_owner_list
@@ -1947,7 +1954,9 @@ class FuturePlotGUI(GUIBase):
         self._init_gui()
         self._init_add_row_dialog()
         self._init_ok_to_delete_dialog()
+        self._init_edit_row_dialog()
         self._report_start_date = None
+        self._withdrawal_edit_table = None
 
     def _ensure_keys_present(self):
         """@brief Ensure the required keys are present in the config dict that relate to the future plot attrs."""
@@ -2100,11 +2109,15 @@ class FuturePlotGUI(GUIBase):
                                                                        rows=[],
                                                                        row_key=BankAccountGUI.DATE,
                                                                        selection='multiple')
+                            self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
+
                             with ui.row():
                                 ui.button('Add', on_click=lambda: self._add_savings_withdrawal()).tooltip(
                                     'Add to the savings withdrawals table.')
                                 ui.button('Delete', on_click=lambda: self._del_savings_withdrawal()).tooltip(
                                     'Delete a savings withdrawal from the table.')
+                                ui.button('Edit', on_click=lambda: self._edit_savings_withdrawal()).tooltip(
+                                    'Edit a savings withdrawal in the table.')
 
                     with ui.column():
                         with ui.card().style("height: 600px; overflow-y: auto;").tooltip("Add planned pension withdrawals here."):
@@ -2114,11 +2127,15 @@ class FuturePlotGUI(GUIBase):
                                                                        rows=[],
                                                                        row_key=BankAccountGUI.DATE,
                                                                        selection='multiple')
+                            self._pension_withdrawals_table.on('row-dblclick', self._on_pension_withdrawal_table_double_click)
+
                             with ui.row():
                                 ui.button('Add', on_click=lambda: self._add_pension_withdrawal()).tooltip(
                                     'Add to the pension withdrawals table.')
                                 ui.button('Delete', on_click=lambda: self._del_pension_withdrawal()).tooltip(
                                     'Delete a pension withdrawal from the table.')
+                                ui.button('Edit', on_click=lambda: self._edit_pension_withdrawal()).tooltip(
+                                    'Edit a pension withdrawal in the table.')
 
                     self._update_gui_tables()
 
@@ -2248,10 +2265,24 @@ class FuturePlotGUI(GUIBase):
                 [FuturePlotGUI.YEARLY, FuturePlotGUI.MONTHLY], value='Yearly')
             self._repeat_count_field = ui.number(
                 label="Occurrences", value=1, min=1)
+            self._info_field = ui.input(label=FuturePlotGUI.INFO).style('width: 500px;')
+            self._info_field.tooltip("You may add information here. E.G what the withdrawal was for.")
             with ui.row():
                 ui.button("Ok", on_click=self._add_row_dialog_ok_button_press)
                 ui.button(
                     "Cancel", on_click=self._add_row_dialog_cancel_button_press)
+
+    def _init_edit_row_dialog(self):
+        """@brief Create a dialog presented to the user to edit a withdrawal rows in the savings or pension tables."""
+        with ui.dialog() as self._edit_row_dialog, ui.card().style('width: 600px;'):
+            self._edit_date_input_field = GUIBase.GetInputDateField(FuturePlotGUI.DATE)
+            self._edit_amount_field = ui.number(label=FuturePlotGUI.AMOUNT)
+            self._edit_info_field = ui.input(label=FuturePlotGUI.INFO).style('width: 500px;')
+            self._edit_info_field.tooltip("You may add information here. E.G what the withdrawal was for.")
+            with ui.row():
+                ui.button("Ok", on_click=self._edit_row_dialog_ok_button_press)
+                ui.button(
+                    "Cancel", on_click=self._edit_row_dialog_cancel_button_press)
 
     def _update_gui_tables(self):
         self._display_table_rows(
@@ -2259,13 +2290,31 @@ class FuturePlotGUI(GUIBase):
         self._display_table_rows(
             self._pension_withdrawals_table, self._get_pension_withdrawal_table_data())
 
+    def _get_updated_table(self, key):
+        # Originally the FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE and FuturePlotGUI.PENSION_WITHDRAWAL_TABLE
+        # tables had two columns per row (date and amount). A notes field was added to allow the user to
+        # record why the withdrawal was made. Therefore ensure all rows now have three columns
+
+        # A bit of defensive checking
+        if key not in (FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE, FuturePlotGUI.PENSION_WITHDRAWAL_TABLE):
+            raise Exception("_get_updated_table() Called with key = {key}")
+
+        old_table = self._future_plot_attr_dict[key]
+        new_table = []
+        for row in old_table:
+            # If only two columns add the info column
+            if len(row) == 2:
+                row.append("")
+            new_table.append(row)
+        return new_table
+
     def _get_savings_withdrawal_table_data(self):
         """@brief Get a table of the savings withdrawals."""
-        return self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
+        return self._get_updated_table(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
 
     def _get_pension_withdrawal_table_data(self):
         """@brief Get a table of the pension withdrawals."""
-        return self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]
+        return self._get_updated_table(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
 
     def _display_table_rows(self, gui_table, table_data):
         """@brief Show a table of the configured bank accounts.
@@ -2274,8 +2323,7 @@ class FuturePlotGUI(GUIBase):
         gui_table.rows.clear()
         gui_table.update()
         for row in table_data:
-            gui_table.add_row(
-                {FuturePlotGUI.DATE: row[0], FuturePlotGUI.AMOUNT: row[1]})
+            gui_table.add_row({FuturePlotGUI.DATE: row[0], FuturePlotGUI.AMOUNT: row[1], FuturePlotGUI.INFO: row[2]})
         gui_table.run_method('scrollTo', len(gui_table.rows)-1)
 
     def _add_savings_withdrawal(self):
@@ -2299,6 +2347,9 @@ class FuturePlotGUI(GUIBase):
                     self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = new_table
         self._update_gui_tables()
 
+    def _edit_savings_withdrawal(self):
+        self._edit_withdrawal_table(self._savings_withdrawals_table, FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
+
     def _add_pension_withdrawal(self):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = FuturePlotGUI.ADD_PENSION_WITHDRAWAL_BUTTON
@@ -2320,6 +2371,62 @@ class FuturePlotGUI(GUIBase):
                     self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = new_table
         self._update_gui_tables()
 
+    def _edit_pension_withdrawal(self):
+        self._edit_withdrawal_table(self._pension_withdrawals_table, FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
+
+    def _edit_withdrawal_table(self, withdrawal_table, table_type):
+        """@brief Called when the savings or pension withdrawal tabled are edited.
+           @param withdrawal_table Either the savings or pensions withdrawal table.
+           @param table_type The type of table being edited. Either FuturePlotGUI.PENSION_WITHDRAWAL_TABLE or FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE."""
+        # Set a flag to indicate that the pension withdrawal table is being edited. This is used later to determine which table to update.
+        self._withdrawal_edit_table = table_type
+        if table_type == FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE:
+            table = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
+
+        elif table_type == FuturePlotGUI.PENSION_WITHDRAWAL_TABLE:
+            table = self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]
+
+        else:
+            raise Exception("{self._withdrawal_edit_table} is an unknown withdrawal table.")
+
+        selected_dict_list = withdrawal_table.selected
+        if len(selected_dict_list) == 0:
+            ui.notify("No row is selected.", type='negative')
+
+        elif len(selected_dict_list) > 1:
+            ui.notify("Only one row should be selected when editing.", type='negative')
+
+        else:
+            date_found = False
+            selected_row = selected_dict_list[0]
+            for row in table:
+                table_date = FuturePlotGUI.GetDate(row[0])
+                selected_date = FuturePlotGUI.GetDate(selected_row[FuturePlotGUI.DATE])
+                if selected_date == table_date:
+                    self._set_edit_withdrawal_table_dialog_params(row[0], row[1], row[2])
+                    date_found = True
+
+            if date_found:
+                self._edit_row_dialog.open()
+
+    def _set_edit_withdrawal_table_dialog_params(self, date_str, amount, notes):
+        self._edit_date_input_field.value = date_str
+        self._edit_amount_field.value = amount
+        self._edit_info_field.value = ""  # Unless this is reset to an empty string the subsequent set of the value may not be displayed ???
+        self._edit_info_field.value = notes
+
+    def _on_savings_withdrawal_table_double_click(self, e):
+        row_dict = e.args[1]
+        self._withdrawal_edit_table = FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE
+        self._set_edit_withdrawal_table_dialog_params(row_dict[FuturePlotGUI.DATE], row_dict[FuturePlotGUI.AMOUNT], row_dict[FuturePlotGUI.INFO])
+        self._edit_row_dialog.open()
+
+    def _on_pension_withdrawal_table_double_click(self, e):
+        row_dict = e.args[1]
+        self._withdrawal_edit_table = FuturePlotGUI.PENSION_WITHDRAWAL_TABLE
+        self._set_edit_withdrawal_table_dialog_params(row_dict[FuturePlotGUI.DATE], row_dict[FuturePlotGUI.AMOUNT], row_dict[FuturePlotGUI.INFO])
+        self._edit_row_dialog.open()
+
     def _add_row_dialog_ok_button_press(self):
         if FuturePlotGUI.CheckValidDateString(self._date_input_field.value,
                                               field_name=self._date_input_field.props['label']) and \
@@ -2338,8 +2445,9 @@ class FuturePlotGUI(GUIBase):
 
             occurrence_count = self._repeat_count_field.value
             the_date = self._date_input_field.value
+            info_str = self._info_field.value
             for _ in range(0, int(occurrence_count)):
-                row = (the_date, self._amount_field.value)
+                row = (the_date, self._amount_field.value, info_str)
                 if self._button_selected == FuturePlotGUI.ADD_SAVINGS_WITHDRAWAL_BUTTON:
                     rows = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
                     if self._check_date_in_table(the_date, rows):
@@ -2374,6 +2482,40 @@ class FuturePlotGUI(GUIBase):
 
             self._update_gui_tables()
 
+    def _edit_row_dialog_ok_button_press(self):
+        self._edit_row_dialog.close()
+        if FuturePlotGUI.CheckValidDateString(self._edit_date_input_field.value,
+                                              field_name=self._edit_date_input_field.props['label']) and \
+           FuturePlotGUI.CheckZeroOrGreater(self._edit_amount_field.value,
+                                            field_name=self._edit_info_field.props['label']):
+            if self._withdrawal_edit_table == FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE:
+                table = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
+
+            elif self._withdrawal_edit_table == FuturePlotGUI.PENSION_WITHDRAWAL_TABLE:
+                table = self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]
+
+            else:
+                raise Exception("{self._withdrawal_edit_table} is an unknown withdrawal table.")
+
+            new_rows = []
+            for row in table:
+                date_entered = FuturePlotGUI.GetDate(self._edit_date_input_field.value)
+                table_date_str = row[0]
+                table_date = FuturePlotGUI.GetDate(table_date_str)
+                if date_entered == table_date:
+                    new_rows.append([table_date_str, self._edit_amount_field.value, self._edit_info_field.value])
+
+                else:
+                    new_rows.append(row)
+
+            if self._withdrawal_edit_table == FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE:
+                self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = new_rows
+
+            elif self._withdrawal_edit_table == FuturePlotGUI.PENSION_WITHDRAWAL_TABLE:
+                self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = new_rows
+
+            self._update_gui_tables()
+
     def _check_date_in_table(self, _date, table):
         """@brief Check if a date is in a table. Col 0 = date.
            @return True if it is."""
@@ -2389,6 +2531,9 @@ class FuturePlotGUI(GUIBase):
 
     def _add_row_dialog_cancel_button_press(self):
         self._add_row_dialog.close()
+
+    def _edit_row_dialog_cancel_button_press(self):
+        self._edit_row_dialog.close()
 
     def _get_max_date(self):
         """@brief Get the maximum date we need to plan for.
@@ -2518,10 +2663,15 @@ class FuturePlotGUI(GUIBase):
             @param date_value_table A list of tuples where each tuple contains a date string and a value string.
             @return A list of tuples where each tuple contains a datetime object and a float value."""
         converted_table = []
-        for date_str, value_str in date_value_table:
+        # date_value_table may have two columns or three (added a notes field)
+        # but we're only interested in the first two here.
+        for row in date_value_table:
+            date_str = row[0]
+            value_str = row[1]
+            info_str = row[2]
             date_obj = datetime.strptime(date_str, '%d-%m-%Y')
             value_float = float(value_str)
-            converted_table.append((date_obj, value_float))
+            converted_table.append((date_obj, value_float, info_str))
         return converted_table
 
     def _show_progress(self):
