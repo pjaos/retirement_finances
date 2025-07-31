@@ -2668,7 +2668,9 @@ class FuturePlotGUI(GUIBase):
         for row in date_value_table:
             date_str = row[0]
             value_str = row[1]
-            info_str = row[2]
+            info_str = ""
+            if len(row) > 2:
+                info_str = row[2]
             date_obj = datetime.strptime(date_str, '%d-%m-%Y')
             value_float = float(value_str)
             converted_table.append((date_obj, value_float, info_str))
