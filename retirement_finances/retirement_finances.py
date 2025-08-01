@@ -495,6 +495,7 @@ class Finances(GUIBase):
         if example_data:
             self._password = "Finance1"
             self._populate_example_data()
+        self._example_data = example_data
 
     def _populate_example_data(self):
         """@brief Populate the example data folder from the assets folder zip file."""
@@ -647,12 +648,20 @@ class Finances(GUIBase):
     def _show_config_location(self, location='top'):
         """@brief Display a message for the user to show where the files are held."""
         msg = f'All files are stored in {self._config.get_config_folder()} folder.'
-        with ui.footer().style('height: 60px;'):
+        if self._example_data:
+            footer_style = 'background-color: #333; color: white; padding: 1em'
+        else:
+            footer_style = 'height: 60px;'
+
+        with ui.footer().style(footer_style):
             # Put label on left and button on the right.
             with ui.row().classes('w-full justify-between items-center'):
                 ui.label(msg)
                 with ui.row():
-                    ui.button('Example', on_click=self.launch_example).tooltip("Launch retirement finances with example data.")
+                    if self._example_data:
+                        ui.label(">>> EXAMPLE DATA <<<").style('font-size: 24px')
+                    else:
+                        ui.button('Example', on_click=self.launch_example).tooltip("Launch retirement finances with example data.")
                     ui.label(f"Software Version: {self._program_version}")
                     ui.button('Quit', on_click=self.close).tooltip("Select to shutdown the Retirement Finances program.")
 
