@@ -7,6 +7,8 @@ import copy
 import shutil
 import traceback
 import bcrypt
+import zipfile
+import subprocess
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -18,8 +20,7 @@ from p3lib.helper import logTraceBack
 from p3lib.pconfig import DotConfigManager
 from p3lib.file_io import CryptFile
 from p3lib.launcher import Launcher
-
-from p3lib.helper import getProgramVersion
+from p3lib.helper import getProgramVersion, get_assets_folders
 
 from nicegui import ui, app
 
@@ -38,9 +39,10 @@ class Config(object):
     PASSWORD_HASH_FILE = "password_hash.txt"
 
     @staticmethod
-    def GetConfigFolder(folder):
+    def GetConfigFolder(folder, example_data=False):
         """@brief Get the folder use to store files in.
            @param folder If defined and the folder exists it is used to store files.
+           @param example_data If True, use example data.
            @return The folder where config files are stored.
            """
         if folder:
@@ -50,7 +52,11 @@ class Config(object):
                 raise Exception("{folder} folder not found.")
         else:
             default_cfg_folder = DotConfigManager.GetDefaultConfigFolder()
-            cfg_folder = os.path.join(default_cfg_folder, 'retirement_finances')
+            if example_data:
+                cfg_folder = os.path.join(default_cfg_folder, 'retirement_finances_example_data')
+
+            else:
+                cfg_folder = os.path.join(default_cfg_folder, 'retirement_finances')
 
         if not os.path.isdir(cfg_folder):
             os.makedirs(cfg_folder)
@@ -81,8 +87,8 @@ class Config(object):
         self._monthly_spending_crypt_file = CryptFile(filename=self._monthly_spending_file, password=self._password)
         self._load_monthly_spending_dict()
 
-    def __init__(self, folder, show_load_save_notifications=True):
-        self._config_folder = Config.GetConfigFolder(folder)
+    def __init__(self, folder, show_load_save_notifications=True, example_data=False):
+        self._config_folder = Config.GetConfigFolder(folder, example_data=example_data)
         self._show_load_save_notifications = show_load_save_notifications
 
         self._global_configuration_name_file = self._getGlobalConfigurationFile()
@@ -472,7 +478,7 @@ class Finances(GUIBase):
     MY_NAME_FIELD = "My Name"
     PARTNER_NAME_FIELD = "Partner Name"
 
-    def __init__(self, uio, password, folder):
+    def __init__(self, uio, password, folder, example_data=False):
         super().__init__()
         self._uio = uio
         self._password = password
@@ -483,8 +489,26 @@ class Finances(GUIBase):
         self._first_password = None
         self._authenticated_password = None
         self._config = Config(self._folder,
-                              show_load_save_notifications=self._uio.isDebugEnabled())
+                              show_load_save_notifications=self._uio.isDebugEnabled(),
+                              example_data=example_data)
         self._program_version = getProgramVersion()
+        if example_data:
+            self._password = "Finance1"
+            self._populate_example_data()
+
+    def _populate_example_data(self):
+        """@brief Populate the example data folder from the assets folder zip file."""
+        assets_folder = get_assets_folders()[0]
+        examples_zip_file = os.path.join(assets_folder, "example_retirement_finances.zip")
+        if os.path.isfile(examples_zip_file):
+            cfg_folder = self._config.get_config_folder()
+            # Extract the ZIP to the specific folder
+            with zipfile.ZipFile(examples_zip_file, 'r') as zip_ref:
+                zip_ref.extractall(cfg_folder)
+            self._uio.info(f"Extracted example data to {cfg_folder}")
+
+        else:
+            raise f"{examples_zip_file} files not found."
 
     def _open_main_window(self):
         """@brief Called to allow the user to enter the password in order to access
@@ -628,6 +652,7 @@ class Finances(GUIBase):
             with ui.row().classes('w-full justify-between items-center'):
                 ui.label(msg)
                 with ui.row():
+                    ui.button('Example', on_click=self.launch_example).tooltip("Launch retirement finances with example data.")
                     ui.label(f"Software Version: {self._program_version}")
                     ui.button('Quit', on_click=self.close).tooltip("Select to shutdown the Retirement Finances program.")
 
@@ -638,6 +663,10 @@ class Finances(GUIBase):
             app.shutdown()
         except AttributeError:
             pass
+
+    def launch_example(self):
+        """@brief Launch a new window showing example data."""
+        subprocess.run(['retirement_finances', '--example'])
 
     def _init_top_level(self):
         self._load_global_config()
@@ -3999,6 +4028,7 @@ def main():
         parser.add_argument("-f", "--folder",   help="The folder to store the retirement finances files in.")
         parser.add_argument("--port", type=int, help="The TCP IP port to serve the GUI on (default = 9090).", default=9090)
         parser.add_argument("--reload",  action='store_true', help="Set nicegui reload = True.")
+        parser.add_argument("--example",  action='store_true', help="Launch retirement finances app using example data.")
 
         launcher = Launcher("savings.png", app_name="Retirement_Finances")
         launcher.addLauncherArgs(parser)
@@ -4013,8 +4043,12 @@ def main():
         handled = launcher.handleLauncherArgs(options, uio=uio)
         if not handled:
             uio.info("Starting up, please wait...")
-            finances = Finances(uio, options.password, options.folder)
-            finances.initGUI(options.debug, port=options.port, reload=options.reload)
+            finances = Finances(uio, options.password, options.folder, example_data=options.example)
+            port = options.port
+            if options.example:
+                # For the example we start the server on the next port
+                port += 1
+            finances.initGUI(options.debug, port=port, reload=options.reload)
 
     # If the program throws a system exit exception
     except SystemExit:
