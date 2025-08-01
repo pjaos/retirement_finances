@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import argparse
 import copy
 import shutil
 import traceback
 import bcrypt
-import platform
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -19,8 +17,9 @@ from p3lib.uio import UIO
 from p3lib.helper import logTraceBack
 from p3lib.pconfig import DotConfigManager
 from p3lib.file_io import CryptFile
+from p3lib.launcher import Launcher
 
-from p3lib.helper import getAbsFile, getProgramVersion
+from p3lib.helper import getProgramVersion
 
 from nicegui import ui, app
 
@@ -3987,85 +3986,6 @@ class Plot1GUI(GUIBase):
             ui.notify("You ran out of money", type='negative')
 
 
-class WindowsApp():
-
-    def __init__(self, uio=None):
-        self._uio = uio
-
-    def info(self, msg):
-        """@brief Show an info level message to the user.
-           @param msg The msessage text."""
-        if self._uio:
-            self._uio.info(msg)
-
-    def _get_startup_file(self):
-        """@return Get the abs name of the program first started."""
-        return os.path.abspath(sys.argv[0])
-
-    def _get_app_name(self):
-        """@return The name of the running program without the .py extension."""
-        app_name = self._get_startup_file()
-        app_name = os.path.basename(app_name)
-        return app_name.replace(".py", "")
-
-    def _get_shortcut_folder(self):
-        temp_dir = os.path.join(os.getenv("TEMP"), "my_temp_shortcuts")
-        os.makedirs(temp_dir, exist_ok=True)
-        return temp_dir
-
-    def _get_shortcut(self):
-        package_name = self._get_app_name()
-        desktop = os.path.join(os.getenv("USERPROFILE"), "Desktop")
-        shortcut_path = os.path.join(desktop, f"{package_name}.lnk")
-        return shortcut_path
-
-    def create(self, icon_filename=None):
-        """@brief Create a start menu item to launch a program.
-           @param package_name The name of the package.
-           @param icon_filename The name of the icon file."""
-        from win32com.client import Dispatch
-        package_name = self._get_app_name()
-        exe_name = f"{package_name}.exe"
-
-        # Locate the pipx-installed executable
-        pipx_venv_path = os.path.expanduser(f"~\\.local\\bin\\{exe_name}")
-        if not os.path.isfile(pipx_venv_path):
-            raise Exception(f"{pipx_venv_path} file not found.")
-
-        icon_path = None
-        if icon_filename:
-            icon_path = getAbsFile(icon_filename)
-        if icon_path:
-            if os.path.isfile(icon_path):
-                self.info(f"{icon_path} icon file found.")
-            else:
-                raise Exception(f"{icon_path} file not found.")
-
-        shortcut_path = self._get_shortcut()
-
-        # Create the shortcut
-        shell = Dispatch("WScript.Shell")
-        shortcut = shell.CreateShortcut(shortcut_path)
-        shortcut.TargetPath = pipx_venv_path  # Path to your executable or script
-        shortcut.WorkingDirectory = os.path.dirname(pipx_venv_path)
-        shortcut.IconLocation = icon_path  # Optional: Set an icon
-        shortcut.Save()
-
-        if not os.path.isfile(shortcut_path):
-            raise Exception(f"{shortcut_path} shortcut file missing after creation.")
-
-        self.info(f"{shortcut_path} shortcut created.")
-
-    def delete(self):
-        shortcut_path = self._get_shortcut()
-
-        if os.path.exists(shortcut_path):
-            os.remove(shortcut_path)
-            self.info(f"Removed '{shortcut_path}' shortcut.")
-        else:
-            raise Exception(f"{shortcut_path} file not found.")
-
-
 def main():
     """@brief Program entry point"""
     uio = UIO()
@@ -4079,12 +3999,9 @@ def main():
         parser.add_argument("-f", "--folder",   help="The folder to store the retirement finances files in.")
         parser.add_argument("--port", type=int, help="The TCP IP port to serve the GUI on (default = 9090).", default=9090)
         parser.add_argument("--reload",  action='store_true', help="Set nicegui reload = True.")
-        if platform.system() == 'Linux':
-            parser.add_argument("-a", "--add_gnome_desktop_launcher",  action='store_true', help="Add a Linux gnome desktop launcher.")
-            parser.add_argument("-r", "--remove_gnome_desktop_launcher",  action='store_true', help="Remove a Linux gnome desktop launcher.")
-        if platform.system() == 'Windows':
-            parser.add_argument("-a", "--add_startup_icon",  action='store_true', help="Add a startup icon to the Windows start button.")
-            parser.add_argument("-r", "--remove_startup_icon",  action='store_true', help="Remove a startup icon from the Windows start button.")
+
+        launcher = Launcher("savings.png", app_name="Retirement_Finances")
+        launcher.addLauncherArgs(parser)
 
         options = parser.parse_args()
         uio.enableDebug(options.debug)
@@ -4093,35 +4010,8 @@ def main():
         if options.enable_syslog:
             uio.info("Syslog enabled")
 
-        setup_launcher = False
-        if platform.system() == 'Linux':
-            from p3lib.gnome_desktop_app import GnomeDesktopApp
-            if options.add_gnome_desktop_launcher:
-                gda = GnomeDesktopApp('savings.png')
-                gda.create()
-                uio.info("Created gnome desktop application launcher")
-                setup_launcher = True
-
-            elif options.remove_gnome_desktop_launcher:
-                gda = GnomeDesktopApp('savings.png')
-                if gda.delete():
-                    uio.info("Deleted gnome desktop application launcher")
-                else:
-                    uio.info("No gnome desktop application launcher was found to delete.")
-                setup_launcher = True
-
-        if platform.system() == 'Windows':
-            if options.add_startup_icon:
-                windowsApp = WindowsApp(uio=uio)
-                windowsApp.create("savings.ico")
-                setup_launcher = True
-
-            if options.remove_startup_icon:
-                windowsApp = WindowsApp(uio=uio)
-                windowsApp.delete()
-                setup_launcher = True
-
-        if not setup_launcher:
+        handled = launcher.handleLauncherArgs(options, uio=uio)
+        if not handled:
             uio.info("Starting up, please wait...")
             finances = Finances(uio, options.password, options.folder)
             finances.initGUI(options.debug, port=options.port, reload=options.reload)
