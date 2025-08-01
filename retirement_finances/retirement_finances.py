@@ -1298,7 +1298,7 @@ class Finances(GUIBase):
 
         pensions_totals_dict = {}
         for pension_dict in pension_dict_list:
-            owner = bank_accounts_dict[PensionGUI.PENSION_OWNER_LABEL]
+            owner = pension_dict[PensionGUI.PENSION_OWNER_LABEL]
             if owner not in pensions_totals_dict:
                 pensions_totals_dict[owner] = []
 
