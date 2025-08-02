@@ -9,6 +9,7 @@ import traceback
 import bcrypt
 import zipfile
 import subprocess
+import sys
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -675,7 +676,9 @@ class Finances(GUIBase):
 
     def launch_example(self):
         """@brief Launch a new window showing example data."""
-        subprocess.run(['retirement_finances', '--example'])
+        sys_args_copy = sys.argv[:]
+        sys_args_copy.append('--example')
+        os.execv(sys.executable, [sys.executable] + sys_args_copy)
 
     def _init_top_level(self):
         self._load_global_config()
