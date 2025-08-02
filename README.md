@@ -141,7 +141,7 @@ This will open your systems default web browser as shown below
 
 ## Blue bar at the bottom of the browser window.
 
-- Quit button
+- QUIT button
 
 This must be selected to shut down the program. If you just close the browser window the Retirement Finances (App) will stay running. You can reconnect to it by entering 127.0.0.1:9090 into the browsers address bar. The app will only be accessible from your local machine.
 
@@ -149,9 +149,17 @@ This must be selected to shut down the program. If you just close the browser wi
 
 To the left of the Quit button the Retirement Finances App software version is displayed.
 
+- EXAMPLE button
+
+Selecting this button starts a new instance of the retirement finances program/app that contains example data. 
+
+A new window is opened with the password field populated. If you then select the OK button you can view the example data and run reports on it. The example data is not designed as a guide to pension finances. However this option is useful in that it allows you to investigate how to use the tool once populated with data. This is a useful starting point if you wish to become familiar with the use of the retirement finances tool.
+
+In the example data you can change any entry as you wish, however once you close the retirement finances app (select the QUIT button) the data will be lost as the next time you start the app it will contain the original example data.
+
 - Storage Folder
 
-On the left hand side of the blue bar the folder where all the files created by the App are stored is detailed. All these files are encrypted. The password prompted for is used to decrypt the data in these files. If you ever wish to delete all data used by the App and start again then you should shut down the App (click the Quit button) and then manually delete this folder.
+On the left hand side of the bar at the bottom of the window the folder, where all the files created by the App are stored, is detailed. All these files are encrypted. The password prompted for is used to decrypt the data in these files. If you ever wish to delete all data used by the App and start again then you can shut down the app (click the QUIT button) and then manually delete this folder.
 
 ## Entering a password.
 
