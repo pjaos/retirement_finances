@@ -8,7 +8,6 @@ import shutil
 import traceback
 import bcrypt
 import zipfile
-import subprocess
 import sys
 
 from datetime import datetime
@@ -500,7 +499,7 @@ class Finances(GUIBase):
 
     def _populate_example_data(self):
         """@brief Populate the example data folder from the assets folder zip file."""
-        assets_folder = get_assets_folders()[0]
+        assets_folder = get_assets_folders(uio=self._uio)[0]
         examples_zip_file = os.path.join(assets_folder, "example_retirement_finances.zip")
         if os.path.isfile(examples_zip_file):
             cfg_folder = self._config.get_config_folder()

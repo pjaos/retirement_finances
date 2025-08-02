@@ -1634,14 +1634,14 @@ files = [
 
 [[package]]
 name = "p3lib"
-version = "1.1.133"
+version = "1.1.134"
 description = "A group of python modules for networking, plotting data, config storage, automating boot scripts, ssh access and user input output."
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "p3lib-1.1.133-py2.py3-none-any.whl", hash = "sha256:53e2c16678673edd34202af3f8f13c149961ac3a780f694a66010e465a96651d"},
-    {file = "p3lib-1.1.133.tar.gz", hash = "sha256:c79f2352f71ce62c13798de82ac864909131192c2fed5edb38c3e10a02a83618"},
+    {file = "p3lib-1.1.134-py2.py3-none-any.whl", hash = "sha256:69e458e1ee3c457ab4a61de4dcbd7115143662f5fd11775627b140ed33f330d0"},
+    {file = "p3lib-1.1.134.tar.gz", hash = "sha256:592025643072f92d6c60f85a965de80e94ac243e481ddc57ef02227fa24d0617"},
 ]
 
 [[package]]
@@ -3002,4 +3002,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "b12779d7e0d78bc5c727bc80f8922086481af4492de0d1185016300aedc012cb"
+content-hash = "2c1fe64edd54afc7d3e67a26d94c225b1d70eb8723f53a67bbd204c378f89e77"
