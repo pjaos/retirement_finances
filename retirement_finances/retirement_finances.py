@@ -3942,7 +3942,7 @@ class Plot1GUI(GUIBase):
             else:
                 average_monthly_spending_table = 0
             if self._plot_by_year:
-                # When plotting yuearly results we sum the monthly spending per year
+                # When plotting yearly results we sum the monthly spending per year
                 # and display this and we don't display the average.
                 fig.add_trace(go.Bar(name='Yearly Spending (reality)',
                                      x=datetimes,
@@ -4015,6 +4015,10 @@ class Plot1GUI(GUIBase):
                               zerolinecolor="gray",   # Zero line color
                               range=[0, max_y]    # Ensure 0 is on Y axis
         ),)
+
+        # If we have a bar chart we're plotting yearly data
+        if bar_chart:
+            fig.update_xaxes(tickformat="%Y")  # only show the year on xaxis
 
         if plot_pane:
             plot_pane.clear()
