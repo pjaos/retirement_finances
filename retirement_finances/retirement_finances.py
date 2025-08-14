@@ -9,6 +9,8 @@ import traceback
 import bcrypt
 import zipfile
 import sys
+import subprocess
+import threading
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -675,9 +677,20 @@ class Finances(GUIBase):
 
     def launch_example(self):
         """@brief Launch a new window showing example data."""
+        # We don't want a daemon thread here as the current thread shuts down and should wait 
+        # for this one to close before exiting to the OS.
+        threading.Thread(target=self.launch_example_thread).start()
+        self.close()
+
+    def launch_example_thread(self):
         sys_args_copy = sys.argv[:]
         sys_args_copy.append('--example')
-        os.execv(sys.executable, [sys.executable] + sys_args_copy)
+        # On a Windows system we create an exe using pyinstaller. If running in this context we don't 
+        # need the executable because it's already the first arg in sys_args_copy.
+        if not sys.executable.lower().endswith('retirement_finances.exe'):
+            sys_args_copy.insert(0, sys.executable)
+        self._uio.debug(f"Re-launch arguments: {sys_args_copy}")
+        subprocess.run(sys_args_copy)
 
     def _init_top_level(self):
         self._load_global_config()

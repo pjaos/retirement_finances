@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "retirement-finances"
-version = "6.1"
+version = "6.2"
 description = ""
 authors = ["Paul Austen <pjaos@gmail.com>"]
 readme = "README.md"
@@ -11,6 +11,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
+bcrypt = "*"
 python = "^3.10"
 cryptography = "*"
 click = "*"
@@ -22,7 +23,6 @@ plotly = "*"
 python-dateutil = "*"
 psutil = "*"
 pandas = "*"
-bcrypt = "*"
 PyInstaller = "*"
 
 [tool.poetry.scripts]
