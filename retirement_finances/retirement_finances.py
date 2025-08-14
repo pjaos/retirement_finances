@@ -677,7 +677,7 @@ class Finances(GUIBase):
 
     def launch_example(self):
         """@brief Launch a new window showing example data."""
-        # We don't want a daemon thread here as the current thread shuts down and should wait 
+        # We don't want a daemon thread here as the current thread shuts down and should wait
         # for this one to close before exiting to the OS.
         threading.Thread(target=self.launch_example_thread).start()
         self.close()
@@ -685,7 +685,7 @@ class Finances(GUIBase):
     def launch_example_thread(self):
         sys_args_copy = sys.argv[:]
         sys_args_copy.append('--example')
-        # On a Windows system we create an exe using pyinstaller. If running in this context we don't 
+        # On a Windows system we create an exe using pyinstaller. If running in this context we don't
         # need the executable because it's already the first arg in sys_args_copy.
         if not sys.executable.lower().endswith('retirement_finances.exe'):
             sys_args_copy.insert(0, sys.executable)
