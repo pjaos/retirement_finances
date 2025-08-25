@@ -4030,8 +4030,10 @@ class Plot1GUI(GUIBase):
         ),)
 
         # If we have a bar chart we're plotting yearly data
-        if bar_chart:
+        if self._plot_by_year:
             fig.update_xaxes(tickformat="%Y")  # only show the year on xaxis
+        else:
+            fig.update_xaxes(tickformat="%b %Y")  # only show the year on xaxis
 
         if plot_pane:
             plot_pane.clear()
