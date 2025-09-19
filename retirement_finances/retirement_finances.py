@@ -2731,6 +2731,10 @@ class FuturePlotGUI(GUIBase):
     def _show_progress(self):
         self._calc(overlay_real_performance=True)
 
+    def _get_report_start_date(self):
+        """@return The date entered as the report start date."""
+        return datetime.strptime(self._future_plot_attr_dict[FuturePlotGUI.REPORT_START_DATE], '%d-%m-%Y')
+
     def _calc(self, overlay_real_performance=False):
         """@brief Perform calculation. This took ages to get right. I used the household_finances spreadsheet to validate the numbers it produces.
            @param overlay_real_performance If True then the plot shows the predictions overlaid with the real performance.
@@ -2739,8 +2743,13 @@ class FuturePlotGUI(GUIBase):
         try:
             plot_table = []
             max_planning_date = self._get_max_date()
-            report_start_date = datetime.strptime(
-                self._future_plot_attr_dict[FuturePlotGUI.REPORT_START_DATE], '%d-%m-%Y')
+            report_start_date = self._get_report_start_date()
+            final_plot_year = self._get_final_year()
+            # Check for valid report dates.
+            if final_plot_year > 0 and report_start_date.year > final_plot_year:
+                ui.notify("The report start date cannot be after the last year to plot.", type='negative')
+                return
+
             # Set parameter to be used later
             self._report_start_date = report_start_date
             # A list of the dates to be plotted (monthly)
@@ -2798,15 +2807,15 @@ class FuturePlotGUI(GUIBase):
 
             # Add initial state
             plot_table.append((first_date,
-                               total,
-                               personal_pension_value,
-                               savings_amount,
-                               predicted_income_this_month,
-                               state_pension_this_month,
-                               savings_interest,
-                               total_savings_withdrawal,
-                               total_pension_withdrawal,
-                               spending_this_month))
+                            total,
+                            personal_pension_value,
+                            savings_amount,
+                            predicted_income_this_month,
+                            state_pension_this_month,
+                            savings_interest,
+                            total_savings_withdrawal,
+                            total_pension_withdrawal,
+                            spending_this_month))
 
             # Assume that the account existed in the month prior to the report start date.
             # Therefore add the savings accrued during this month.
@@ -2817,6 +2826,7 @@ class FuturePlotGUI(GUIBase):
             # Calc the required parameters for each date
             for row in monthly_budget_table:
                 this_date = row[0]
+                # Not sure this is needed as this_date and first_date are initailly the same ???
                 # We ignore the first date as no time has passed. Therefore the state of the finances will be unchanged
                 if this_date <= first_date:
                     continue
@@ -3006,8 +3016,13 @@ class FuturePlotGUI(GUIBase):
     def _get_monthly_spending_table(self):
         monthly_spending_dict = self._config.get_monthly_spending_dict()
         monthly_spending_table = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
-
-        return monthly_spending_table
+        # Ensure the monthly spending table does not include dates before the report start date.
+        output_table = []
+        for row in monthly_spending_table:
+             row_date = datetime.strptime(row[0], '%d-%m-%Y')
+             if row_date >= self._report_start_date:
+                 output_table.append(row)
+        return output_table
 
     def _get_final_year(self):
         """@brief Get the final year of the prediction.
@@ -3335,11 +3350,13 @@ class FuturePlotGUI(GUIBase):
             # Unpack results
             if filtered:
                 new_dates, new_values = zip(*filtered)
+            # If unable to select a date on or after the report start date use the latest data we have.
+            # and assume this is available at the report start date. A bit of an assumption !!!
             else:
-                # If unable to select a date on or after the report start date use the latest data we have.
                 dates, values = zip(*table)
-                new_dates = dates[-1]
-                new_values = values[-1]
+                # Ensure we always returns lists even when we only have one entry
+                new_dates = [self._report_start_date,]
+                new_values = [values[-1]]
             dates = new_dates
             values = new_values
 
@@ -3347,9 +3364,6 @@ class FuturePlotGUI(GUIBase):
             # If no report start date then use all the data we have
             # We should never really get here as a report start date is required.
             dates, values = zip(*table)
-
-        if isinstance(dates, str):
-            raise Exception(f"Insufficient {table_type} data. Check that you have at least two {table_type} values before the prediction start date.")
 
         return {"Date": dates, "Value": values}
 
