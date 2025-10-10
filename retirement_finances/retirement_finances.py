@@ -2807,15 +2807,15 @@ class FuturePlotGUI(GUIBase):
 
             # Add initial state
             plot_table.append((first_date,
-                            total,
-                            personal_pension_value,
-                            savings_amount,
-                            predicted_income_this_month,
-                            state_pension_this_month,
-                            savings_interest,
-                            total_savings_withdrawal,
-                            total_pension_withdrawal,
-                            spending_this_month))
+                               total,
+                               personal_pension_value,
+                               savings_amount,
+                               predicted_income_this_month,
+                               state_pension_this_month,
+                               savings_interest,
+                               total_savings_withdrawal,
+                               total_pension_withdrawal,
+                               spending_this_month))
 
             # Assume that the account existed in the month prior to the report start date.
             # Therefore add the savings accrued during this month.
@@ -3019,9 +3019,9 @@ class FuturePlotGUI(GUIBase):
         # Ensure the monthly spending table does not include dates before the report start date.
         output_table = []
         for row in monthly_spending_table:
-             row_date = datetime.strptime(row[0], '%d-%m-%Y')
-             if row_date >= self._report_start_date:
-                 output_table.append(row)
+            row_date = datetime.strptime(row[0], '%d-%m-%Y')
+            if row_date >= self._report_start_date:
+                output_table.append(row)
         return output_table
 
     def _get_final_year(self):
@@ -4046,8 +4046,11 @@ class Plot1GUI(GUIBase):
         # If we have a bar chart we're plotting yearly data
         if self._plot_by_year:
             fig.update_xaxes(tickformat="%Y")  # only show the year on xaxis
-        else:
-            fig.update_xaxes(tickformat="%b %Y")  # only show the year on xaxis
+# PJA: Could have deleted it but left for reference.
+# Commenting this out to ensure the line plots show day/month/year when hovering
+# over the traces when the 'By Year' checkbox has not been selected.
+#        else:
+#            fig.update_xaxes(tickformat="%b %Y")  # only show the year on xaxis
 
         if plot_pane:
             plot_pane.clear()
