@@ -848,7 +848,7 @@ class Finances(GUIBase):
                 account_name = bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
                 active_account = bank_account_dict[BankAccountGUI.ACCOUNT_ACTIVE]
                 balanceTable = bank_account_dict[BankAccountGUI.TABLE]
-                balance = ""
+                balance = 0
                 if active_account:
                     balance = 0
                     if len(balanceTable) > 0:
@@ -1586,7 +1586,7 @@ class BankAccountGUI(GUIBase):
         self._add_row_dialog.close()
         if BankAccountGUI.CheckValidDateString(self._date_input_field.value,
                                                field_name=self._date_input_field.props['label']) and \
-           BankAccountGUI.CheckGreaterThanZero(self._amount_field.value,
+           BankAccountGUI.CheckZeroOrGreater(self._amount_field.value,
                                                field_name=self._amount_field.props['label']) and \
            BankAccountGUI.CheckDuplicateDate(self._bank_account_dict[BankAccountGUI.TABLE], self._date_input_field.value):
             row = (self._date_input_field.value, self._amount_field.value)
@@ -3535,19 +3535,28 @@ class FuturePlotGUI(GUIBase):
         else:
             initial_value = None
             if initial_date:
-                for row in date_value_table:
-                    _date = row[0]
-                    _value = row[1]
-                    # DEBUG print(f"PJA: initial_date={initial_date}, _date={_date}, _value={_value}, previous_value={previous_value}")
-                    # We could linterp this data to try and predict the value at the given initial date. However
-                    # this may not be correct due to values not increasing in this fashion (I.E savings accounts
-                    # interest paid on a date each year). Therefore as we may not have the data, we choose the
-                    # closest value we have.
-                    if _date >= initial_date:
-                        initial_value = _value
-                        break
-                    else:
-                        initial_value = _value
+                # If we have no entries in the table
+                if len(date_value_table) == 0:
+                    # The initial value/amount = 0
+                    initial_value = 0.0
+                # If the initial date we're interested in is before the first user data date
+                elif initial_date < date_value_table[0][0]:
+                    # The table value/amount = 0
+                    initial_value = 0.0
+                else:
+                    for row in date_value_table:
+                        _date = row[0]
+                        _value = row[1]
+                        # DEBUG print(f"PJA: initial_date={initial_date}, _date={_date}, _value={_value}, previous_value={previous_value}")
+                        # We could linterp this data to try and predict the value at the given initial date. However
+                        # this may not be correct due to values not increasing in this fashion (I.E savings accounts
+                        # interest paid on a date each year). Therefore as we may not have the data, we choose the
+                        # closest value we have.
+                        if _date >= initial_date:
+                            initial_value = _value
+                            break
+                        else:
+                            initial_value = _value
 
             if initial_value is None:
                 raise Exception("Start date to early. Data is missing for this start date.")
