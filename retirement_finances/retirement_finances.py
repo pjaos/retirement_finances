@@ -804,17 +804,24 @@ class Finances(GUIBase):
                 'Edit a bank/building society account')
             self._show_only_active_accounts_checkbox = ui.checkbox(
                 "Show only active accounts", on_change=self.on_checkbox_change, value=True).tooltip("Deselect to show inactive accounts in the above list.")
+            self._show_non_zero_balance_accounts_checkbox = ui.checkbox(
+                "Only show accounts in credit", on_change=self.on_checkbox1_change, value=True).tooltip("Deselect to show accounts that contain no money.")
 
         self._show_bank_account_list()
 
     def on_checkbox_change(self, event):
         show_only_active_accounts = event.value
-        self._show_bank_account_list(show_only_active_accounts=show_only_active_accounts)
+        self._show_bank_account_list(show_only_active_accounts=self._show_only_active_accounts_checkbox.value,
+                                     show_only_positive_balance_accounts=self._show_non_zero_balance_accounts_checkbox.value)
+
+    def on_checkbox1_change(self, event):
+        self._show_bank_account_list(show_only_active_accounts=self._show_only_active_accounts_checkbox.value,
+                                     show_only_positive_balance_accounts=self._show_non_zero_balance_accounts_checkbox.value)
 
     def _init_dialog2(self):
         """@brief Create a dialog presented to the user to check that they wish to delete a bank account."""
         with ui.dialog() as self._dialog2, ui.card().style('width: 400px;'):
-            ui.label("Are you sure you wish to delete the selected bank account.")
+            ui.label("Are you sure you wish to delete the selected bank account.\nYOU WILL LOOSE ALL THE HISTORY OF THIS ACCOUNT IF YOU DELETE IT.")
             with ui.row():
                 ui.button("Yes", on_click=self._dialog2_yes_button_press)
                 ui.button("No", on_click=self._dialog2_no_button_press)
@@ -834,7 +841,7 @@ class Finances(GUIBase):
         """@brief Called when dialog 2 no button is selected."""
         self._dialog2.close()
 
-    def _show_bank_account_list(self, show_only_active_accounts=True):
+    def _show_bank_account_list(self, show_only_active_accounts=True, show_only_positive_balance_accounts=True):
         """@brief Show a table of the configured bank accounts.
            @param show_only_active_accounts If True don't show inactive accounts."""
         if self._bank_acount_table:
@@ -858,6 +865,8 @@ class Finances(GUIBase):
                             total += balance
                 show_account = True
                 if show_only_active_accounts and not active_account:
+                    show_account = False
+                if show_only_positive_balance_accounts and balance <= 0.0:
                     show_account = False
                 if show_account:
                     self._bank_acount_table.add_row({BankAccountGUI.ACCOUNT_OWNER: owner,
