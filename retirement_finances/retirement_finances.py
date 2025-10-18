@@ -810,7 +810,6 @@ class Finances(GUIBase):
         self._show_bank_account_list()
 
     def on_checkbox_change(self, event):
-        show_only_active_accounts = event.value
         self._show_bank_account_list(show_only_active_accounts=self._show_only_active_accounts_checkbox.value,
                                      show_only_positive_balance_accounts=self._show_non_zero_balance_accounts_checkbox.value)
 
@@ -1596,7 +1595,7 @@ class BankAccountGUI(GUIBase):
         if BankAccountGUI.CheckValidDateString(self._date_input_field.value,
                                                field_name=self._date_input_field.props['label']) and \
            BankAccountGUI.CheckZeroOrGreater(self._amount_field.value,
-                                               field_name=self._amount_field.props['label']) and \
+                                             field_name=self._amount_field.props['label']) and \
            BankAccountGUI.CheckDuplicateDate(self._bank_account_dict[BankAccountGUI.TABLE], self._date_input_field.value):
             row = (self._date_input_field.value, self._amount_field.value)
             self._add_table_row(row)
