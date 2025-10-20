@@ -299,10 +299,6 @@ class Config(object):
 
     # --- methods for global configuration parameters ---
 
-
-
-
-
     # --- start methods for report 1 plot parameters ---
 
     def _load_multiple_report1_plot_attrs(self):
@@ -348,9 +344,6 @@ class Config(object):
         return self._selected_report1_parameters_name_dict
 
     # --- end methods for report1 plot parameters list ---
-
-
-
 
     def load_global_configuration(self):
         """@brief Load the global configuration parameters from file."""
@@ -1451,7 +1444,6 @@ class Finances(GUIBase):
         self._init_table_dialog(table_rows)
         self._table_dialog.open()
 
-
     def _report1(self):
         """@brief Plot our financial future based on given parameters."""
         # Define a secondary page
@@ -2169,7 +2161,11 @@ class FuturePlotGUI(GUIBase):
         with ui.row():
             ui.label("Drawdown Retirement Prediction").style('font-size: 32px; font-weight: bold;')
         with ui.row():
-            ui.label("The following parameters can be changed to alter your retirement prediction. This report will attempt to meet the monthly budget/income from savings until the pension drawdown start date. You may add manual deductions from savings or pension at any time (Savings withdrawals and Pension withdrawals tables) and these are used as all/part of the target budget/income.")
+            ui.label("The following parameters can be changed to alter your retirement prediction. "
+                     "This report will attempt to meet the monthly budget/income from savings until "
+                     "the pension drawdown start date. You may add manual deductions from savings or "
+                     "pension at any time (Savings withdrawals and Pension withdrawals tables) and "
+                     "these are used as all/part of the target budget/income.")
 
         with ui.row():
             with ui.column():
@@ -2218,17 +2214,15 @@ class FuturePlotGUI(GUIBase):
 
         with ui.row():
             columns = [{'name': FuturePlotGUI.DATE, 'label': FuturePlotGUI.DATE, 'field': FuturePlotGUI.DATE},
-                        {'name': FuturePlotGUI.AMOUNT, 'label': FuturePlotGUI.AMOUNT,
-                            'field': FuturePlotGUI.AMOUNT},
-                        ]
+                       {'name': FuturePlotGUI.AMOUNT, 'label': FuturePlotGUI.AMOUNT, 'field': FuturePlotGUI.AMOUNT}]
             with ui.column():
                 with ui.card().style("height: 500px; overflow-y: auto;").tooltip("Add planned savings withdrawals here."):
                     ui.label("Savings withdrawals").style(
                         'font-weight: bold;')
                     self._savings_withdrawals_table = ui.table(columns=columns,
-                                                                rows=[],
-                                                                row_key=FuturePlotGUI.DATE,
-                                                                selection='multiple')
+                                                               rows=[],
+                                                               row_key=FuturePlotGUI.DATE,
+                                                               selection='multiple')
                     self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
 
                     with ui.row():
@@ -2244,9 +2238,9 @@ class FuturePlotGUI(GUIBase):
                     ui.label("Pension withdrawals").style(
                         'font-weight: bold;')
                     self._pension_withdrawals_table = ui.table(columns=columns,
-                                                                rows=[],
-                                                                row_key=FuturePlotGUI.DATE,
-                                                                selection='multiple')
+                                                               rows=[],
+                                                               row_key=FuturePlotGUI.DATE,
+                                                               selection='multiple')
                     self._pension_withdrawals_table.on('row-dblclick', self._on_pension_withdrawal_table_double_click)
 
                     with ui.row():
@@ -2459,7 +2453,7 @@ class FuturePlotGUI(GUIBase):
                             new_table.append(row)
                     self._set_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE, new_table)
         self._update_gui_tables()
-        self._config.get_future_plot_attrs_dict()[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]=new_table
+        self._config.get_future_plot_attrs_dict()[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = new_table
 
     def _edit_savings_withdrawal(self):
         self._edit_withdrawal_table(self._savings_withdrawals_table, FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
@@ -2484,7 +2478,7 @@ class FuturePlotGUI(GUIBase):
                             new_table.append(row)
                     self._set_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE, new_table)
         self._update_gui_tables()
-        self._config.get_future_plot_attrs_dict()[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]=new_table
+        self._config.get_future_plot_attrs_dict()[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = new_table
 
     def _edit_pension_withdrawal(self):
         self._edit_withdrawal_table(self._pension_withdrawals_table, FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
@@ -3685,7 +3679,7 @@ class Report1GUI(GUIBase):
 
     DATE = BankAccountGUI.DATE
     AMOUNT = "Amount"
-    AMOUNT_AFTER_TAX = "After Tax"
+    AMOUNT_TAXABLE = "Taxable"
     INFO = "Info"
 
     YEARLY = 'Yearly'
@@ -3713,9 +3707,6 @@ class Report1GUI(GUIBase):
         self._pension_owner_list = pension_owner_list
         self._ensure_keys_present()
         self._init_gui()
-        self._init_add_row_dialog()
-        self._init_ok_to_delete_dialog()
-        self._init_edit_row_dialog()
         self._report_start_date = None
         self._withdrawal_edit_table = None
 
@@ -3779,6 +3770,9 @@ class Report1GUI(GUIBase):
         plot_attr_dict[param_name] = value
 
     def _init_gui(self):
+        self._init_add_row_dialog()
+        self._init_ok_to_delete_dialog()
+        self._init_edit_row_dialog()
         with ui.row():
             ui.label("Basic Retirement Prediction").style('font-size: 32px; font-weight: bold;')
 
@@ -3813,16 +3807,15 @@ class Report1GUI(GUIBase):
 
         with ui.row():
             savings_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
-                        {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
-                        ]
+                               {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT}]
             with ui.column():
                 with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Add planned savings withdrawals here."):
                     ui.label("Savings withdrawals").style(
                         'font-weight: bold;')
                     self._savings_withdrawals_table = ui.table(columns=savings_columns,
-                                                                rows=[],
-                                                                row_key=Report1GUI.DATE,
-                                                                selection='multiple')
+                                                               rows=[],
+                                                               row_key=Report1GUI.DATE,
+                                                               selection='multiple')
                     self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
 
                     with ui.row():
@@ -3834,17 +3827,16 @@ class Report1GUI(GUIBase):
                             'Edit a savings withdrawal in the table.')
 
             pensions_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
-                        {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
-                        {'name': Report1GUI.AMOUNT_AFTER_TAX, 'label': Report1GUI.AMOUNT_AFTER_TAX, 'field': Report1GUI.AMOUNT_AFTER_TAX},
-                        ]
+                                {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
+                                {'name': Report1GUI.AMOUNT_TAXABLE, 'label': Report1GUI.AMOUNT_TAXABLE, 'field': Report1GUI.AMOUNT_TAXABLE}]
             with ui.column():
                 with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Add planned pension withdrawals here."):
                     ui.label("Pension withdrawals").style(
                         'font-weight: bold;')
                     self._pension_withdrawals_table = ui.table(columns=pensions_columns,
-                                                                rows=[],
-                                                                row_key=Report1GUI.DATE,
-                                                                selection='multiple')
+                                                               rows=[],
+                                                               row_key=Report1GUI.DATE,
+                                                               selection='multiple')
                     self._pension_withdrawals_table.on('row-dblclick', self._on_pension_withdrawal_table_double_click)
 
                     with ui.row():
@@ -3856,17 +3848,16 @@ class Report1GUI(GUIBase):
                             'Edit a pension withdrawal in the table.')
 
             other_income_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
-                        {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
-                        {'name': Report1GUI.AMOUNT_AFTER_TAX, 'label': Report1GUI.AMOUNT_AFTER_TAX, 'field': Report1GUI.AMOUNT_AFTER_TAX},
-                        ]
+                                    {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
+                                    {'name': Report1GUI.AMOUNT_TAXABLE, 'label': Report1GUI.AMOUNT_TAXABLE, 'field': Report1GUI.AMOUNT_TAXABLE}]
             with ui.column():
                 with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Other income (E.G Annuity, rent, part time job etc)"):
                     ui.label("Other Income").style(
                         'font-weight: bold;')
                     self._other_income_table = ui.table(columns=other_income_columns,
-                                                                rows=[],
-                                                                row_key=Report1GUI.DATE,
-                                                                selection='multiple')
+                                                        rows=[],
+                                                        row_key=Report1GUI.DATE,
+                                                        selection='multiple')
                     self._other_income_table.on('row-dblclick', self._on_other_income_table_double_click)
 
                     with ui.row():
@@ -3915,7 +3906,7 @@ class Report1GUI(GUIBase):
     def _add_other_income(self):
         """@brief Called when the add to other income table button is selected."""
         self._button_selected = Report1GUI.ADD_OTHER_INCOME_BUTTON
-        self._amount_after_tax_field.visible = True
+        self._amount_taxable_field.visible = True
         self._add_row_dialog.open()
 
     def _del_other_income(self):
@@ -3943,15 +3934,15 @@ class Report1GUI(GUIBase):
 
         amount = row_dict[Report1GUI.AMOUNT]
         amount_after_tax = amount
-        if Report1GUI.AMOUNT_AFTER_TAX in row_dict:
-            amount_after_tax=row_dict[Report1GUI.AMOUNT_AFTER_TAX]
+        if Report1GUI.AMOUNT_TAXABLE in row_dict:
+            amount_taxable = row_dict[Report1GUI.AMOUNT_TAXABLE]
 
         self._set_edit_withdrawal_table_dialog_params(row_dict[Report1GUI.DATE],
                                                       amount,
                                                       row_dict[Report1GUI.INFO],
-                                                      amount_after_tax=amount_after_tax)
+                                                      amount_taxable=amount_taxable)
 
-        self._edit_amount_after_tax_field.visible = True
+        self._edit_amount_taxable_field.visible = True
         self._edit_row_dialog.open()
 
     def _init_edit_row_dialog(self):
@@ -3960,8 +3951,7 @@ class Report1GUI(GUIBase):
             self._edit_date_input_field = GUIBase.GetInputDateField(Report1GUI.DATE)
             with ui.row():
                 self._edit_amount_field = ui.number(label=Report1GUI.AMOUNT)
-                self._edit_amount_field.on('keyup', self._edit_amount_field_keyup)
-                self._edit_amount_after_tax_field = ui.number(label=Report1GUI.AMOUNT_AFTER_TAX).tooltip("This should be set to to be the same as the amount field if there is no tax to pay.")
+                self._edit_amount_taxable_field = ui.checkbox('Taxable').tooltip("This should be checked if this amount is taxable.")
             self._edit_info_field = ui.input(label=Report1GUI.INFO).style('width: 500px;')
             self._edit_info_field.tooltip("You may add information here. E.G what the withdrawal was for.")
             with ui.row():
@@ -3972,11 +3962,9 @@ class Report1GUI(GUIBase):
     def _edit_row_dialog_ok_button_press(self):
         self._edit_row_dialog.close()
         if Report1GUI.CheckValidDateString(self._edit_date_input_field.value,
-                                              field_name=self._edit_date_input_field.props['label']) and \
+                                           field_name=self._edit_date_input_field.props['label']) and \
            Report1GUI.CheckZeroOrGreater(self._edit_amount_field.value,
-                                            field_name=self._edit_amount_field.props['label']) and \
-           Report1GUI.CheckZeroOrGreater(self._edit_amount_after_tax_field.value,
-                                            field_name=self._edit_amount_after_tax_field.props['label']):
+                                         field_name=self._edit_amount_field.props['label']):
             if self._withdrawal_edit_table == Report1GUI.SAVINGS_WITHDRAWAL_TABLE:
                 table = self._get_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
 
@@ -3998,7 +3986,7 @@ class Report1GUI(GUIBase):
                     new_rows.append([table_date_str,
                                      self._edit_amount_field.value,
                                      self._edit_info_field.value,
-                                     self._edit_amount_after_tax_field.value])
+                                     self._edit_amount_taxable_field.value])
 
                 else:
                     new_rows.append(row)
@@ -4054,7 +4042,7 @@ class Report1GUI(GUIBase):
                 try:
                     # Check the amount after tax field contains a number.
                     float(row[3])
-                except:
+                except Exception:
                     # If not force the amount after tax field to be the same as the amount (I.E no tax)
                     row[3] = row[1]
 
@@ -4068,12 +4056,8 @@ class Report1GUI(GUIBase):
         gui_table.rows.clear()
         gui_table.update()
         for row in table_data:
-            gui_table.add_row({Report1GUI.DATE: row[0], Report1GUI.AMOUNT: row[1], Report1GUI.INFO: row[2], Report1GUI.AMOUNT_AFTER_TAX: row[3]})
+            gui_table.add_row({Report1GUI.DATE: row[0], Report1GUI.AMOUNT: row[1], Report1GUI.INFO: row[2], Report1GUI.AMOUNT_TAXABLE: row[3]})
         gui_table.run_method('scrollTo', len(gui_table.rows)-1)
-
-    def _edit_amount_field_keyup(self, e):
-        """@brief Called every time the user releases a key after entry into the amount field."""
-        self._edit_amount_after_tax_field.value = self._edit_amount_field.value
 
     def _edit_row_dialog_cancel_button_press(self):
         self._edit_row_dialog.close()
@@ -4085,24 +4069,20 @@ class Report1GUI(GUIBase):
                                                       row_dict[Report1GUI.AMOUNT],
                                                       row_dict[Report1GUI.INFO])
         # Savings should not show the after tax field.
-        self._edit_amount_after_tax_field.visible = False
+        self._edit_amount_taxable_field.visible = False
         self._edit_row_dialog.open()
 
-    def _set_edit_withdrawal_table_dialog_params(self, date_str, amount, notes, amount_after_tax=None):
+    def _set_edit_withdrawal_table_dialog_params(self, date_str, amount, notes, amount_taxable=False):
         self._edit_date_input_field.value = date_str
         self._edit_amount_field.value = amount
-        if amount_after_tax is None:
-            # If no value after tax has been passed, set it to be the same as the amount field.
-            self._edit_amount_after_tax_field.value = amount
-        else:
-            self._edit_amount_after_tax_field.value = amount_after_tax
+        self._edit_amount_taxable_field.value = amount_taxable
         self._edit_info_field.value = ""  # Unless this is reset to an empty string the subsequent set of the value may not be displayed ???
         self._edit_info_field.value = notes
 
     def _add_savings_withdrawal(self):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = Report1GUI.ADD_SAVINGS_WITHDRAWAL_BUTTON
-        self._amount_after_tax_field.visible = False
+        self._amount_taxable_field.visible = False
         self._add_row_dialog.open()
 
     def _del_savings_withdrawal(self):
@@ -4156,7 +4136,7 @@ class Report1GUI(GUIBase):
                 table_date = FuturePlotGUI.GetDate(row[0])
                 selected_date = FuturePlotGUI.GetDate(selected_row[Report1GUI.DATE])
                 if selected_date == table_date:
-                    self._set_edit_withdrawal_table_dialog_params(row[0], row[1], row[2], amount_after_tax=row[3])
+                    self._set_edit_withdrawal_table_dialog_params(row[0], row[1], row[2], amount_taxable=row[3])
                     date_found = True
 
             if date_found:
@@ -4167,22 +4147,22 @@ class Report1GUI(GUIBase):
         self._withdrawal_edit_table = Report1GUI.PENSION_WITHDRAWAL_TABLE
 
         amount = row_dict[Report1GUI.AMOUNT]
-        amount_after_tax = amount
-        if Report1GUI.AMOUNT_AFTER_TAX in row_dict:
-            amount_after_tax=row_dict[Report1GUI.AMOUNT_AFTER_TAX]
+        amount_taxable = False
+        if Report1GUI.AMOUNT_TAXABLE in row_dict:
+            amount_taxable = row_dict[Report1GUI.AMOUNT_TAXABLE]
 
         self._set_edit_withdrawal_table_dialog_params(row_dict[Report1GUI.DATE],
                                                       amount,
                                                       row_dict[Report1GUI.INFO],
-                                                      amount_after_tax=amount_after_tax)
+                                                      amount_taxable=amount_taxable)
 
-        self._edit_amount_after_tax_field.visible = True
+        self._edit_amount_taxable_field.visible = True
         self._edit_row_dialog.open()
 
     def _add_pension_withdrawal(self):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = Report1GUI.ADD_PENSION_WITHDRAWAL_BUTTON
-        self._amount_after_tax_field.visible = True
+        self._amount_taxable_field.visible = True
         self._add_row_dialog.open()
 
     def _del_pension_withdrawal(self):
@@ -4208,7 +4188,7 @@ class Report1GUI(GUIBase):
         """@return a list of name of the saved future plot parameters."""
 #        selected_retirement_parameters_name_dict = self._config.get_selected_report1_parameters_name_dict()
 #        return list(selected_retirement_parameters_name_dict.keys())
-    #PJA
+    # PJA
         # I'm not sure this is correct as the name list is stored in the wrong dict. However so as not to loose old
         # prediction values leave as is.
         multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
@@ -4289,8 +4269,7 @@ class Report1GUI(GUIBase):
             self._date_input_field = GUIBase.GetInputDateField(Report1GUI.DATE)
             with ui.row():
                 self._amount_field = ui.number(label=Report1GUI.AMOUNT)
-                self._amount_field.on('keyup', self._amount_field_keyup)
-                self._amount_after_tax_field = ui.number(label=Report1GUI.AMOUNT_AFTER_TAX).tooltip("This should be set to to be the same as the amount field if there is no tax to pay.")
+                self._amount_taxable_field = ui.checkbox('Taxable').tooltip("This should be checked if this amount is taxable.")
             with ui.row():
                 self._yearly_percentage_increase_field = ui.number(label="Yearly % increase").tooltip("Enter a +ve percentage if you wish to increase the amount on a yearly basis. Set to 0 if you do not wish to increase the amount every year.")
             self._repeat_field = ui.select([Report1GUI.YEARLY, Report1GUI.MONTHLY], value='Yearly')
@@ -4304,9 +4283,9 @@ class Report1GUI(GUIBase):
 
     def _add_row_dialog_ok_button_press(self):
         if Report1GUI.CheckValidDateString(self._date_input_field.value,
-                                              field_name=self._date_input_field.props['label']) and \
+                                           field_name=self._date_input_field.props['label']) and \
            Report1GUI.CheckGreaterThanZero(self._repeat_count_field.value,
-                                              field_name=self._repeat_count_field.props['label']):
+                                           field_name=self._repeat_count_field.props['label']):
 
             self._add_row_dialog.close()
             yearly = False
@@ -4322,20 +4301,19 @@ class Report1GUI(GUIBase):
             the_date = self._date_input_field.value
             last_date = the_date
             amount = self._amount_field.value
-            amount_after_tax = self._amount_after_tax_field.value
+            amount_taxable = self._amount_taxable_field.value
             yearly_percentage_increase = self._yearly_percentage_increase_field.value
             info_str = self._info_field.value
             for _ in range(0, int(occurrence_count)):
                 # If no change in the amount each year
                 if yearly_percentage_increase == 0:
-                    row = (the_date, amount, info_str, amount_after_tax)
+                    row = (the_date, amount, info_str, amount_taxable)
                 else:
                     if self._has_year_rolled_over(the_date, last_date):
                         amount = round(amount * (1+(yearly_percentage_increase/100)), 2)
-                        amount_after_tax = round(amount_after_tax * (1+(yearly_percentage_increase/100)), 2)
-                        row = (the_date, amount, info_str, amount_after_tax)
+                        row = (the_date, amount, info_str, amount_taxable)
                     else:
-                        row = (the_date, amount, info_str, amount_after_tax)
+                        row = (the_date, amount, info_str, amount_taxable)
                     last_date = the_date
 
                     the_datetime = datetime.strptime(the_date, "%d-%m-%Y")
@@ -4414,10 +4392,6 @@ class Report1GUI(GUIBase):
         next_date = start_date + relativedelta(months=+months)
         return next_date.strftime('%d-%m-%Y')
 
-    def _amount_field_keyup(self, e):
-        """@brief Called every time the user releases a key after entry into the amount field."""
-        self._amount_after_tax_field.value = self._amount_field.value
-
     def _init_ok_to_delete_dialog(self):
         """@brief Create a dialog presented to the user to check that they wish to delete a retirement prediction parameter set."""
         with ui.dialog() as self._del_ret_pred_param_dialog, ui.card().style('width: 400px;'):
@@ -4458,7 +4432,7 @@ class Report1GUI(GUIBase):
                                               field_name=self._start_date_field.props['label']):
 
             if FuturePlotGUI.CheckValidDateString(self._my_dob_field.value,
-                                                              field_name=self._my_dob_field.props['label']) and \
+                                                  field_name=self._my_dob_field.props['label']) and \
                 BankAccountGUI.CheckGreaterThanZero(self._my_max_age_field.value,
                                                     field_name=self._my_max_age_field.props['label']) and \
                 BankAccountGUI.CheckCommaSeparatedNumberList(self._savings_interest_rates_field.value,
@@ -4486,7 +4460,6 @@ class Report1GUI(GUIBase):
     def _calc(self, overlay_real_performance=False):
         """@brief Perform calculation."""
         print("PJA: DO CALC...")
-
 
 
 class Plot1GUI(GUIBase):
