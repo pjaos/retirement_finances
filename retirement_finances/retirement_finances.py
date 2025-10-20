@@ -3781,8 +3781,9 @@ class Report1GUI(GUIBase):
     def _init_gui(self):
         with ui.row():
             ui.label("Basic Retirement Prediction").style('font-size: 32px; font-weight: bold;')
+
         with ui.row():
-            ui.label("The following parameters can be changed to alter your retirement prediction.")
+            ui.label("The following parameters can be changed to alter the prediction.")
 
         with ui.row():
             with ui.column():
