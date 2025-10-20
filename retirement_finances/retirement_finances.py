@@ -33,7 +33,6 @@ class Config(object):
     """@brief Responsible for loading and saving the app config."""
     BANK_ACCOUNTS_FILE = "bank_accounts.json"
     PENSIONS_FILE = "pensions.json"
-    FUTURE_PLOT_ATTR_FILE = "future_plot_attr.json"
     MULTIPLE_FUTURE_PLOT_ATTR_FILE = "multiple_future_plot_attr.json"
     SELECTED_FUTURE_PLOT_NAME_ATTR_FILE = "selected_future_plot_name_attr.json"
     MULTIPLE_REPORT1_PLOT_ATTR_FILE = "multiple_report1_plot_attr.json"
@@ -79,9 +78,6 @@ class Config(object):
         self._pensions_crypt_file = CryptFile(filename=self._pensions_file, password=self._password)
         self._load_pensions()
 
-        self._future_plot_crypt_file = CryptFile(filename=self._future_plot_file, password=self._password)
-        self._load_future_plot_attrs()
-
         self._multiple_future_plot_crypt_file = CryptFile(filename=self._multiple_future_plot_file, password=self._password)
         self._load_multiple_future_plot_attrs()
 
@@ -104,7 +100,7 @@ class Config(object):
         self._global_configuration_name_file = self._getGlobalConfigurationFile()
         self._bank_accounts_file = self._getBankAccountListFile()
         self._pensions_file = self._getPensionsListFile()
-        self._future_plot_file = self._getFuturePlotAttrFile()
+
         self._multiple_future_plot_file = self._getMultipleFuturePlotAttrFile()
         self._selected_retirement_parameters_name_file = self._getSelectedRequirementParametersNameFile()
 
@@ -127,10 +123,6 @@ class Config(object):
     def _getPensionsListFile(self):
         """@return The file used to store pension details."""
         return os.path.join(self._config_folder, Config.PENSIONS_FILE)
-
-    def _getFuturePlotAttrFile(self):
-        """@return The file used to store future plot details."""
-        return os.path.join(self._config_folder, Config.FUTURE_PLOT_ATTR_FILE)
 
     def _getMultipleFuturePlotAttrFile(self):
         """@return The file used to store multiple future plot details."""
@@ -258,31 +250,6 @@ class Config(object):
         self.save_pensions()
 
     # --- start methods for future plot parameters ---
-
-    def _load_future_plot_attrs(self):
-        """@brief Load future plot parameters from file."""
-        try:
-            self._future_plot_attr_dict = {}
-            self._future_plot_attr_dict = self._future_plot_crypt_file.load()
-            if self._show_load_save_notifications:
-                ui.notify(f'Loaded from {self._future_plot_crypt_file.get_file()}', type='positive', position='center', duration=2)
-
-        except Exception:
-            ui.notify(f'{self._future_plot_crypt_file.get_file()} file not found.', type='negative')
-
-    def save_future_plot_attrs(self):
-        """@brief Save the future plot parameters persistently."""
-        self._future_plot_crypt_file.save(self._future_plot_attr_dict)
-        if self._show_load_save_notifications:
-            ui.notify(f'Saved {self._future_plot_crypt_file.get_file()}', type='positive', position='center', duration=2)
-
-    def get_future_plot_attrs_dict(self):
-        """@brief Get the the future plot parameters dict."""
-        return self._future_plot_attr_dict
-
-    def replace_future_plot_attrs_dict(self, new_future_plot_attrs_dict):
-        self._future_plot_attr_dict = new_future_plot_attrs_dict
-
 
     def _load_multiple_future_plot_attrs(self):
         """@brief Load the multiple future plot parameters from file."""
@@ -2100,7 +2067,7 @@ class FuturePlotGUI(GUIBase):
         self._config = config
         self._pension_owner_list = pension_owner_list
         self._last_pp_year = None
-        self._future_plot_attr_dict = self._ensure_keys_present()
+        self._ensure_keys_present()
         self._init_gui()
         self._init_add_row_dialog()
         self._init_ok_to_delete_dialog()
@@ -2110,54 +2077,73 @@ class FuturePlotGUI(GUIBase):
 
     def _ensure_keys_present(self):
         """@brief Ensure the required keys are present in the config dict that relate to the future plot attrs."""
-        future_plot_attr_dict = self._config.get_future_plot_attrs_dict()
+        selected_name = self._get_selected_retirement_predictions_settings_name()
+        multiple_future_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
 
-        if FuturePlotGUI.MY_DATE_OF_BIRTH not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH] = ""
+        plot_attr_dict = {}
+        if selected_name in multiple_future_plot_attrs_dict:
+            plot_attr_dict = multiple_future_plot_attrs_dict[selected_name]
 
-        if FuturePlotGUI.MY_MAX_AGE not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.MY_MAX_AGE] = FuturePlotGUI.DEFAULT_MALE_MAX_AGE
+        if FuturePlotGUI.MY_DATE_OF_BIRTH not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH] = ""
 
-        if FuturePlotGUI.PARTNER_DATE_OF_BIRTH not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.PARTNER_DATE_OF_BIRTH] = ""
+        if FuturePlotGUI.MY_MAX_AGE not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.MY_MAX_AGE] = FuturePlotGUI.DEFAULT_MALE_MAX_AGE
 
-        if FuturePlotGUI.PARTNER_MAX_AGE not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.PARTNER_MAX_AGE] = FuturePlotGUI.DEFAULT_MALE_MAX_AGE + 4
+        if FuturePlotGUI.PARTNER_DATE_OF_BIRTH not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.PARTNER_DATE_OF_BIRTH] = ""
 
-        if FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST] = FuturePlotGUI.DEFAULT_RATE_LIST
+        if FuturePlotGUI.PARTNER_MAX_AGE not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.PARTNER_MAX_AGE] = FuturePlotGUI.DEFAULT_MALE_MAX_AGE + 4
 
-        if FuturePlotGUI.PENSION_GROWTH_RATE_LIST not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.PENSION_GROWTH_RATE_LIST] = FuturePlotGUI.DEFAULT_RATE_LIST
+        if FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST] = FuturePlotGUI.DEFAULT_RATE_LIST
 
-        if FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES] = FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES
+        if FuturePlotGUI.PENSION_GROWTH_RATE_LIST not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.PENSION_GROWTH_RATE_LIST] = FuturePlotGUI.DEFAULT_RATE_LIST
 
-        if FuturePlotGUI.MONTHLY_INCOME not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME] = FuturePlotGUI.DEFAULT_MONTHLY_INCOME
+        if FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES] = FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES
 
-        if FuturePlotGUI.YEARLY_INCREASE_IN_INCOME not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.YEARLY_INCREASE_IN_INCOME] = FuturePlotGUI.DEFAULT_YEARLY_INCREASE_IN_INCOME
+        if FuturePlotGUI.MONTHLY_INCOME not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME] = FuturePlotGUI.DEFAULT_MONTHLY_INCOME
 
-        if FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST] = FuturePlotGUI.DEFAULT_STATE_PENSION_YEARLY_INCREASE
+        if FuturePlotGUI.YEARLY_INCREASE_IN_INCOME not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.YEARLY_INCREASE_IN_INCOME] = FuturePlotGUI.DEFAULT_YEARLY_INCREASE_IN_INCOME
 
-        if FuturePlotGUI.REPORT_START_DATE not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.REPORT_START_DATE] = ""
+        if FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST] = FuturePlotGUI.DEFAULT_STATE_PENSION_YEARLY_INCREASE
 
-        if FuturePlotGUI.PENSION_DRAWDOWN_START_DATE not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.PENSION_DRAWDOWN_START_DATE] = ""
+        if FuturePlotGUI.REPORT_START_DATE not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.REPORT_START_DATE] = ""
 
-        if FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE] = False
+        if FuturePlotGUI.PENSION_DRAWDOWN_START_DATE not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.PENSION_DRAWDOWN_START_DATE] = ""
 
-        if FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = []
+        if FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE] = False
 
-        if FuturePlotGUI.PENSION_WITHDRAWAL_TABLE not in future_plot_attr_dict:
-            future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = []
+        if FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = []
 
-        return future_plot_attr_dict
+        if FuturePlotGUI.PENSION_WITHDRAWAL_TABLE not in plot_attr_dict:
+            plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = []
+
+        return plot_attr_dict
+
+    def _get_param_value(self, param_name):
+        selected_name = self._get_selected_retirement_predictions_settings_name()
+        multiple_future_plot_attrs_dict = self._config.get_multiple_future_plot_attrs_dict()
+        plot_attr_dict = multiple_future_plot_attrs_dict[selected_name]
+        if param_name not in plot_attr_dict:
+            raise Exception(f"{param_name} not found in plot_attr_dict={plot_attr_dict}")
+        return plot_attr_dict[param_name]
+
+    def _set_param_value(self, param_name, value):
+        selected_name = self._get_selected_retirement_predictions_settings_name()
+        multiple_future_plot_attrs_dict = self._config.get_multiple_future_plot_attrs_dict()
+        plot_attr_dict = multiple_future_plot_attrs_dict[selected_name]
+        plot_attr_dict[param_name] = value
 
     def _get_selected_retirement_predictions_settings_name(self):
         """@brief Get the name of the selected retirement predictions settings."""
@@ -2183,23 +2169,15 @@ class FuturePlotGUI(GUIBase):
         with ui.row():
             ui.label("Drawdown Retirement Prediction").style('font-size: 32px; font-weight: bold;')
         with ui.row():
-            ui.label(
-                "The following parameters can be changed to alter your retirement prediction.")
+            ui.label("The following parameters can be changed to alter your retirement prediction. This report will attempt to meet the monthly budget/income from savings until the pension drawdown start date. You may add manual deductions from savings or pension at any time (Savings withdrawals and Pension withdrawals tables) and these are used as all/part of the target budget/income.")
 
         with ui.row():
             with ui.column():
                 with ui.row():
-                    self._my_dob_field = GUIBase.GetInputDateField(FuturePlotGUI.MY_DATE_OF_BIRTH)
-                    my_dob = self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH]
-                    self._my_dob_field.value = my_dob
-                    my_max_age = self._future_plot_attr_dict[FuturePlotGUI.MY_MAX_AGE]
-                    self._my_max_age_field = ui.number(label=FuturePlotGUI.MY_MAX_AGE, value=my_max_age).tooltip("The maximum age to plan for.")
-
-                    self._partner_dob_field = GUIBase.GetInputDateField(FuturePlotGUI.PARTNER_DATE_OF_BIRTH)
-                    partner_dob = self._future_plot_attr_dict[FuturePlotGUI.PARTNER_DATE_OF_BIRTH]
-                    self._partner_dob_field.value = partner_dob
-                    partner_max_age = self._future_plot_attr_dict[FuturePlotGUI.PARTNER_MAX_AGE]
-                    self._partner_max_age_field = ui.number(label=FuturePlotGUI.PARTNER_MAX_AGE, value=partner_max_age).tooltip("The maximum age to plan for.")
+                    self._my_dob_field = GUIBase.GetInputDateField(FuturePlotGUI.MY_DATE_OF_BIRTH).style('width: 150px;')
+                    self._my_max_age_field = ui.number(label=FuturePlotGUI.MY_MAX_AGE).tooltip("The maximum age to plan for.").style('width: 100px;')
+                    self._partner_dob_field = GUIBase.GetInputDateField(FuturePlotGUI.PARTNER_DATE_OF_BIRTH).style('width: 150px;')
+                    self._partner_max_age_field = ui.number(label=FuturePlotGUI.PARTNER_MAX_AGE).tooltip("The maximum age to plan for.").style('width: 100px;')
 
                 with ui.row():
                     self._start_date_field = GUIBase.GetInputDateField(FuturePlotGUI.REPORT_START_DATE).tooltip('The first date to be plotted.').tooltip(
@@ -2214,88 +2192,78 @@ class FuturePlotGUI(GUIBase):
                     self._pension_drawdown_start_date_field.disable()
 
                 with ui.row():
-                    monthly_income = self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME]
-                    self._monthly_income_field = ui.number(label=FuturePlotGUI.MONTHLY_INCOME, value=monthly_income).tooltip(
+                    self._monthly_income_field = ui.number(label=FuturePlotGUI.MONTHLY_INCOME).tooltip(
                         'The total monthly budget/income target amount including money from other sources. This is taken from savings prior to drawdown start date. Then from pension drawdown.'
                         ' If the pension runs out then money is taken from savings to cover this.')
 
-                    monthly_amount_from_other_sources = self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES]
-                    self._monthly_amount_from_other_sources_field = ui.number(label=FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES, value=monthly_amount_from_other_sources, min=0).tooltip(
+                    self._monthly_amount_from_other_sources_field = ui.number(label=FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES, min=0).tooltip(
                         'A monthly amount from non savings/pension sources. E.G Part time jobs or adult children living at home contributing to household finances.')
-
-                with ui.row():
-                    yearly_increase_in_income = self._future_plot_attr_dict[
-                        FuturePlotGUI.YEARLY_INCREASE_IN_INCOME]
-                    self._yearly_increase_in_income_field = ui.input(label=FuturePlotGUI.YEARLY_INCREASE_IN_INCOME, value=yearly_increase_in_income).style(
-                        'width: 800px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
-
-                with ui.row():
-                    savings_interest_rate_list = self._future_plot_attr_dict[
-                        FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST]
-                    self._savings_interest_rates_field = ui.input(label=FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST, value=savings_interest_rate_list).style(
-                        'width: 800px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
-                with ui.row():
-                    pension_growth_rate_list = self._future_plot_attr_dict[
-                        FuturePlotGUI.PENSION_GROWTH_RATE_LIST]
-                    self._pension_growth_rate_list_field = ui.input(label=FuturePlotGUI.PENSION_GROWTH_RATE_LIST, value=pension_growth_rate_list).style(
-                        'width: 800px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
-                with ui.row():
-                    state_pension_growth_rate_list = self._future_plot_attr_dict[
-                        FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST]
-                    self._state_pension_growth_rate_list_field = ui.input(label=FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST, value=state_pension_growth_rate_list).style(
-                        'width: 800px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
 
             with ui.column():
                 with ui.row():
-                    columns = [{'name': FuturePlotGUI.DATE, 'label': FuturePlotGUI.DATE, 'field': FuturePlotGUI.DATE},
-                               {'name': FuturePlotGUI.AMOUNT, 'label': FuturePlotGUI.AMOUNT,
-                                   'field': FuturePlotGUI.AMOUNT},
-                               ]
-                    with ui.column():
-                        with ui.card().style("height: 600px; overflow-y: auto;").tooltip("Add planned savings withdrawals here."):
-                            ui.label("Savings withdrawals").style(
-                                'font-weight: bold;')
-                            self._savings_withdrawals_table = ui.table(columns=columns,
-                                                                       rows=[],
-                                                                       row_key=FuturePlotGUI.DATE,
-                                                                       selection='multiple')
-                            self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
+                    self._yearly_increase_in_income_field = ui.input(label=FuturePlotGUI.YEARLY_INCREASE_IN_INCOME).style(
+                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
 
-                            with ui.row():
-                                ui.button('Add', on_click=lambda: self._add_savings_withdrawal()).tooltip(
-                                    'Add to the savings withdrawals table.')
-                                ui.button('Delete', on_click=lambda: self._del_savings_withdrawal()).tooltip(
-                                    'Delete a savings withdrawal from the table.')
-                                ui.button('Edit', on_click=lambda: self._edit_savings_withdrawal()).tooltip(
-                                    'Edit a savings withdrawal in the table.')
+                with ui.row():
+                    self._savings_interest_rates_field = ui.input(label=FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST).style(
+                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
 
-                    with ui.column():
-                        with ui.card().style("height: 600px; overflow-y: auto;").tooltip("Add planned pension withdrawals before the 'Pension drawdown start date' here."):
-                            ui.label("Pension withdrawals").style(
-                                'font-weight: bold;')
-                            self._pension_withdrawals_table = ui.table(columns=columns,
-                                                                       rows=[],
-                                                                       row_key=FuturePlotGUI.DATE,
-                                                                       selection='multiple')
-                            self._pension_withdrawals_table.on('row-dblclick', self._on_pension_withdrawal_table_double_click)
+                with ui.row():
+                    self._pension_growth_rate_list_field = ui.input(label=FuturePlotGUI.PENSION_GROWTH_RATE_LIST).style(
+                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
 
-                            with ui.row():
-                                ui.button('Add', on_click=lambda: self._add_pension_withdrawal()).tooltip(
-                                    'Add to the pension withdrawals table.')
-                                ui.button('Delete', on_click=lambda: self._del_pension_withdrawal()).tooltip(
-                                    'Delete a pension withdrawal from the table.')
-                                ui.button('Edit', on_click=lambda: self._edit_pension_withdrawal()).tooltip(
-                                    'Edit a pension withdrawal in the table.')
+                with ui.row():
+                    self._state_pension_growth_rate_list_field = ui.input(label=FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST).style(
+                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
 
-                    self._update_gui_tables()
+        with ui.row():
+            columns = [{'name': FuturePlotGUI.DATE, 'label': FuturePlotGUI.DATE, 'field': FuturePlotGUI.DATE},
+                        {'name': FuturePlotGUI.AMOUNT, 'label': FuturePlotGUI.AMOUNT,
+                            'field': FuturePlotGUI.AMOUNT},
+                        ]
+            with ui.column():
+                with ui.card().style("height: 500px; overflow-y: auto;").tooltip("Add planned savings withdrawals here."):
+                    ui.label("Savings withdrawals").style(
+                        'font-weight: bold;')
+                    self._savings_withdrawals_table = ui.table(columns=columns,
+                                                                rows=[],
+                                                                row_key=FuturePlotGUI.DATE,
+                                                                selection='multiple')
+                    self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
+
+                    with ui.row():
+                        ui.button('Add', on_click=lambda: self._add_savings_withdrawal()).tooltip(
+                            'Add to the savings withdrawals table.')
+                        ui.button('Delete', on_click=lambda: self._del_savings_withdrawal()).tooltip(
+                            'Delete a savings withdrawal from the table.')
+                        ui.button('Edit', on_click=lambda: self._edit_savings_withdrawal()).tooltip(
+                            'Edit a savings withdrawal in the table.')
+
+            with ui.column():
+                with ui.card().style("height: 500px; overflow-y: auto;").tooltip("Add planned pension withdrawals before the 'Pension drawdown start date' here."):
+                    ui.label("Pension withdrawals").style(
+                        'font-weight: bold;')
+                    self._pension_withdrawals_table = ui.table(columns=columns,
+                                                                rows=[],
+                                                                row_key=FuturePlotGUI.DATE,
+                                                                selection='multiple')
+                    self._pension_withdrawals_table.on('row-dblclick', self._on_pension_withdrawal_table_double_click)
+
+                    with ui.row():
+                        ui.button('Add', on_click=lambda: self._add_pension_withdrawal()).tooltip(
+                            'Add to the pension withdrawals table.')
+                        ui.button('Delete', on_click=lambda: self._del_pension_withdrawal()).tooltip(
+                            'Delete a pension withdrawal from the table.')
+                        ui.button('Edit', on_click=lambda: self._edit_pension_withdrawal()).tooltip(
+                            'Edit a pension withdrawal in the table.')
+
+            self._update_gui_tables()
 
         with ui.row():
             with ui.card():
                 ui.label("Save/Load the above retirement prediction parameter set.")
-                with ui.row():
+                with ui.row().style('width: 1000px;'):
                     self._settings_name_list = self._get_settings_name_list()
-                    if FuturePlotGUI.DEFAULT not in self._settings_name_list:
-                        self._settings_name_list.append(FuturePlotGUI.DEFAULT)
                     retirement_predictions_settings_name = self._get_selected_retirement_predictions_settings_name()
                     self._settings_name_select = ui.select(self._settings_name_list,
                                                            label='Name',
@@ -2364,13 +2332,12 @@ class FuturePlotGUI(GUIBase):
     def _save(self):
         """@save the report parameters to persistent storage."""
         if self._update_dict_from_gui():
-            self._config.save_future_plot_attrs()
-
-            name = self._get_settings_name()
-            multiple_future_plot_attrs_dict = self._config.get_multiple_future_plot_attrs_dict()
-            if name and len(name) > 0:
-                multiple_future_plot_attrs_dict[name] = copy.deepcopy(
-                    self._config.get_future_plot_attrs_dict())
+            selected_name = self._get_selected_retirement_predictions_settings_name()
+            new_name = self._get_settings_name()
+            if selected_name != new_name:
+                multiple_future_plot_attrs_dict = self._config.get_multiple_future_plot_attrs_dict()
+                plot_attr_dict = multiple_future_plot_attrs_dict[selected_name]
+                multiple_future_plot_attrs_dict[new_name] = copy.deepcopy(plot_attr_dict)
             self._config.save_multiple_future_plot_attrs()
             # Clear the new name field
             self._new_settings_name_input.value = ""
@@ -2380,10 +2347,6 @@ class FuturePlotGUI(GUIBase):
            @param selected_settings_name The name of the settings to load."""
         name_list = self._get_settings_name_list()
         if selected_settings_name in name_list:
-            # Load from the stored settings file
-            self._config._load_multiple_future_plot_attrs()
-            future_plot_attrs_dict = self._config.get_multiple_future_plot_attrs_dict()[selected_settings_name]
-            self._config.replace_future_plot_attrs_dict(future_plot_attrs_dict)
             self._update_gui_from_dict()
 
     def _delete(self):
@@ -2449,7 +2412,7 @@ class FuturePlotGUI(GUIBase):
         if key not in (FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE, FuturePlotGUI.PENSION_WITHDRAWAL_TABLE):
             raise Exception("_get_updated_table() Called with key = {key}")
 
-        old_table = self._future_plot_attr_dict[key]
+        old_table = self._get_param_value(key)
         new_table = []
         for row in old_table:
             # If only two columns add the info column
@@ -2460,12 +2423,10 @@ class FuturePlotGUI(GUIBase):
 
     def _get_savings_withdrawal_table_data(self):
         """@brief Get a table of the savings withdrawals."""
-        self._future_plot_attr_dict[Report1GUI.SAVINGS_WITHDRAWAL_TABLE] = self._config.get_future_plot_attrs_dict()[Report1GUI.SAVINGS_WITHDRAWAL_TABLE]
         return self._get_updated_table(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
 
     def _get_pension_withdrawal_table_data(self):
         """@brief Get a table of the pension withdrawals."""
-        self._future_plot_attr_dict[Report1GUI.PENSION_WITHDRAWAL_TABLE] = self._config.get_future_plot_attrs_dict()[Report1GUI.PENSION_WITHDRAWAL_TABLE]
         return self._get_updated_table(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
 
     def _display_table_rows(self, gui_table, table_data):
@@ -2490,13 +2451,13 @@ class FuturePlotGUI(GUIBase):
             for selected_dict in selected_dict_list:
                 if FuturePlotGUI.DATE in selected_dict:
                     del_date = selected_dict[FuturePlotGUI.DATE]
-                    table = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
+                    table = self._get_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
                     new_table = []
                     for row in table:
                         date = row[0]
                         if date != del_date:
                             new_table.append(row)
-                    self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = new_table
+                    self._set_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE, new_table)
         self._update_gui_tables()
         self._config.get_future_plot_attrs_dict()[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]=new_table
 
@@ -2515,13 +2476,13 @@ class FuturePlotGUI(GUIBase):
             for selected_dict in selected_dict_list:
                 if FuturePlotGUI.DATE in selected_dict:
                     del_date = selected_dict[FuturePlotGUI.DATE]
-                    table = self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]
+                    table = self._get_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
                     new_table = []
                     for row in table:
                         date = row[0]
                         if date != del_date:
                             new_table.append(row)
-                    self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = new_table
+                    self._set_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE, new_table)
         self._update_gui_tables()
         self._config.get_future_plot_attrs_dict()[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]=new_table
 
@@ -2535,10 +2496,10 @@ class FuturePlotGUI(GUIBase):
         # Set a flag to indicate that the pension withdrawal table is being edited. This is used later to determine which table to update.
         self._withdrawal_edit_table = table_type
         if table_type == FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE:
-            table = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
+            table = self._get_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
 
         elif table_type == FuturePlotGUI.PENSION_WITHDRAWAL_TABLE:
-            table = self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]
+            table = self._get_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
 
         else:
             raise Exception("{self._withdrawal_edit_table} is an unknown withdrawal table.")
@@ -2603,9 +2564,7 @@ class FuturePlotGUI(GUIBase):
             for _ in range(0, int(occurrence_count)):
                 row = (the_date, self._amount_field.value, info_str)
                 if self._button_selected == FuturePlotGUI.ADD_SAVINGS_WITHDRAWAL_BUTTON:
-                    if FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE not in self._future_plot_attr_dict:
-                        self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = []
-                    rows = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
+                    rows = self._get_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
                     if self._check_date_in_table(the_date, rows):
                         ui.notify(f"{the_date} is already in the table.", type='negative')
                         return
@@ -2614,12 +2573,10 @@ class FuturePlotGUI(GUIBase):
                         rows.append(row)
                         # Sort table in ascending date order
                         sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
-                        self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = sorted_rows
+                        self._set_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE, sorted_rows)
 
                 elif self._button_selected == FuturePlotGUI.ADD_PENSION_WITHDRAWAL_BUTTON:
-                    if FuturePlotGUI.PENSION_WITHDRAWAL_TABLE not in self._future_plot_attr_dict:
-                        self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = []
-                    rows = self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]
+                    rows = self._get_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
                     if self._check_date_in_table(the_date, rows):
                         ui.notify(f"{the_date} is already in the table.", type='negative')
                         return
@@ -2628,7 +2585,7 @@ class FuturePlotGUI(GUIBase):
                         rows.append(row)
                         # Sort table in ascending date order
                         sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
-                        self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = sorted_rows
+                        self._set_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE, sorted_rows)
 
                 else:
                     raise Exception("BUG: Neither the add savings or add pensions button was selected.")
@@ -2647,10 +2604,10 @@ class FuturePlotGUI(GUIBase):
            FuturePlotGUI.CheckZeroOrGreater(self._edit_amount_field.value,
                                             field_name=self._edit_info_field.props['label']):
             if self._withdrawal_edit_table == FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE:
-                table = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
+                table = self._get_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
 
             elif self._withdrawal_edit_table == FuturePlotGUI.PENSION_WITHDRAWAL_TABLE:
-                table = self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]
+                table = self._get_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
 
             else:
                 raise Exception("{self._withdrawal_edit_table} is an unknown withdrawal table.")
@@ -2667,10 +2624,10 @@ class FuturePlotGUI(GUIBase):
                     new_rows.append(row)
 
             if self._withdrawal_edit_table == FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE:
-                self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = new_rows
+                self._set_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE, new_rows)
 
             elif self._withdrawal_edit_table == FuturePlotGUI.PENSION_WITHDRAWAL_TABLE:
-                self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = new_rows
+                self._set_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE, new_rows)
 
             self._update_gui_tables()
 
@@ -2708,9 +2665,9 @@ class FuturePlotGUI(GUIBase):
 
     def _get_my_max_date(self):
         """@return The maximum date I (for trhe purposes of this report) hope to be alive."""
-        my_dob_str = self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH]
+        my_dob_str = self._get_param_value(FuturePlotGUI.MY_DATE_OF_BIRTH)
         my_dob = datetime.strptime(my_dob_str, '%d-%m-%Y')
-        my_max_age = int(self._future_plot_attr_dict[FuturePlotGUI.MY_MAX_AGE])
+        my_max_age = int(self._get_param_value(FuturePlotGUI.MY_MAX_AGE))
         my_max_date = my_dob + relativedelta(years=my_max_age)
         return my_max_date
 
@@ -2718,7 +2675,7 @@ class FuturePlotGUI(GUIBase):
         """@brief Get my age at the given date.
            @param current_date The date of interest.
            @return My age in years."""
-        my_dob_str = self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH]
+        my_dob_str = self._get_param_value(FuturePlotGUI.MY_DATE_OF_BIRTH)
         my_dob = datetime.strptime(my_dob_str, '%d-%m-%Y')
         timedelta = current_date - my_dob
         age_years = timedelta.days / 364.25
@@ -2728,10 +2685,10 @@ class FuturePlotGUI(GUIBase):
         """@return The maximum date my partner (for the purposes of this report) hopes to be alive or None
                    if no partner details entered into the retirement prediction form."""
         partner_max_date = None
-        partner_dob_str = self._future_plot_attr_dict[FuturePlotGUI.PARTNER_DATE_OF_BIRTH]
+        partner_dob_str = self._get_param_value(FuturePlotGUI.PARTNER_DATE_OF_BIRTH)
         if partner_dob_str and len(partner_dob_str) > 0:
             partner_dob = datetime.strptime(partner_dob_str, '%d-%m-%Y')
-            partner_max_age = int(self._future_plot_attr_dict[FuturePlotGUI.PARTNER_MAX_AGE])
+            partner_max_age = int(self._get_param_value(FuturePlotGUI.PARTNER_MAX_AGE))
             partner_max_date = partner_dob + relativedelta(years=partner_max_age)
         return partner_max_date
 
@@ -2765,55 +2722,42 @@ class FuturePlotGUI(GUIBase):
                                                              field_name=self._pension_growth_rate_list_field.props['label']) and \
                 BankAccountGUI.CheckCommaSeparatedNumberList(self._state_pension_growth_rate_list_field.value,
                                                              field_name=self._state_pension_growth_rate_list_field.props['label']):
-                self._future_plot_attr_dict = self._config.get_future_plot_attrs_dict()
-                self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH] = self._my_dob_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.MY_MAX_AGE] = self._my_max_age_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.PARTNER_DATE_OF_BIRTH] = self._partner_dob_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.PARTNER_MAX_AGE] = self._partner_max_age_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST] = self._savings_interest_rates_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.PENSION_GROWTH_RATE_LIST] = self._pension_growth_rate_list_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST] = self._state_pension_growth_rate_list_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES] = self._monthly_amount_from_other_sources_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME] = self._monthly_income_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.YEARLY_INCREASE_IN_INCOME] = self._yearly_increase_in_income_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.REPORT_START_DATE] = self._start_date_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.PENSION_DRAWDOWN_START_DATE] = self._pension_drawdown_start_date_field.value
-                self._future_plot_attr_dict[FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE] = self._enable_pension_drawdown_start_date.value
+                self._set_param_value(FuturePlotGUI.MY_DATE_OF_BIRTH, self._my_dob_field.value)
+                self._set_param_value(FuturePlotGUI.MY_MAX_AGE, self._my_max_age_field.value)
+                self._set_param_value(FuturePlotGUI.PARTNER_DATE_OF_BIRTH, self._partner_dob_field.value)
+                self._set_param_value(FuturePlotGUI.PARTNER_MAX_AGE, self._partner_max_age_field.value)
+                self._set_param_value(FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST, self._savings_interest_rates_field.value)
+                self._set_param_value(FuturePlotGUI.PENSION_GROWTH_RATE_LIST, self._pension_growth_rate_list_field.value)
+                self._set_param_value(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST, self._state_pension_growth_rate_list_field.value)
+                self._set_param_value(FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES, self._monthly_amount_from_other_sources_field.value)
+                self._set_param_value(FuturePlotGUI.MONTHLY_INCOME, self._monthly_income_field.value)
+                self._set_param_value(FuturePlotGUI.YEARLY_INCREASE_IN_INCOME, self._yearly_increase_in_income_field.value)
+                self._set_param_value(FuturePlotGUI.REPORT_START_DATE, self._start_date_field.value)
+                self._set_param_value(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE, self._pension_drawdown_start_date_field.value)
+                self._set_param_value(FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE, self._enable_pension_drawdown_start_date.value)
                 valid = True
 
         return valid
 
     def _update_gui_from_dict(self):
         """@brief Load config from persistent storage and display in GUI."""
-        self._future_plot_attr_dict = self._config.get_future_plot_attrs_dict()
-        self._my_dob_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.MY_DATE_OF_BIRTH, "")
-        self._my_max_age_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.MY_MAX_AGE, FuturePlotGUI.DEFAULT_MALE_MAX_AGE)
-        self._partner_dob_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.PARTNER_DATE_OF_BIRTH, "")
-        self._partner_max_age_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.PARTNER_MAX_AGE, FuturePlotGUI.DEFAULT_MALE_MAX_AGE + 4)
-        self._savings_interest_rates_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST, FuturePlotGUI.DEFAULT_RATE_LIST)
-        self._pension_growth_rate_list_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.PENSION_GROWTH_RATE_LIST, FuturePlotGUI.DEFAULT_RATE_LIST)
-        self._state_pension_growth_rate_list_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST, FuturePlotGUI.DEFAULT_STATE_PENSION_YEARLY_INCREASE)
-        self._monthly_amount_from_other_sources_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES, FuturePlotGUI.DEFAULT_MONTHLY_AMOUNT_FROM_OTHER_SOURCES)
-        self._monthly_income_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.MONTHLY_INCOME, FuturePlotGUI.DEFAULT_MONTHLY_INCOME)
-        self._yearly_increase_in_income_field.value = self._future_plot_attr_dict.get(
-            FuturePlotGUI.YEARLY_INCREASE_IN_INCOME, FuturePlotGUI.DEFAULT_YEARLY_INCREASE_IN_INCOME)
-        self._start_date_field.value = self._future_plot_attr_dict.get(FuturePlotGUI.REPORT_START_DATE, "")
-        self._pension_drawdown_start_date_field.value = self._future_plot_attr_dict.get(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE, '')
-        self._enable_pension_drawdown_start_date.value = self._future_plot_attr_dict.get(FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE, False)
+        self._my_dob_field.value = self._get_param_value(FuturePlotGUI.MY_DATE_OF_BIRTH)
+        self._my_max_age_field.value = self._get_param_value(FuturePlotGUI.MY_MAX_AGE)
+        self._partner_dob_field.value = self._get_param_value(FuturePlotGUI.PARTNER_DATE_OF_BIRTH)
+        self._partner_max_age_field.value = self._get_param_value(FuturePlotGUI.PARTNER_MAX_AGE)
+        self._savings_interest_rates_field.value = self._get_param_value(FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST)
+        self._pension_growth_rate_list_field.value = self._get_param_value(FuturePlotGUI.PENSION_GROWTH_RATE_LIST)
+        self._state_pension_growth_rate_list_field.value = self._get_param_value(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST)
+        self._monthly_amount_from_other_sources_field.value = self._get_param_value(FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES)
+        self._monthly_income_field.value = self._get_param_value(FuturePlotGUI.MONTHLY_INCOME)
+        self._yearly_increase_in_income_field.value = self._get_param_value(FuturePlotGUI.YEARLY_INCREASE_IN_INCOME)
+        self._start_date_field.value = self._get_param_value(FuturePlotGUI.REPORT_START_DATE)
+        self._pension_drawdown_start_date_field.value = self._get_param_value(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE)
+        self._enable_pension_drawdown_start_date.value = self._get_param_value(FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE)
         if self._enable_pension_drawdown_start_date.value:
             self._pension_drawdown_start_date_field.enable()
         else:
             self._pension_drawdown_start_date_field.disable()
-
         self._update_gui_tables()
 
     def _convert_table(self, date_value_table):
@@ -2839,7 +2783,7 @@ class FuturePlotGUI(GUIBase):
 
     def _get_report_start_date(self):
         """@return The date entered as the report start date."""
-        return datetime.strptime(self._future_plot_attr_dict[FuturePlotGUI.REPORT_START_DATE], '%d-%m-%Y')
+        return datetime.strptime(self._get_param_value(FuturePlotGUI.REPORT_START_DATE), '%d-%m-%Y')
 
     def _calc(self, overlay_real_performance=False):
         """@brief Perform calculation. This took ages to get right. I used the household_finances spreadsheet to validate the numbers it produces.
@@ -2867,11 +2811,11 @@ class FuturePlotGUI(GUIBase):
             monthly_budget_table = self._get_monthly_budget_table(
                 datetime_list)
             monthly_savings_interest_list = []
-            lump_sum_pension_withdrawals_table = self._convert_table(
-                self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE])
+            lump_sum_pension_withdrawals_table = self._convert_table(self._get_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE))
             pp_table = self._get_personal_pension_table()
-            if self._future_plot_attr_dict[FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE]:
-                pension_drawdown_start_date = datetime.strptime(self._future_plot_attr_dict[FuturePlotGUI.PENSION_DRAWDOWN_START_DATE], '%d-%m-%Y')
+            drawdown_enabled = self._get_param_value(FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE)
+            if drawdown_enabled:
+                pension_drawdown_start_date = datetime.strptime(self._get_param_value(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE), '%d-%m-%Y')
             else:
                 pension_drawdown_start_date = None
             predicted_state_pension_table = self._get_predicted_state_pension(datetime_list, report_start_date)
@@ -2882,9 +2826,8 @@ class FuturePlotGUI(GUIBase):
 
             if predicted_state_pension_table is None:
                 raise Exception('No state pension defined in the pension list.')
-            monthly_from_other_sources = float(self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES])
-            lump_sum_savings_withdrawals_table = self._convert_table(
-                self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE])
+            monthly_from_other_sources = float(self._get_param_value(FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES))
+            lump_sum_savings_withdrawals_table = self._convert_table(self._get_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE))
 
             # Get the initial value of our personal pension
             personal_pension_value = self._get_initial_value(pp_table, report_start_date)
@@ -3255,7 +3198,7 @@ class FuturePlotGUI(GUIBase):
            @param savings_amount The current value of our savings.
            @param year_index An index from the start of the report to this year. Used to determine the predicted interest rate.
            @return As per the brief."""
-        yearly_rate_list = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST]
+        yearly_rate_list = self._get_param_value(FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST)
         yearly_rate = self._get_yearly_rate(yearly_rate_list, year_index)
         return savings_amount*(1 + (yearly_rate/100))
 
@@ -3264,7 +3207,7 @@ class FuturePlotGUI(GUIBase):
            @param savings_amount The current value of our savings.
            @param year_index An index from the start of the report to this year. Used to determine the predicted interest rate.
            @return As per the brief."""
-        yearly_rate_list = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST]
+        yearly_rate_list = self._get_param_value(FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST)
         yearly_rate = self._get_yearly_rate(yearly_rate_list, year_index)
         yearly_increase = savings_amount * (yearly_rate/100)
         monthly_increase = yearly_increase / 12
@@ -3293,7 +3236,7 @@ class FuturePlotGUI(GUIBase):
            @param personal_pension_value The current value of our pensions.
            @param year_index An index from the start of the report to this year. Used to determine the predicted interest rate.
            @return The increase in the pension value."""
-        yearly_rate_list = self._future_plot_attr_dict[FuturePlotGUI.PENSION_GROWTH_RATE_LIST]
+        yearly_rate_list = self._get_param_value(FuturePlotGUI.PENSION_GROWTH_RATE_LIST)
         yearly_rate = self._get_yearly_rate(yearly_rate_list, year_index)
         yearly_rate = yearly_rate / 100
         _, monthly_increase = self._get_monthly_growth(personal_pension_value, yearly_rate)
@@ -3542,7 +3485,7 @@ class FuturePlotGUI(GUIBase):
                 # we accept this for purposes of this report.
                 if this_datetime.month == 5 and year_index > 0:
                     state_pension_amount = self._calc_new_account_value(state_pension_amount,
-                                                                        self._future_plot_attr_dict.get(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST),
+                                                                        self._get_param_value(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST),
                                                                         year_index)
 
                 # Determine if the state pension has started yet
@@ -3674,16 +3617,14 @@ class FuturePlotGUI(GUIBase):
         """@brief Get a table detailing how much we plan to spend each month from our savings and pension."""
         future_table = []
         last_datetime = datetime_list[0]
-        monthly_income = float(
-            self._future_plot_attr_dict[FuturePlotGUI.MONTHLY_INCOME])
+        monthly_income = float(self._get_param_value(FuturePlotGUI.MONTHLY_INCOME))
         year_index = 0
         for this_datetime in datetime_list:
             if this_datetime.year == last_datetime.year:
                 future_table.append([this_datetime, monthly_income])
             # We check for year rolling over as this is when we expect an increase in our income against inflation.
             else:
-                monthly_income = self._calc_new_account_value(monthly_income, self._future_plot_attr_dict.get(
-                    FuturePlotGUI.YEARLY_INCREASE_IN_INCOME), year_index)
+                monthly_income = self._calc_new_account_value(monthly_income, self._get_param_value(FuturePlotGUI.YEARLY_INCREASE_IN_INCOME), year_index)
                 future_table.append([this_datetime, monthly_income])
                 last_datetime = this_datetime
                 year_index += 1
@@ -3841,25 +3782,18 @@ class Report1GUI(GUIBase):
         with ui.row():
             ui.label("Basic Retirement Prediction").style('font-size: 32px; font-weight: bold;')
         with ui.row():
-            ui.label(
-                "The following parameters can be changed to alter your retirement prediction.")
+            ui.label("The following parameters can be changed to alter your retirement prediction.")
 
         with ui.row():
             with ui.column():
                 with ui.row():
                     self._my_dob_field = GUIBase.GetInputDateField(Report1GUI.MY_DATE_OF_BIRTH).style('width: 150px;')
-                    self._my_dob_field.value = self._get_param_value(Report1GUI.MY_DATE_OF_BIRTH)
                     self._my_max_age_field = ui.number(label=Report1GUI.MY_MAX_AGE).tooltip("The maximum age to plan for.").style('width: 100px;')
-                    self._my_max_age_field.value = self._get_param_value(Report1GUI.MY_MAX_AGE)
-
                     self._partner_dob_field = GUIBase.GetInputDateField(Report1GUI.PARTNER_DATE_OF_BIRTH).style('width: 150px;')
-                    self._partner_dob_field.value = self._get_param_value(Report1GUI.PARTNER_DATE_OF_BIRTH)
                     self._partner_max_age_field = ui.number(label=Report1GUI.PARTNER_MAX_AGE).tooltip("The maximum age to plan for.").style('width: 100px;')
-                    self._partner_max_age_field.value = self._get_param_value(Report1GUI.PARTNER_MAX_AGE)
 
                 with ui.row():
-                    self._start_date_field = GUIBase.GetInputDateField(Report1GUI.REPORT_START_DATE).tooltip('The first date to be plotted.')
-                    self._start_date_field.value = self._get_param_value(Report1GUI.REPORT_START_DATE)
+                    self._start_date_field = GUIBase.GetInputDateField(Report1GUI.REPORT_START_DATE).tooltip('The prediction start date.')
 
                 with ui.row():
                     self._savings_interest_rates_field = ui.input(label=Report1GUI.SAVINGS_INTEREST_RATE_LIST).style(
@@ -3947,7 +3881,7 @@ class Report1GUI(GUIBase):
         with ui.row():
             with ui.card():
                 ui.label("Save/Load the above retirement prediction parameter set.")
-                with ui.row().style('width: 1200px;'):
+                with ui.row().style('width: 1000px;'):
                     self._settings_name_list = self._get_settings_name_list()
                     if Report1GUI.DEFAULT not in self._settings_name_list:
                         self._settings_name_list.append(Report1GUI.DEFAULT)
@@ -4265,13 +4199,17 @@ class Report1GUI(GUIBase):
                             new_table.append(row)
                     self._set_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE, new_table)
         self._update_gui_tables()
-        self._config.get_report1_plot_attrs_dict()[Report1GUI.PENSION_WITHDRAWAL_TABLE]=new_table
 
     def _edit_pension_withdrawal(self):
         self._edit_withdrawal_table(self._pension_withdrawals_table, Report1GUI.PENSION_WITHDRAWAL_TABLE)
 
     def _get_settings_name_list(self):
         """@return a list of name of the saved future plot parameters."""
+#        selected_retirement_parameters_name_dict = self._config.get_selected_report1_parameters_name_dict()
+#        return list(selected_retirement_parameters_name_dict.keys())
+    #PJA
+        # I'm not sure this is correct as the name list is stored in the wrong dict. However so as not to loose old
+        # prediction values leave as is.
         multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
         return list(multiple_report1_plot_attrs_dict.keys())
 
