@@ -36,6 +36,8 @@ class Config(object):
     FUTURE_PLOT_ATTR_FILE = "future_plot_attr.json"
     MULTIPLE_FUTURE_PLOT_ATTR_FILE = "multiple_future_plot_attr.json"
     SELECTED_FUTURE_PLOT_NAME_ATTR_FILE = "selected_future_plot_name_attr.json"
+    MULTIPLE_REPORT1_PLOT_ATTR_FILE = "multiple_report1_plot_attr.json"
+    SELECTED_REPORT1_PLOT_NAME_ATTR_FILE = "selected_report1_plot_name_attr.json"
     GLOBAL_CONFIGURATION_FILE = "global_configuration_parameters.json"
     MONTHLY_SPENDING_FILE = "monthly_spending.json"
     PASSWORD_HASH_FILE = "password_hash.txt"
@@ -86,6 +88,12 @@ class Config(object):
         self._selected_retirement_parameters_name_crypt_file = CryptFile(filename=self._selected_retirement_parameters_name_file, password=self._password)
         self._load_selected_retirement_parameters_name_attrs()
 
+        self._multiple_report1_plot_crypt_file = CryptFile(filename=self._multiple_report1_plot_file, password=self._password)
+        self._load_multiple_report1_plot_attrs()
+
+        self._selected_report1_parameters_name_crypt_file = CryptFile(filename=self._selected_report1_parameters_name_file, password=self._password)
+        self._load_selected_report1_parameters_name_attrs()
+
         self._monthly_spending_crypt_file = CryptFile(filename=self._monthly_spending_file, password=self._password)
         self._load_monthly_spending_dict()
 
@@ -99,6 +107,9 @@ class Config(object):
         self._future_plot_file = self._getFuturePlotAttrFile()
         self._multiple_future_plot_file = self._getMultipleFuturePlotAttrFile()
         self._selected_retirement_parameters_name_file = self._getSelectedRequirementParametersNameFile()
+
+        self._multiple_report1_plot_file = self._getMultipleReport1PlotAttrFile()
+        self._selected_report1_parameters_name_file = self._getSelectedReport1ParametersNameFile()
         self._monthly_spending_file = self._getMonthlySpendingFile()
 
     def _getPasswordHashFile(self):
@@ -128,6 +139,14 @@ class Config(object):
     def _getSelectedRequirementParametersNameFile(self):
         """@return The file used to store the selected future plot name."""
         return os.path.join(self._config_folder, Config.SELECTED_FUTURE_PLOT_NAME_ATTR_FILE)
+
+    def _getMultipleReport1PlotAttrFile(self):
+        """@return The file used to store multiple report1 plot details."""
+        return os.path.join(self._config_folder, Config.MULTIPLE_REPORT1_PLOT_ATTR_FILE)
+
+    def _getSelectedReport1ParametersNameFile(self):
+        """@return The file used to store the selected report1 plot name."""
+        return os.path.join(self._config_folder, Config.SELECTED_REPORT1_PLOT_NAME_ATTR_FILE)
 
     def _getGlobalConfigurationFile(self):
         """@return The file used to store global configuration parameters."""
@@ -238,7 +257,7 @@ class Config(object):
             del self._pension_dict_list[index]
         self.save_pensions()
 
-    # --- methods for future plot parameters ---
+    # --- start methods for future plot parameters ---
 
     def _load_future_plot_attrs(self):
         """@brief Load future plot parameters from file."""
@@ -264,7 +283,6 @@ class Config(object):
     def replace_future_plot_attrs_dict(self, new_future_plot_attrs_dict):
         self._future_plot_attr_dict = new_future_plot_attrs_dict
 
-    # --- methods for future plot parameters list ---
 
     def _load_multiple_future_plot_attrs(self):
         """@brief Load the multiple future plot parameters from file."""
@@ -286,6 +304,8 @@ class Config(object):
     def get_multiple_future_plot_attrs_dict(self):
         """@brief Get the future plot parameters dict."""
         return self._multiple_future_plot_attr_dict
+
+    # --- end methods for future plot parameters list ---
 
     # --- methods for selected future plot parameters name ---
 
@@ -311,6 +331,59 @@ class Config(object):
         return self._selected_retirement_parameters_name_dict
 
     # --- methods for global configuration parameters ---
+
+
+
+
+
+    # --- start methods for report 1 plot parameters ---
+
+    def _load_multiple_report1_plot_attrs(self):
+        """@brief Load the multiple report1 plot parameters from file."""
+        try:
+            self._multiple_report1_plot_attr_dict = {}
+            self._multiple_report1_plot_attr_dict = self._multiple_report1_plot_crypt_file.load()
+            if self._show_load_save_notifications:
+                ui.notify(f'Loaded from {self._multiple_report1_plot_crypt_file.get_file()}', type='positive', position='center', duration=2)
+
+        except Exception:
+            ui.notify(f'{self._multiple_report1_plot_crypt_file.get_file()} file not found.', type='negative')
+
+    def save_multiple_report1_plot_attrs(self):
+        """@brief Save the multiple_report1 plot parameters persistently."""
+        self._multiple_report1_plot_crypt_file.save(self._multiple_report1_plot_attr_dict)
+        if self._show_load_save_notifications:
+            ui.notify(f'Saved {self._multiple_report1_plot_crypt_file.get_file()}', type='positive', position='center', duration=2)
+
+    def get_multiple_report1_plot_attrs_dict(self):
+        """@brief Get the report1 plot parameters dict."""
+        return self._multiple_report1_plot_attr_dict
+
+    def _load_selected_report1_parameters_name_attrs(self):
+        """@brief Load the selected report1 parameters name parameters from file."""
+        try:
+            self._selected_report1_parameters_name_dict = {}
+            self._selected_repoort1_parameters_name_dict = self._selected_report1_parameters_name_crypt_file.load()
+            if self._show_load_save_notifications:
+                ui.notify(f'Loaded from {self._selected_report1_parameters_name_crypt_file.get_file()}', type='positive', position='center', duration=2)
+
+        except Exception:
+            ui.notify(f'{self._selected_report1_parameters_name_crypt_file.get_file()} file not found.', type='negative')
+
+    def _save_selected_report1_parameters_name_attrs(self):
+        """@brief Save the selected report1 parameters name parameters persistently."""
+        self._selected_report1_parameters_name_crypt_file.save(self._selected_report1_parameters_name_dict)
+        if self._show_load_save_notifications:
+            ui.notify(f'Saved {self._selected_report1_parameters_name_crypt_file.get_file()}', type='positive', position='center', duration=2)
+
+    def get_selected_report1_parameters_name_dict(self):
+        """@brief Get the selected report1 parameters name parameters dict."""
+        return self._selected_report1_parameters_name_dict
+
+    # --- end methods for report1 plot parameters list ---
+
+
+
 
     def load_global_configuration(self):
         """@brief Load the global configuration parameters from file."""
@@ -1302,9 +1375,14 @@ class Finances(GUIBase):
         with ui.row():
             ui.button('Totals', on_click=lambda: self._show_totals()).tooltip(
                 'Show the current savings and pension totals.')
+
         with ui.row():
-            ui.button('Drawdown Retirement Prediction', on_click=lambda: self._future_plot()).tooltip(
-                'Show how your finances could increase/decrease in the future.')
+            ui.button('Basic Retirement Prediction', on_click=lambda: self._report1()).tooltip(
+                'Show how your finances could increase/decrease in the future. This report allows you to manually enter each amount you wish to take from pensions and savings and also add any income you expect (E.G Annuity, rental income, etc)')
+
+        with ui.row():
+            ui.button('Drawdown Retirement Prediction', on_click=lambda: self._report2()).tooltip(
+                "Show how your finances could increase/decrease in the future. This allows the user to enter a target income and predict how long it's likely to last.")
 
     def _init_config_tab(self):
         self._my_name_field = ui.input(label=Finances.MY_NAME_FIELD).style('width: 300px;').tooltip('Enter your name here.')
@@ -1406,14 +1484,26 @@ class Finances(GUIBase):
         self._init_table_dialog(table_rows)
         self._table_dialog.open()
 
-    def _future_plot(self):
+
+    def _report1(self):
         """@brief Plot our financial future based on given parameters."""
         # Define a secondary page
-        @ui.page('/future_plot_page')
-        def future_plot_page():
+        @ui.page('/report1_page')
+        def report1_page():
+            ui.page_title('Basic Retirement Prediction')
+            Report1GUI(self._config, self._pension_owner_list)
+        # This will open in a separate browser window
+        ui.run_javascript("window.open('/report1_page', '_blank')")
+
+    def _report2(self):
+        """@brief Plot our financial future based on given parameters."""
+        # Define a secondary page
+        @ui.page('/future_plot_page2')
+        def future_plot_page2():
+            ui.page_title('Drawdown Retirement Prediction')
             FuturePlotGUI(self._config, self._pension_owner_list)
         # This will open in a separate browser window
-        ui.run_javascript("window.open('/future_plot_page', '_blank')")
+        ui.run_javascript("window.open('/future_plot_page2', '_blank')")
 
 
 class BankAccountGUI(GUIBase):
@@ -2167,7 +2257,7 @@ class FuturePlotGUI(GUIBase):
                                 'font-weight: bold;')
                             self._savings_withdrawals_table = ui.table(columns=columns,
                                                                        rows=[],
-                                                                       row_key=BankAccountGUI.DATE,
+                                                                       row_key=FuturePlotGUI.DATE,
                                                                        selection='multiple')
                             self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
 
@@ -2180,12 +2270,12 @@ class FuturePlotGUI(GUIBase):
                                     'Edit a savings withdrawal in the table.')
 
                     with ui.column():
-                        with ui.card().style("height: 600px; overflow-y: auto;").tooltip("Add planned pension withdrawals here."):
+                        with ui.card().style("height: 600px; overflow-y: auto;").tooltip("Add planned pension withdrawals before the 'Pension drawdown start date' here."):
                             ui.label("Pension withdrawals").style(
                                 'font-weight: bold;')
                             self._pension_withdrawals_table = ui.table(columns=columns,
                                                                        rows=[],
-                                                                       row_key=BankAccountGUI.DATE,
+                                                                       row_key=FuturePlotGUI.DATE,
                                                                        selection='multiple')
                             self._pension_withdrawals_table.on('row-dblclick', self._on_pension_withdrawal_table_double_click)
 
@@ -2203,7 +2293,9 @@ class FuturePlotGUI(GUIBase):
             with ui.card():
                 ui.label("Save/Load the above retirement prediction parameter set.")
                 with ui.row():
-                    self._settings_name_list = [FuturePlotGUI.DEFAULT] + self._get_settings_name_list()
+                    self._settings_name_list = self._get_settings_name_list()
+                    if FuturePlotGUI.DEFAULT not in self._settings_name_list:
+                        self._settings_name_list.append(FuturePlotGUI.DEFAULT)
                     retirement_predictions_settings_name = self._get_selected_retirement_predictions_settings_name()
                     self._settings_name_select = ui.select(self._settings_name_list,
                                                            label='Name',
@@ -2345,10 +2437,8 @@ class FuturePlotGUI(GUIBase):
                     "Cancel", on_click=self._edit_row_dialog_cancel_button_press)
 
     def _update_gui_tables(self):
-        self._display_table_rows(
-            self._savings_withdrawals_table, self._get_savings_withdrawal_table_data())
-        self._display_table_rows(
-            self._pension_withdrawals_table, self._get_pension_withdrawal_table_data())
+        self._display_table_rows(self._savings_withdrawals_table, self._get_savings_withdrawal_table_data())
+        self._display_table_rows(self._pension_withdrawals_table, self._get_pension_withdrawal_table_data())
 
     def _get_updated_table(self, key):
         # Originally the FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE and FuturePlotGUI.PENSION_WITHDRAWAL_TABLE
@@ -2370,10 +2460,12 @@ class FuturePlotGUI(GUIBase):
 
     def _get_savings_withdrawal_table_data(self):
         """@brief Get a table of the savings withdrawals."""
+        self._future_plot_attr_dict[Report1GUI.SAVINGS_WITHDRAWAL_TABLE] = self._config.get_future_plot_attrs_dict()[Report1GUI.SAVINGS_WITHDRAWAL_TABLE]
         return self._get_updated_table(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
 
     def _get_pension_withdrawal_table_data(self):
         """@brief Get a table of the pension withdrawals."""
+        self._future_plot_attr_dict[Report1GUI.PENSION_WITHDRAWAL_TABLE] = self._config.get_future_plot_attrs_dict()[Report1GUI.PENSION_WITHDRAWAL_TABLE]
         return self._get_updated_table(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
 
     def _display_table_rows(self, gui_table, table_data):
@@ -2406,6 +2498,7 @@ class FuturePlotGUI(GUIBase):
                             new_table.append(row)
                     self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = new_table
         self._update_gui_tables()
+        self._config.get_future_plot_attrs_dict()[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]=new_table
 
     def _edit_savings_withdrawal(self):
         self._edit_withdrawal_table(self._savings_withdrawals_table, FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
@@ -2430,6 +2523,7 @@ class FuturePlotGUI(GUIBase):
                             new_table.append(row)
                     self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = new_table
         self._update_gui_tables()
+        self._config.get_future_plot_attrs_dict()[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]=new_table
 
     def _edit_pension_withdrawal(self):
         self._edit_withdrawal_table(self._pension_withdrawals_table, FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
@@ -2509,6 +2603,8 @@ class FuturePlotGUI(GUIBase):
             for _ in range(0, int(occurrence_count)):
                 row = (the_date, self._amount_field.value, info_str)
                 if self._button_selected == FuturePlotGUI.ADD_SAVINGS_WITHDRAWAL_BUTTON:
+                    if FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE not in self._future_plot_attr_dict:
+                        self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = []
                     rows = self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE]
                     if self._check_date_in_table(the_date, rows):
                         ui.notify(f"{the_date} is already in the table.", type='negative')
@@ -2521,6 +2617,8 @@ class FuturePlotGUI(GUIBase):
                         self._future_plot_attr_dict[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = sorted_rows
 
                 elif self._button_selected == FuturePlotGUI.ADD_PENSION_WITHDRAWAL_BUTTON:
+                    if FuturePlotGUI.PENSION_WITHDRAWAL_TABLE not in self._future_plot_attr_dict:
+                        self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = []
                     rows = self._future_plot_attr_dict[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE]
                     if self._check_date_in_table(the_date, rows):
                         ui.notify(f"{the_date} is already in the table.", type='negative')
@@ -2667,7 +2765,7 @@ class FuturePlotGUI(GUIBase):
                                                              field_name=self._pension_growth_rate_list_field.props['label']) and \
                 BankAccountGUI.CheckCommaSeparatedNumberList(self._state_pension_growth_rate_list_field.value,
                                                              field_name=self._state_pension_growth_rate_list_field.props['label']):
-
+                self._future_plot_attr_dict = self._config.get_future_plot_attrs_dict()
                 self._future_plot_attr_dict[FuturePlotGUI.MY_DATE_OF_BIRTH] = self._my_dob_field.value
                 self._future_plot_attr_dict[FuturePlotGUI.MY_MAX_AGE] = self._my_max_age_field.value
                 self._future_plot_attr_dict[FuturePlotGUI.PARTNER_DATE_OF_BIRTH] = self._partner_dob_field.value
@@ -3627,6 +3725,831 @@ class FuturePlotGUI(GUIBase):
         return new_value
 
 
+class Report1GUI(GUIBase):
+    """@brief A simple report that does not attempt to achieve an income but allows the user
+              to enter how much they want to pull from pensions and savings and if any other income is available (E.G part time jobs, Annuities etc."""
+
+    MY_MAX_AGE = "My max age"
+    MY_DATE_OF_BIRTH = "My date of birth"
+    PARTNER_MAX_AGE = "Partner max age"
+    PARTNER_DATE_OF_BIRTH = "Partner date of birth"
+    REPORT_START_DATE = "Prediction start date"
+    SAVINGS_INTEREST_RATE_LIST = "Savings interest rate (%)"
+    PENSION_GROWTH_RATE_LIST = "Pension growth rate (%)"
+    STATE_PENSION_YEARLY_INCREASE_LIST = "State pension yearly increase (%)"
+
+    DEFAULT_MALE_MAX_AGE = 90
+    # Default list of savings interest rates and pension growth rates.
+    DEFAULT_RATE_LIST = ""
+
+    DATE = BankAccountGUI.DATE
+    AMOUNT = "Amount"
+    AMOUNT_AFTER_TAX = "After Tax"
+    INFO = "Info"
+
+    YEARLY = 'Yearly'
+    MONTHLY = 'Monthly'
+
+    SAVINGS_WITHDRAWAL_TABLE = "Savings withdrawal table"
+    PENSION_WITHDRAWAL_TABLE = "Pensions withdrawal table"
+    OTHER_INCOME_TABLE = "Other icome table"
+    OTHER_INCOME_TABLE = "Other Income table"
+    ADD_SAVINGS_WITHDRAWAL_BUTTON = "Add savings withdrawal"
+    DEL_SAVINGS_WITHDRAWAL_BUTTON = "Delete savings withdrawal"
+    ADD_PENSION_WITHDRAWAL_BUTTON = "Add pension withdrawal"
+    DEL_PENSION_WITHDRAWAL_BUTTON = "Delete pension withdrawal"
+    ADD_OTHER_INCOME_BUTTON = "Add to other income"
+    DEL_OTHER_INCOME_BUTTON = "Delete other income"
+
+    RETIREMENT_PREDICTION_SETTINGS_NAME = "Retirement prediction settings name"
+    DEFAULT = "Default"
+
+    BY_MONTH = "By Month"
+    BY_YEAR = "By Year"
+
+    def __init__(self, config, pension_owner_list):
+        self._config = config
+        self._pension_owner_list = pension_owner_list
+        self._ensure_keys_present()
+        self._init_gui()
+        self._init_add_row_dialog()
+        self._init_ok_to_delete_dialog()
+        self._init_edit_row_dialog()
+        self._report_start_date = None
+        self._withdrawal_edit_table = None
+
+    def _ensure_keys_present(self):
+        """@brief Ensure the required keys are present in the config dict that relate to the future plot attrs.
+                  This is called in the constructor to ensure the required parameters are present in the dict."""
+        selected_name = self._get_selected_retirement_predictions_settings_name()
+        multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
+
+        plot_attr_dict = {}
+        if selected_name in multiple_report1_plot_attrs_dict:
+            plot_attr_dict = multiple_report1_plot_attrs_dict[selected_name]
+
+        if Report1GUI.MY_DATE_OF_BIRTH not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.MY_DATE_OF_BIRTH] = ""
+
+        if Report1GUI.MY_MAX_AGE not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.MY_MAX_AGE] = Report1GUI.DEFAULT_MALE_MAX_AGE
+
+        if Report1GUI.PARTNER_DATE_OF_BIRTH not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.PARTNER_DATE_OF_BIRTH] = ""
+
+        if Report1GUI.PARTNER_MAX_AGE not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.PARTNER_MAX_AGE] = Report1GUI.DEFAULT_MALE_MAX_AGE + 4
+
+        if Report1GUI.REPORT_START_DATE not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.REPORT_START_DATE] = ""
+
+        if Report1GUI.SAVINGS_INTEREST_RATE_LIST not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.SAVINGS_INTEREST_RATE_LIST] = Report1GUI.DEFAULT_RATE_LIST
+
+        if Report1GUI.PENSION_GROWTH_RATE_LIST not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.PENSION_GROWTH_RATE_LIST] = Report1GUI.DEFAULT_RATE_LIST
+
+        if Report1GUI.STATE_PENSION_YEARLY_INCREASE_LIST not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.STATE_PENSION_YEARLY_INCREASE_LIST] = ""
+
+        if Report1GUI.SAVINGS_WITHDRAWAL_TABLE not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.SAVINGS_WITHDRAWAL_TABLE] = []
+
+        if Report1GUI.PENSION_WITHDRAWAL_TABLE not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.PENSION_WITHDRAWAL_TABLE] = []
+
+        if Report1GUI.OTHER_INCOME_TABLE not in plot_attr_dict:
+            plot_attr_dict[Report1GUI.OTHER_INCOME_TABLE] = []
+
+        return plot_attr_dict
+
+    def _get_param_value(self, param_name):
+        selected_name = self._get_selected_retirement_predictions_settings_name()
+        multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
+        plot_attr_dict = multiple_report1_plot_attrs_dict[selected_name]
+        if param_name not in plot_attr_dict:
+            raise Exception(f"{param_name} not found in plot_attr_dict={plot_attr_dict}")
+        return plot_attr_dict[param_name]
+
+    def _set_param_value(self, param_name, value):
+        selected_name = self._get_selected_retirement_predictions_settings_name()
+        multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
+        plot_attr_dict = multiple_report1_plot_attrs_dict[selected_name]
+        plot_attr_dict[param_name] = value
+
+    def _init_gui(self):
+        with ui.row():
+            ui.label("Basic Retirement Prediction").style('font-size: 32px; font-weight: bold;')
+        with ui.row():
+            ui.label(
+                "The following parameters can be changed to alter your retirement prediction.")
+
+        with ui.row():
+            with ui.column():
+                with ui.row():
+                    self._my_dob_field = GUIBase.GetInputDateField(Report1GUI.MY_DATE_OF_BIRTH).style('width: 150px;')
+                    self._my_dob_field.value = self._get_param_value(Report1GUI.MY_DATE_OF_BIRTH)
+                    self._my_max_age_field = ui.number(label=Report1GUI.MY_MAX_AGE).tooltip("The maximum age to plan for.").style('width: 100px;')
+                    self._my_max_age_field.value = self._get_param_value(Report1GUI.MY_MAX_AGE)
+
+                    self._partner_dob_field = GUIBase.GetInputDateField(Report1GUI.PARTNER_DATE_OF_BIRTH).style('width: 150px;')
+                    self._partner_dob_field.value = self._get_param_value(Report1GUI.PARTNER_DATE_OF_BIRTH)
+                    self._partner_max_age_field = ui.number(label=Report1GUI.PARTNER_MAX_AGE).tooltip("The maximum age to plan for.").style('width: 100px;')
+                    self._partner_max_age_field.value = self._get_param_value(Report1GUI.PARTNER_MAX_AGE)
+
+                with ui.row():
+                    self._start_date_field = GUIBase.GetInputDateField(Report1GUI.REPORT_START_DATE).tooltip('The first date to be plotted.')
+                    self._start_date_field.value = self._get_param_value(Report1GUI.REPORT_START_DATE)
+
+                with ui.row():
+                    self._savings_interest_rates_field = ui.input(label=Report1GUI.SAVINGS_INTEREST_RATE_LIST).style(
+                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
+                    self._savings_interest_rates_field.value = self._get_param_value(Report1GUI.SAVINGS_INTEREST_RATE_LIST)
+
+                with ui.row():
+                    self._pension_growth_rate_list_field = ui.input(label=Report1GUI.PENSION_GROWTH_RATE_LIST).style(
+                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
+                    self._pension_growth_rate_list_field.value = self._get_param_value(Report1GUI.PENSION_GROWTH_RATE_LIST)
+
+                with ui.row():
+                    self._state_pension_growth_rate_list_field = ui.input(label=Report1GUI.STATE_PENSION_YEARLY_INCREASE_LIST).style(
+                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
+                    self._state_pension_growth_rate_list_field.value = self._get_param_value(Report1GUI.STATE_PENSION_YEARLY_INCREASE_LIST)
+
+        with ui.row():
+            savings_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
+                        {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
+                        ]
+            with ui.column():
+                with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Add planned savings withdrawals here."):
+                    ui.label("Savings withdrawals").style(
+                        'font-weight: bold;')
+                    self._savings_withdrawals_table = ui.table(columns=savings_columns,
+                                                                rows=[],
+                                                                row_key=Report1GUI.DATE,
+                                                                selection='multiple')
+                    self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
+
+                    with ui.row():
+                        ui.button('Add', on_click=lambda: self._add_savings_withdrawal()).tooltip(
+                            'Add to the savings withdrawals table.')
+                        ui.button('Delete', on_click=lambda: self._del_savings_withdrawal()).tooltip(
+                            'Delete a savings withdrawal from the table.')
+                        ui.button('Edit', on_click=lambda: self._edit_savings_withdrawal()).tooltip(
+                            'Edit a savings withdrawal in the table.')
+
+            pensions_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
+                        {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
+                        {'name': Report1GUI.AMOUNT_AFTER_TAX, 'label': Report1GUI.AMOUNT_AFTER_TAX, 'field': Report1GUI.AMOUNT_AFTER_TAX},
+                        ]
+            with ui.column():
+                with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Add planned pension withdrawals here."):
+                    ui.label("Pension withdrawals").style(
+                        'font-weight: bold;')
+                    self._pension_withdrawals_table = ui.table(columns=pensions_columns,
+                                                                rows=[],
+                                                                row_key=Report1GUI.DATE,
+                                                                selection='multiple')
+                    self._pension_withdrawals_table.on('row-dblclick', self._on_pension_withdrawal_table_double_click)
+
+                    with ui.row():
+                        ui.button('Add', on_click=lambda: self._add_pension_withdrawal()).tooltip(
+                            'Add to the pension withdrawals table.')
+                        ui.button('Delete', on_click=lambda: self._del_pension_withdrawal()).tooltip(
+                            'Delete a pension withdrawal from the table.')
+                        ui.button('Edit', on_click=lambda: self._edit_pension_withdrawal()).tooltip(
+                            'Edit a pension withdrawal in the table.')
+
+            other_income_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
+                        {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
+                        {'name': Report1GUI.AMOUNT_AFTER_TAX, 'label': Report1GUI.AMOUNT_AFTER_TAX, 'field': Report1GUI.AMOUNT_AFTER_TAX},
+                        ]
+            with ui.column():
+                with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Other income (E.G Annuity, rent, part time job etc)"):
+                    ui.label("Other Income").style(
+                        'font-weight: bold;')
+                    self._other_income_table = ui.table(columns=other_income_columns,
+                                                                rows=[],
+                                                                row_key=Report1GUI.DATE,
+                                                                selection='multiple')
+                    self._other_income_table.on('row-dblclick', self._on_other_income_table_double_click)
+
+                    with ui.row():
+                        ui.button('Add', on_click=lambda: self._add_other_income()).tooltip(
+                            'Add to the other income table.')
+                        ui.button('Delete', on_click=lambda: self._del_other_income()).tooltip(
+                            'Delete other income from the table.')
+                        ui.button('Edit', on_click=lambda: self._edit_other_income()).tooltip(
+                            'Edit a value in the other income table.')
+
+            self._update_gui_tables()
+
+        with ui.row():
+            with ui.card():
+                ui.label("Save/Load the above retirement prediction parameter set.")
+                with ui.row().style('width: 1200px;'):
+                    self._settings_name_list = self._get_settings_name_list()
+                    if Report1GUI.DEFAULT not in self._settings_name_list:
+                        self._settings_name_list.append(Report1GUI.DEFAULT)
+                    retirement_predictions_settings_name = self._get_selected_retirement_predictions_settings_name()
+                    self._settings_name_select = ui.select(self._settings_name_list,
+                                                           label='Name',
+                                                           on_change=lambda e: self._select_settings_name(
+                                                               e.value),
+                                                           value=retirement_predictions_settings_name).style('width: 400px;')
+                    self._new_settings_name_input = ui.input(label='New name').style('width: 400px;')
+
+                with ui.row():
+                    ui.button('Save', on_click=lambda: self._save()).tooltip(
+                        'Save the above pension prediction parameters.')
+                    ui.button('Delete', on_click=lambda: self._del_ret_pred_param_dialog.open()).tooltip(
+                        'Delete the selected pension prediction parameters.')
+
+        with ui.row():
+            ui.button('Show prediction', on_click=lambda: self._calc()).tooltip(
+                'Perform calculation and plot the results.')
+            self._show_progress_button = ui.button('Show progress', on_click=lambda: self._show_progress()).tooltip(
+                'Show your progress against a prediction.')
+            self._last_year_to_plot_field = ui.input(label="Last year to plot", value="").style(
+                        'width: 200px;').tooltip('The last year you wish to plot. Leave this blank to plot all years.')
+            self._interval_radio = ui.radio([Report1GUI.BY_MONTH, Report1GUI.BY_YEAR], value=Report1GUI.BY_MONTH).props('inline')
+
+        self._update_gui_from_dict()
+        self._load_settings(retirement_predictions_settings_name)
+
+    def _add_other_income(self):
+        """@brief Called when the add to other income table button is selected."""
+        self._button_selected = Report1GUI.ADD_OTHER_INCOME_BUTTON
+        self._amount_after_tax_field.visible = True
+        self._add_row_dialog.open()
+
+    def _del_other_income(self):
+        """@brief Called when the delete a pension withdrawal button is selected."""
+        selected_dict_list = self._other_income_table.selected
+        if selected_dict_list and len(selected_dict_list) > 0:
+            for selected_dict in selected_dict_list:
+                if Report1GUI.DATE in selected_dict:
+                    del_date = selected_dict[Report1GUI.DATE]
+                    table = self._get_param_value(Report1GUI.OTHER_INCOME_TABLE)
+                    new_table = []
+                    for row in table:
+                        date = row[0]
+                        if date != del_date:
+                            new_table.append(row)
+                    self._set_param_value(Report1GUI.OTHER_INCOME_TABLE, new_table)
+        self._update_gui_tables()
+
+    def _edit_other_income(self):
+        self._edit_withdrawal_table(self._other_income_table, Report1GUI.OTHER_INCOME_TABLE)
+
+    def _on_other_income_table_double_click(self, e):
+        row_dict = e.args[1]
+        self._withdrawal_edit_table = Report1GUI.OTHER_INCOME_TABLE
+
+        amount = row_dict[Report1GUI.AMOUNT]
+        amount_after_tax = amount
+        if Report1GUI.AMOUNT_AFTER_TAX in row_dict:
+            amount_after_tax=row_dict[Report1GUI.AMOUNT_AFTER_TAX]
+
+        self._set_edit_withdrawal_table_dialog_params(row_dict[Report1GUI.DATE],
+                                                      amount,
+                                                      row_dict[Report1GUI.INFO],
+                                                      amount_after_tax=amount_after_tax)
+
+        self._edit_amount_after_tax_field.visible = True
+        self._edit_row_dialog.open()
+
+    def _init_edit_row_dialog(self):
+        """@brief Create a dialog presented to the user to edit a withdrawal rows in the savings or pension tables."""
+        with ui.dialog() as self._edit_row_dialog, ui.card().style('width: 600px;'):
+            self._edit_date_input_field = GUIBase.GetInputDateField(Report1GUI.DATE)
+            with ui.row():
+                self._edit_amount_field = ui.number(label=Report1GUI.AMOUNT)
+                self._edit_amount_field.on('keyup', self._edit_amount_field_keyup)
+                self._edit_amount_after_tax_field = ui.number(label=Report1GUI.AMOUNT_AFTER_TAX).tooltip("This should be set to to be the same as the amount field if there is no tax to pay.")
+            self._edit_info_field = ui.input(label=Report1GUI.INFO).style('width: 500px;')
+            self._edit_info_field.tooltip("You may add information here. E.G what the withdrawal was for.")
+            with ui.row():
+                ui.button("Ok", on_click=self._edit_row_dialog_ok_button_press)
+                ui.button(
+                    "Cancel", on_click=self._edit_row_dialog_cancel_button_press)
+
+    def _edit_row_dialog_ok_button_press(self):
+        self._edit_row_dialog.close()
+        if Report1GUI.CheckValidDateString(self._edit_date_input_field.value,
+                                              field_name=self._edit_date_input_field.props['label']) and \
+           Report1GUI.CheckZeroOrGreater(self._edit_amount_field.value,
+                                            field_name=self._edit_amount_field.props['label']) and \
+           Report1GUI.CheckZeroOrGreater(self._edit_amount_after_tax_field.value,
+                                            field_name=self._edit_amount_after_tax_field.props['label']):
+            if self._withdrawal_edit_table == Report1GUI.SAVINGS_WITHDRAWAL_TABLE:
+                table = self._get_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
+
+            elif self._withdrawal_edit_table == Report1GUI.PENSION_WITHDRAWAL_TABLE:
+                table = self._get_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE)
+
+            elif self._withdrawal_edit_table == Report1GUI.OTHER_INCOME_TABLE:
+                table = self._get_param_value(Report1GUI.OTHER_INCOME_TABLE)
+
+            else:
+                raise Exception("{self._withdrawal_edit_table} is an unknown withdrawal table.")
+
+            new_rows = []
+            for row in table:
+                date_entered = FuturePlotGUI.GetDate(self._edit_date_input_field.value)
+                table_date_str = row[0]
+                table_date = FuturePlotGUI.GetDate(table_date_str)
+                if date_entered == table_date:
+                    new_rows.append([table_date_str,
+                                     self._edit_amount_field.value,
+                                     self._edit_info_field.value,
+                                     self._edit_amount_after_tax_field.value])
+
+                else:
+                    new_rows.append(row)
+
+            if self._withdrawal_edit_table == Report1GUI.SAVINGS_WITHDRAWAL_TABLE:
+                self._set_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE, new_rows)
+
+            elif self._withdrawal_edit_table == Report1GUI.PENSION_WITHDRAWAL_TABLE:
+                self._set_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE, new_rows)
+
+            elif self._withdrawal_edit_table == Report1GUI.OTHER_INCOME_TABLE:
+                self._set_param_value(Report1GUI.OTHER_INCOME_TABLE, new_rows)
+
+            self._update_gui_tables()
+
+    def _update_gui_tables(self):
+        self._display_table_rows(self._savings_withdrawals_table, self._get_savings_withdrawal_table_data())
+        self._display_table_rows(self._pension_withdrawals_table, self._get_pension_withdrawal_table_data())
+        self._display_table_rows(self._other_income_table, self._get_other_income_table_data())
+
+    def _get_savings_withdrawal_table_data(self):
+        """@brief Get a table of the savings withdrawals."""
+        return self._get_updated_table(Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
+
+    def _get_pension_withdrawal_table_data(self):
+        """@brief Get a table of the pension withdrawals."""
+        return self._get_updated_table(Report1GUI.PENSION_WITHDRAWAL_TABLE)
+
+    def _get_other_income_table_data(self):
+        """@brief Get a table of the other income."""
+        return self._get_updated_table(Report1GUI.OTHER_INCOME_TABLE)
+
+    def _get_updated_table(self, key):
+        # A bit of defensive checking
+        if key not in (Report1GUI.SAVINGS_WITHDRAWAL_TABLE, Report1GUI.PENSION_WITHDRAWAL_TABLE, Report1GUI.OTHER_INCOME_TABLE):
+            raise Exception("_get_updated_table() Called with key = {key}")
+
+        old_table = self._get_param_value(key)
+        new_table = []
+        for row in old_table:
+            row = list(row)
+            # If only two columns add the info column
+            if len(row) == 2:
+                row.append("")
+
+            # If only three columns add the 'amount after tax' column.
+            # The default for this is to set it to the same as the amount field, I.E no tax to pay.
+            if len(row) == 3:
+                row.append(row[1])
+
+            # A previous error may have moved to the date into the amount after tax field.
+            if len(row) == 4:
+                try:
+                    # Check the amount after tax field contains a number.
+                    float(row[3])
+                except:
+                    # If not force the amount after tax field to be the same as the amount (I.E no tax)
+                    row[3] = row[1]
+
+            new_table.append(row)
+        return new_table
+
+    def _display_table_rows(self, gui_table, table_data):
+        """@brief Show a table of the configured bank accounts.
+           @param gui_table The GUI table element.
+           @param table_data The table date. Each row has two elements (DATE and AMOUNT)."""
+        gui_table.rows.clear()
+        gui_table.update()
+        for row in table_data:
+            gui_table.add_row({Report1GUI.DATE: row[0], Report1GUI.AMOUNT: row[1], Report1GUI.INFO: row[2], Report1GUI.AMOUNT_AFTER_TAX: row[3]})
+        gui_table.run_method('scrollTo', len(gui_table.rows)-1)
+
+    def _edit_amount_field_keyup(self, e):
+        """@brief Called every time the user releases a key after entry into the amount field."""
+        self._edit_amount_after_tax_field.value = self._edit_amount_field.value
+
+    def _edit_row_dialog_cancel_button_press(self):
+        self._edit_row_dialog.close()
+
+    def _on_savings_withdrawal_table_double_click(self, e):
+        row_dict = e.args[1]
+        self._withdrawal_edit_table = Report1GUI.SAVINGS_WITHDRAWAL_TABLE
+        self._set_edit_withdrawal_table_dialog_params(row_dict[Report1GUI.DATE],
+                                                      row_dict[Report1GUI.AMOUNT],
+                                                      row_dict[Report1GUI.INFO])
+        # Savings should not show the after tax field.
+        self._edit_amount_after_tax_field.visible = False
+        self._edit_row_dialog.open()
+
+    def _set_edit_withdrawal_table_dialog_params(self, date_str, amount, notes, amount_after_tax=None):
+        self._edit_date_input_field.value = date_str
+        self._edit_amount_field.value = amount
+        if amount_after_tax is None:
+            # If no value after tax has been passed, set it to be the same as the amount field.
+            self._edit_amount_after_tax_field.value = amount
+        else:
+            self._edit_amount_after_tax_field.value = amount_after_tax
+        self._edit_info_field.value = ""  # Unless this is reset to an empty string the subsequent set of the value may not be displayed ???
+        self._edit_info_field.value = notes
+
+    def _add_savings_withdrawal(self):
+        """@brief Called when the add a savings withdrawal button is selected."""
+        self._button_selected = Report1GUI.ADD_SAVINGS_WITHDRAWAL_BUTTON
+        self._amount_after_tax_field.visible = False
+        self._add_row_dialog.open()
+
+    def _del_savings_withdrawal(self):
+        """@brief Called when the delete a savings withdrawal button is selected."""
+        selected_dict_list = self._savings_withdrawals_table.selected
+        if selected_dict_list and len(selected_dict_list) > 0:
+            for selected_dict in selected_dict_list:
+                if Report1GUI.DATE in selected_dict:
+                    del_date = selected_dict[Report1GUI.DATE]
+                    table = self._get_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
+                    new_table = []
+                    for row in table:
+                        date = row[0]
+                        if date != del_date:
+                            new_table.append(row)
+                    self._set_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE, new_table)
+        self._update_gui_tables()
+
+    def _edit_savings_withdrawal(self):
+        self._edit_withdrawal_table(self._savings_withdrawals_table, Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
+
+    def _edit_withdrawal_table(self, withdrawal_table, table_type):
+        """@brief Called when the savings withdrawal, pension withdrawal or other income tables are edited.
+           @param withdrawal_table One of the above tables.
+           @param table_type One of the above table"""
+        # Set a flag to indicate that the pension withdrawal table is being edited. This is used later to determine which table to update.
+        self._withdrawal_edit_table = table_type
+        if table_type == Report1GUI.SAVINGS_WITHDRAWAL_TABLE:
+            table = self._get_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
+
+        elif table_type == Report1GUI.PENSION_WITHDRAWAL_TABLE:
+            table = self._get_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE)
+
+        elif table_type == Report1GUI.OTHER_INCOME_TABLE:
+            table = self._get_param_value(Report1GUI.OTHER_INCOME_TABLE)
+
+        else:
+            raise Exception("{self._withdrawal_edit_table} is an unknown table.")
+
+        selected_dict_list = withdrawal_table.selected
+        if len(selected_dict_list) == 0:
+            ui.notify("No row is selected.", type='negative')
+
+        elif len(selected_dict_list) > 1:
+            ui.notify("Only one row should be selected when editing.", type='negative')
+
+        else:
+            date_found = False
+            selected_row = selected_dict_list[0]
+            for row in table:
+                table_date = FuturePlotGUI.GetDate(row[0])
+                selected_date = FuturePlotGUI.GetDate(selected_row[Report1GUI.DATE])
+                if selected_date == table_date:
+                    self._set_edit_withdrawal_table_dialog_params(row[0], row[1], row[2], amount_after_tax=row[3])
+                    date_found = True
+
+            if date_found:
+                self._edit_row_dialog.open()
+
+    def _on_pension_withdrawal_table_double_click(self, e):
+        row_dict = e.args[1]
+        self._withdrawal_edit_table = Report1GUI.PENSION_WITHDRAWAL_TABLE
+
+        amount = row_dict[Report1GUI.AMOUNT]
+        amount_after_tax = amount
+        if Report1GUI.AMOUNT_AFTER_TAX in row_dict:
+            amount_after_tax=row_dict[Report1GUI.AMOUNT_AFTER_TAX]
+
+        self._set_edit_withdrawal_table_dialog_params(row_dict[Report1GUI.DATE],
+                                                      amount,
+                                                      row_dict[Report1GUI.INFO],
+                                                      amount_after_tax=amount_after_tax)
+
+        self._edit_amount_after_tax_field.visible = True
+        self._edit_row_dialog.open()
+
+    def _add_pension_withdrawal(self):
+        """@brief Called when the add a savings withdrawal button is selected."""
+        self._button_selected = Report1GUI.ADD_PENSION_WITHDRAWAL_BUTTON
+        self._amount_after_tax_field.visible = True
+        self._add_row_dialog.open()
+
+    def _del_pension_withdrawal(self):
+        """@brief Called when the delete a pension withdrawal button is selected."""
+        selected_dict_list = self._pension_withdrawals_table.selected
+        if selected_dict_list and len(selected_dict_list) > 0:
+            for selected_dict in selected_dict_list:
+                if Report1GUI.DATE in selected_dict:
+                    del_date = selected_dict[Report1GUI.DATE]
+                    table = self._get_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE)
+                    new_table = []
+                    for row in table:
+                        date = row[0]
+                        if date != del_date:
+                            new_table.append(row)
+                    self._set_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE, new_table)
+        self._update_gui_tables()
+        self._config.get_report1_plot_attrs_dict()[Report1GUI.PENSION_WITHDRAWAL_TABLE]=new_table
+
+    def _edit_pension_withdrawal(self):
+        self._edit_withdrawal_table(self._pension_withdrawals_table, Report1GUI.PENSION_WITHDRAWAL_TABLE)
+
+    def _get_settings_name_list(self):
+        """@return a list of name of the saved future plot parameters."""
+        multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
+        return list(multiple_report1_plot_attrs_dict.keys())
+
+    def _get_selected_retirement_predictions_settings_name(self):
+        """@brief Get the name of the selected retirement predictions settings."""
+        selected_retirement_parameters_name_dict = self._config.get_selected_report1_parameters_name_dict()
+        if Report1GUI.RETIREMENT_PREDICTION_SETTINGS_NAME not in selected_retirement_parameters_name_dict:
+            selected_retirement_parameters_name_dict[Report1GUI.RETIREMENT_PREDICTION_SETTINGS_NAME] = Report1GUI.DEFAULT
+        return selected_retirement_parameters_name_dict[Report1GUI.RETIREMENT_PREDICTION_SETTINGS_NAME]
+
+    def _select_settings_name(self, value):
+        # Clear the new name field
+        settings_name = self._get_settings_name()
+        self._set_selected_retirement_predictions_settings_name(settings_name)
+        self._new_settings_name_input.value = ""
+        self._load_settings(settings_name)
+
+    def _get_settings_name(self):
+        """@brief Get the entered settings name."""
+        use_input_field_name = False
+        name = self._new_settings_name_input.value
+        name = name.strip()
+        if len(name) > 0:
+            if name not in self._settings_name_list:
+                self._settings_name_list.append(name)
+                self._settings_name_select.update()
+            self._settings_name_select.value = name
+            use_input_field_name = True
+        if not use_input_field_name:
+            name = self._settings_name_select.value
+        return name
+
+    def _set_selected_retirement_predictions_settings_name(self, name):
+        """@brief Set the name of the selected retirement prediction settings.
+           @param name The name of the settings."""
+        selected_retirement_parameters_name_dict = self._config.get_selected_report1_parameters_name_dict()
+        selected_retirement_parameters_name_dict[Report1GUI.RETIREMENT_PREDICTION_SETTINGS_NAME] = name
+        self._config._save_selected_report1_parameters_name_attrs()
+
+    def _load_settings(self, selected_settings_name):
+        """@brief Load the prediction parameters.
+           @param selected_settings_name The name of the settings to load."""
+        name_list = self._get_settings_name_list()
+        if selected_settings_name in name_list:
+            # Load from the stored settings file
+            self._update_gui_from_dict()
+
+    def _update_gui_from_dict(self):
+        """@brief Load config from persistent storage and display in GUI."""
+        self._my_dob_field.value = self._get_param_value(Report1GUI.MY_DATE_OF_BIRTH)
+        self._my_max_age_field.value = self._get_param_value(Report1GUI.MY_MAX_AGE)
+        self._partner_dob_field.value = self._get_param_value(Report1GUI.PARTNER_DATE_OF_BIRTH)
+        self._partner_max_age_field.value = self._get_param_value(Report1GUI.PARTNER_MAX_AGE)
+        self._savings_interest_rates_field.value = self._get_param_value(Report1GUI.SAVINGS_INTEREST_RATE_LIST)
+        self._pension_growth_rate_list_field.value = self._get_param_value(Report1GUI.PENSION_GROWTH_RATE_LIST)
+        self._state_pension_growth_rate_list_field.value = self._get_param_value(Report1GUI.STATE_PENSION_YEARLY_INCREASE_LIST)
+        self._start_date_field.value = self._get_param_value(Report1GUI.REPORT_START_DATE)
+        self._update_gui_tables()
+
+    def _save(self):
+        """@save the report parameters to persistent storage."""
+        if self._update_dict_from_gui():
+            selected_name = self._get_selected_retirement_predictions_settings_name()
+            new_name = self._get_settings_name()
+            if selected_name != new_name:
+                multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
+                plot_attr_dict = multiple_report1_plot_attrs_dict[selected_name]
+                multiple_report1_plot_attrs_dict[new_name] = copy.deepcopy(plot_attr_dict)
+            self._config.save_multiple_report1_plot_attrs()
+            # Clear the new name field
+            self._new_settings_name_input.value = ""
+
+    def _init_add_row_dialog(self):
+        """@brief Create a dialog presented to the user to add a withdrawal from the savings or pension tables."""
+        with ui.dialog() as self._add_row_dialog, ui.card().style('width: 450px;'):
+            self._date_input_field = GUIBase.GetInputDateField(Report1GUI.DATE)
+            with ui.row():
+                self._amount_field = ui.number(label=Report1GUI.AMOUNT)
+                self._amount_field.on('keyup', self._amount_field_keyup)
+                self._amount_after_tax_field = ui.number(label=Report1GUI.AMOUNT_AFTER_TAX).tooltip("This should be set to to be the same as the amount field if there is no tax to pay.")
+            with ui.row():
+                self._yearly_percentage_increase_field = ui.number(label="Yearly % increase").tooltip("Enter a +ve percentage if you wish to increase the amount on a yearly basis. Set to 0 if you do not wish to increase the amount every year.")
+            self._repeat_field = ui.select([Report1GUI.YEARLY, Report1GUI.MONTHLY], value='Yearly')
+            self._repeat_count_field = ui.number(label="Occurrences", value=1, min=1)
+            self._info_field = ui.input(label=Report1GUI.INFO).style('width: 500px;')
+            self._info_field.tooltip("You may add information here. E.G what the withdrawal was for.")
+            with ui.row():
+                ui.button("Ok", on_click=self._add_row_dialog_ok_button_press)
+                ui.button(
+                    "Cancel", on_click=self._add_row_dialog_cancel_button_press)
+
+    def _add_row_dialog_ok_button_press(self):
+        if Report1GUI.CheckValidDateString(self._date_input_field.value,
+                                              field_name=self._date_input_field.props['label']) and \
+           Report1GUI.CheckGreaterThanZero(self._repeat_count_field.value,
+                                              field_name=self._repeat_count_field.props['label']):
+
+            self._add_row_dialog.close()
+            yearly = False
+            monthly = False
+
+            if self._repeat_field.value == Report1GUI.YEARLY:
+                yearly = True
+
+            if self._repeat_field.value == Report1GUI.MONTHLY:
+                monthly = True
+
+            occurrence_count = self._repeat_count_field.value
+            the_date = self._date_input_field.value
+            last_date = the_date
+            amount = self._amount_field.value
+            amount_after_tax = self._amount_after_tax_field.value
+            yearly_percentage_increase = self._yearly_percentage_increase_field.value
+            info_str = self._info_field.value
+            for _ in range(0, int(occurrence_count)):
+                # If no change in the amount each year
+                if yearly_percentage_increase == 0:
+                    row = (the_date, amount, info_str, amount_after_tax)
+                else:
+                    if self._has_year_rolled_over(the_date, last_date):
+                        amount = round(amount * (1+(yearly_percentage_increase/100)), 2)
+                        amount_after_tax = round(amount_after_tax * (1+(yearly_percentage_increase/100)), 2)
+                        row = (the_date, amount, info_str, amount_after_tax)
+                    else:
+                        row = (the_date, amount, info_str, amount_after_tax)
+                    last_date = the_date
+
+                    the_datetime = datetime.strptime(the_date, "%d-%m-%Y")
+                if self._button_selected == Report1GUI.ADD_SAVINGS_WITHDRAWAL_BUTTON:
+                    rows = self._get_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
+                    if self._check_date_in_table(the_date, rows):
+                        ui.notify(f"{the_date} is already in the table.", type='negative')
+                        return
+
+                    else:
+                        rows.append(row)
+                        # Sort table in ascending date order
+                        sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
+                        self._set_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE, sorted_rows)
+
+                elif self._button_selected == Report1GUI.ADD_PENSION_WITHDRAWAL_BUTTON:
+                    rows = self._get_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE)
+                    if self._check_date_in_table(the_date, rows):
+                        ui.notify(f"{the_date} is already in the table.", type='negative')
+                        return
+
+                    else:
+                        rows.append(row)
+                        # Sort table in ascending date order
+                        sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
+                        self._set_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE, sorted_rows)
+
+                elif self._button_selected == Report1GUI.ADD_OTHER_INCOME_BUTTON:
+                    rows = self._get_param_value(Report1GUI.OTHER_INCOME_TABLE)
+                    if self._check_date_in_table(the_date, rows):
+                        ui.notify(f"{the_date} is already in the table.", type='negative')
+                        return
+
+                    else:
+                        rows.append(row)
+                        # Sort table in ascending date order
+                        sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
+                        self._set_param_value(Report1GUI.OTHER_INCOME_TABLE, sorted_rows)
+
+                else:
+                    raise Exception("BUG: Neither the add savings, add pensions or add other income button was selected ???")
+
+                if yearly:
+                    the_date = self._get_next_date_str(the_date, 12)
+
+                if monthly:
+                    the_date = self._get_next_date_str(the_date, 1)
+
+            self._update_gui_tables()
+
+    def _has_year_rolled_over(self, date_now_str, date_last_str):
+        """@brief Determine if the year has rolled over between the two dates.
+           @param date_now_str The current date string of the form dd-mm-yyyy.
+           @param date_last_str The current date string of the form dd-mm-yyyy."""
+        now_datetime = datetime.strptime(date_now_str, "%d-%m-%Y")
+        last_datetime = datetime.strptime(date_last_str, "%d-%m-%Y")
+        year_rolled_over = False
+        # If the year has rolled over
+        if now_datetime.year != last_datetime.year:
+            year_rolled_over = True
+        return year_rolled_over
+
+    def _add_row_dialog_cancel_button_press(self):
+        self._add_row_dialog.close()
+
+    def _check_date_in_table(self, _date, table):
+        """@brief Check if a date is in a table. Col 0 = date.
+           @return True if it is."""
+        return any(row[0] == _date for row in table)
+
+    def _get_next_date_str(self, start_date_str, months):
+        """@brief Get the start date + the number of months.
+           @param start_date_str The from date string as dd-mm-yyyy.
+           @param months The number of months to add to the start date."""
+        start_date = datetime.strptime(start_date_str, '%d-%m-%Y')
+        next_date = start_date + relativedelta(months=+months)
+        return next_date.strftime('%d-%m-%Y')
+
+    def _amount_field_keyup(self, e):
+        """@brief Called every time the user releases a key after entry into the amount field."""
+        self._amount_after_tax_field.value = self._amount_field.value
+
+    def _init_ok_to_delete_dialog(self):
+        """@brief Create a dialog presented to the user to check that they wish to delete a retirement prediction parameter set."""
+        with ui.dialog() as self._del_ret_pred_param_dialog, ui.card().style('width: 400px;'):
+            ui.label("Are you sure you wish to delete the selected retirement prediction parameter set ?")
+            with ui.row():
+                ui.button("Yes", on_click=self._delete)
+                ui.button("No", on_click=self._cancel_del_ret_pred_param_dialog)
+
+    def _delete(self):
+        self._del_ret_pred_param_dialog.close()
+        name = self._settings_name_select.value
+        if name == Report1GUI.DEFAULT:
+            ui.notify(
+                f"{Report1GUI.DEFAULT} cannot be deleted.", type='negative')
+        else:
+            # Remove the name from the dict
+            multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
+            if name in multiple_report1_plot_attrs_dict:
+                del multiple_report1_plot_attrs_dict[name]
+                self._config.save_multiple_report1_plot_attrs()
+                ui.notify(f"Deleted {name}.")
+            # Remove the name from the displayed name list
+            if name in self._settings_name_list:
+                self._settings_name_list.remove(name)
+            # If there are entries in the list
+            if len(self._settings_name_list) > 0:
+                # Select The first name
+                self._settings_name_select.value = self._settings_name_list[0]
+
+    def _cancel_del_ret_pred_param_dialog(self):
+        self._del_ret_pred_param_dialog.close()
+
+    def _update_dict_from_gui(self):
+        """@brief update the dict from the details entered into the GUI.
+           @return True if all entries are valid."""
+        valid = False
+        if FuturePlotGUI.CheckValidDateString(self._start_date_field.value,
+                                              field_name=self._start_date_field.props['label']):
+
+            if FuturePlotGUI.CheckValidDateString(self._my_dob_field.value,
+                                                              field_name=self._my_dob_field.props['label']) and \
+                BankAccountGUI.CheckGreaterThanZero(self._my_max_age_field.value,
+                                                    field_name=self._my_max_age_field.props['label']) and \
+                BankAccountGUI.CheckCommaSeparatedNumberList(self._savings_interest_rates_field.value,
+                                                             field_name=self._savings_interest_rates_field.props['label']) and \
+                BankAccountGUI.CheckCommaSeparatedNumberList(self._pension_growth_rate_list_field.value,
+                                                             field_name=self._pension_growth_rate_list_field.props['label']) and \
+                BankAccountGUI.CheckCommaSeparatedNumberList(self._state_pension_growth_rate_list_field.value,
+                                                             field_name=self._state_pension_growth_rate_list_field.props['label']):
+                self._set_param_value(Report1GUI.MY_DATE_OF_BIRTH, self._my_dob_field.value)
+                self._set_param_value(Report1GUI.MY_MAX_AGE, self._my_max_age_field.value)
+                self._set_param_value(Report1GUI.PARTNER_DATE_OF_BIRTH, self._partner_dob_field.value)
+                self._set_param_value(Report1GUI.PARTNER_MAX_AGE, self._partner_max_age_field.value)
+                self._set_param_value(Report1GUI.SAVINGS_INTEREST_RATE_LIST, self._savings_interest_rates_field.value)
+                self._set_param_value(Report1GUI.PENSION_GROWTH_RATE_LIST, self._pension_growth_rate_list_field.value)
+                self._set_param_value(Report1GUI.STATE_PENSION_YEARLY_INCREASE_LIST, self._state_pension_growth_rate_list_field.value)
+                self._set_param_value(Report1GUI.REPORT_START_DATE, self._start_date_field.value)
+                # The savings, pension and other income tables update the dict when the add,del, edit dialogs ok buttons are selected.
+                valid = True
+
+        return valid
+
+    def _show_progress(self):
+        self._calc(overlay_real_performance=True)
+
+    def _calc(self, overlay_real_performance=False):
+        """@brief Perform calculation."""
+        print("PJA: DO CALC...")
+
+
+
 class Plot1GUI(GUIBase):
     """@brief Responsible for plotting the data of the predicted changes in the savings as we draw out money."""
 
@@ -3781,8 +4704,8 @@ class Plot1GUI(GUIBase):
 
     def _init_gui(self):
         """@brief plot the data in the plot table."""
-        with ui.row():
-            ui.label(self._name).style('font-size: 32px; font-weight: bold;')
+        # Set the doc name (appears ni browser tab) so user can identify with name to associate the plot with
+        ui.page_title(self._name)
 
         with ui.column().style('width: 100%; margin: 0 auto;'):
             # A plot of energy costs is added to this container when the users requests it
