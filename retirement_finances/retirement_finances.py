@@ -12,10 +12,16 @@ import sys
 import subprocess
 import threading
 
-from datetime import datetime
+from queue import Queue
+
+from time import time
+
+from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 import pandas as pd
+from collections import defaultdict
 
 from p3lib.uio import UIO
 from p3lib.helper import logTraceBack
@@ -185,7 +191,7 @@ class Config(object):
             self._bank_accounts_dict_list = []
             self._bank_accounts_dict_list = self._bank_account_crypt_file.load()
             if self._show_load_save_notifications:
-                ui.notify(f'Loaded from {self._bank_account_crypt_file.get_file()}', type='positive', position='center', duration=2)
+                ui.notify(f'Loaded from {self._bank_account_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
         except Exception:
             ui.notify(f'{self._bank_account_crypt_file.get_file()} file not found.', type='negative')
@@ -194,7 +200,7 @@ class Config(object):
         """@brief Save the bank accounts dict list persistently."""
         self._bank_account_crypt_file.save(self._bank_accounts_dict_list)
         if self._show_load_save_notifications:
-            ui.notify(f'Saved {self._bank_account_crypt_file.get_file()}', type='positive', position='center', duration=2)
+            ui.notify(f'Saved {self._bank_account_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
     def add_bank_account(self, bank_account_dict):
         """@brief Add bank account.
@@ -221,7 +227,7 @@ class Config(object):
             self._pension_dict_list = []
             self._pension_dict_list = self._pensions_crypt_file.load()
             if self._show_load_save_notifications:
-                ui.notify(f'Loaded from {self._pensions_crypt_file.get_file()}', type='positive', position='center', duration=2)
+                ui.notify(f'Loaded from {self._pensions_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
         except Exception:
             ui.notify(f'{self._pensions_crypt_file.get_file()} file not found.', type='negative')
@@ -230,7 +236,7 @@ class Config(object):
         """@brief Save the pension dict list persistently."""
         self._pensions_crypt_file.save(self._pension_dict_list)
         if self._show_load_save_notifications:
-            ui.notify(f'Saved {self._pensions_crypt_file.get_file()}', type='positive', position='center', duration=2)
+            ui.notify(f'Saved {self._pensions_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
     def add_pension(self, pension_dict):
         """@brief Add pension.bank account.
@@ -257,7 +263,7 @@ class Config(object):
             self._multiple_future_plot_attr_dict = {}
             self._multiple_future_plot_attr_dict = self._multiple_future_plot_crypt_file.load()
             if self._show_load_save_notifications:
-                ui.notify(f'Loaded from {self._multiple_future_plot_crypt_file.get_file()}', type='positive', position='center', duration=2)
+                ui.notify(f'Loaded from {self._multiple_future_plot_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
         except Exception:
             ui.notify(f'{self._multiple_future_plot_crypt_file.get_file()} file not found.', type='negative')
@@ -266,7 +272,7 @@ class Config(object):
         """@brief Save the multiple_future plot parameters persistently."""
         self._multiple_future_plot_crypt_file.save(self._multiple_future_plot_attr_dict)
         if self._show_load_save_notifications:
-            ui.notify(f'Saved {self._multiple_future_plot_crypt_file.get_file()}', type='positive', position='center', duration=2)
+            ui.notify(f'Saved {self._multiple_future_plot_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
     def get_multiple_future_plot_attrs_dict(self):
         """@brief Get the future plot parameters dict."""
@@ -282,7 +288,7 @@ class Config(object):
             self._selected_retirement_parameters_name_dict = {}
             self._selected_retirement_parameters_name_dict = self._selected_retirement_parameters_name_crypt_file.load()
             if self._show_load_save_notifications:
-                ui.notify(f'Loaded from {self._selected_retirement_parameters_name_crypt_file.get_file()}', type='positive', position='center', duration=2)
+                ui.notify(f'Loaded from {self._selected_retirement_parameters_name_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
         except Exception:
             ui.notify(f'{self._selected_retirement_parameters_name_crypt_file.get_file()} file not found.', type='negative')
@@ -291,7 +297,7 @@ class Config(object):
         """@brief Save the selected retirement parameters name parameters persistently."""
         self._selected_retirement_parameters_name_crypt_file.save(self._selected_retirement_parameters_name_dict)
         if self._show_load_save_notifications:
-            ui.notify(f'Saved {self._selected_retirement_parameters_name_crypt_file.get_file()}', type='positive', position='center', duration=2)
+            ui.notify(f'Saved {self._selected_retirement_parameters_name_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
     def get_selected_retirement_parameters_name_dict(self):
         """@brief Get the selected retirement parameters name parameters dict."""
@@ -307,7 +313,7 @@ class Config(object):
             self._multiple_report1_plot_attr_dict = {}
             self._multiple_report1_plot_attr_dict = self._multiple_report1_plot_crypt_file.load()
             if self._show_load_save_notifications:
-                ui.notify(f'Loaded from {self._multiple_report1_plot_crypt_file.get_file()}', type='positive', position='center', duration=2)
+                ui.notify(f'Loaded from {self._multiple_report1_plot_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
         except Exception:
             ui.notify(f'{self._multiple_report1_plot_crypt_file.get_file()} file not found.', type='negative')
@@ -316,7 +322,7 @@ class Config(object):
         """@brief Save the multiple_report1 plot parameters persistently."""
         self._multiple_report1_plot_crypt_file.save(self._multiple_report1_plot_attr_dict)
         if self._show_load_save_notifications:
-            ui.notify(f'Saved {self._multiple_report1_plot_crypt_file.get_file()}', type='positive', position='center', duration=2)
+            ui.notify(f'Saved {self._multiple_report1_plot_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
     def get_multiple_report1_plot_attrs_dict(self):
         """@brief Get the report1 plot parameters dict."""
@@ -326,9 +332,9 @@ class Config(object):
         """@brief Load the selected report1 parameters name parameters from file."""
         try:
             self._selected_report1_parameters_name_dict = {}
-            self._selected_repoort1_parameters_name_dict = self._selected_report1_parameters_name_crypt_file.load()
+            self._selected_report1_parameters_name_dict = self._selected_report1_parameters_name_crypt_file.load()
             if self._show_load_save_notifications:
-                ui.notify(f'Loaded from {self._selected_report1_parameters_name_crypt_file.get_file()}', type='positive', position='center', duration=2)
+                ui.notify(f'Loaded from {self._selected_report1_parameters_name_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
         except Exception:
             ui.notify(f'{self._selected_report1_parameters_name_crypt_file.get_file()} file not found.', type='negative')
@@ -337,7 +343,7 @@ class Config(object):
         """@brief Save the selected report1 parameters name parameters persistently."""
         self._selected_report1_parameters_name_crypt_file.save(self._selected_report1_parameters_name_dict)
         if self._show_load_save_notifications:
-            ui.notify(f'Saved {self._selected_report1_parameters_name_crypt_file.get_file()}', type='positive', position='center', duration=2)
+            ui.notify(f'Saved {self._selected_report1_parameters_name_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
     def get_selected_report1_parameters_name_dict(self):
         """@brief Get the selected report1 parameters name parameters dict."""
@@ -351,7 +357,7 @@ class Config(object):
             self._global_configuration_dict = {}
             self._global_configuration_dict = self._global_configuration_name_crypt_file.load()
             if self._show_load_save_notifications:
-                ui.notify(f'Loaded from {self._global_configuration_name_crypt_file.get_file()}', type='positive', position='center', duration=2)
+                ui.notify(f'Loaded from {self._global_configuration_name_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
         except Exception:
             ui.notify(f'{self._global_configuration_name_crypt_file.get_file()} file not found.', type='negative')
@@ -361,7 +367,7 @@ class Config(object):
         """@brief Save the global configuration parameters persistently."""
         self._global_configuration_name_crypt_file.save(self._global_configuration_dict)
         if self._show_load_save_notifications:
-            ui.notify(f'Saved {self._global_configuration_name_crypt_file.get_file()}', type='positive', position='center', duration=2)
+            ui.notify(f'Saved {self._global_configuration_name_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
     def get_global_configuration_dict(self):
         """@brief Get the global configuration parameters name parameters dict."""
@@ -375,7 +381,7 @@ class Config(object):
             self._monthly_spending_dict = {}
             self._monthly_spending_dict = self._monthly_spending_crypt_file.load()
             if self._show_load_save_notifications:
-                ui.notify(f'Loaded from {self._monthly_spending_crypt_file.get_file()}', type='positive', position='center', duration=2)
+                ui.notify(f'Loaded from {self._monthly_spending_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
         except Exception:
             ui.notify(f'{self._monthly_spending_crypt_file.get_file()} file not found.', type='negative')
@@ -384,7 +390,7 @@ class Config(object):
         """@brief Save the monthly spending dict to a file."""
         self._monthly_spending_crypt_file.save(self._monthly_spending_dict)
         if self._show_load_save_notifications:
-            ui.notify(f'Saved {self._monthly_spending_crypt_file.get_file()}', type='positive', position='center', duration=2)
+            ui.notify(f'Saved {self._monthly_spending_crypt_file.get_file()}', type='positive', position='bottom', duration=2)
 
     def get_monthly_spending_dict(self):
         """@brief Get the the monthly spending dict."""
@@ -393,6 +399,38 @@ class Config(object):
 
 class GUIBase(object):
     DATE = "Date"
+    GUI_TIMER_SECONDS = 0.1
+
+    NOTIFY_TYPE_POSITIVE = 'positive'
+    NOTIFY_TYPE_NEGATIVE = 'negative'
+    NOTIFY_TYPE_WARNING = 'warning'
+    NOTIFY_TYPE_INFO = 'info'
+    VALID_NOTIFY_TYPES = (NOTIFY_TYPE_POSITIVE,
+                          NOTIFY_TYPE_NEGATIVE,
+                          NOTIFY_TYPE_WARNING,
+                          NOTIFY_TYPE_INFO)
+    NOTIFY_POSITION_TOP = 'top'
+    NOTIFY_POSITION_BOTTOM = 'bottom'
+    NOTIFY_POSITION_LEFT = 'left'
+    NOTIFY_POSITION_RIGHT = 'right'
+    NOTIFY_POSITION_CENTER = 'center'
+    NOTIFY_POSITION_TOP_LEFT = 'top-left'
+    NOTIFY_POSITION_TOP_RIGHT = 'top-right'
+    NOTIFY_POSITION_BOTTOM_LEFT = 'bottom-left'
+    NOTIFY_POSITION_BOTTOM_RIGHT = 'bottom-right'
+    VALID_NOTIFY_POSITIONS = (NOTIFY_POSITION_TOP,
+                              NOTIFY_POSITION_BOTTOM,
+                              NOTIFY_POSITION_LEFT,
+                              NOTIFY_POSITION_RIGHT,
+                              NOTIFY_POSITION_CENTER,
+                              NOTIFY_POSITION_TOP_LEFT,
+                              NOTIFY_POSITION_TOP_RIGHT,
+                              NOTIFY_POSITION_BOTTOM_LEFT,
+                              NOTIFY_POSITION_BOTTOM_RIGHT)
+
+    NOTIFY_MSG_TEXT = 1
+    NOTIFY_MSG_TYPE = 2
+    NOTIFY_MSG_POSITION = 3
 
     @staticmethod
     def GetInputDateField(label):
@@ -501,12 +539,66 @@ class GUIBase(object):
 
     def __init__(self):
         """@brief Constructor"""
-        pass
+        ui.timer(interval=GUIBase.GUI_TIMER_SECONDS, callback=self.gui_timer_callback)
+        self._to_gui_queue = Queue()
 
+    def gui_timer_callback(self):
+        """@brief Called periodically to update the GUI."""
+        while not self._to_gui_queue.empty():
+            rxMessage = self._to_gui_queue.get()
+            self._process_rx_dict(rxMessage)
+
+    def _update_gui(self, msgDict):
+        """@brief Send a message to the GUI so that it updates itself.
+           @param msgDict A dict containing details of how to update the GUI."""
+        self._to_gui_queue.put(msgDict)
+
+    def _show_negative_notify_msg(self, msg, position=NOTIFY_POSITION_BOTTOM):
+        msgDict = {GUIBase.NOTIFY_MSG_TEXT: msg,
+                   GUIBase.NOTIFY_MSG_TYPE: GUIBase.NOTIFY_TYPE_NEGATIVE,
+                   GUIBase.NOTIFY_MSG_POSITION: position}
+        self._update_gui(msgDict)
+
+    def _process_rx_dict(self, rxDict):
+        """@brief Process the dicts received from the GUI message queue.
+           @param rxDict The dict received from the GUI message queue."""
+        if GUIBase.NOTIFY_MSG_TEXT in rxDict:
+            msg = rxDict[GUIBase.NOTIFY_MSG_TEXT]
+            # Default type is negative
+            notify_type = GUIBase.NOTIFY_TYPE_INFO
+            if GUIBase.NOTIFY_MSG_TYPE in rxDict:
+                notify_type = rxDict[GUIBase.NOTIFY_MSG_TYPE]
+                if notify_type not in GUIBase.VALID_NOTIFY_TYPES:
+                    raise Exception(f"{notify_type} is an invalid ui.notify() type (valid={",".join(GUIBase.VALID_NOTIFY_TYPES)}).")
+
+            # Default position is center
+            position = GUIBase.NOTIFY_POSITION_CENTER
+            if GUIBase.NOTIFY_MSG_POSITION in rxDict:
+                position = rxDict[GUIBase.NOTIFY_MSG_POSITION]
+                if position not in GUIBase.VALID_NOTIFY_POSITIONS:
+                    raise Exception(f"{position} is an invalid ui.notify() position (valid={",".join(GUIBase.VALID_NOTIFY_POSITIONS)}).")
+
+            ui.notify(msg, type=notify_type, position=position)
+
+        else:
+            self._handle_gui_message(rxDict)
+
+    def _handle_gui_message(self, rxDict):
+        """@brief Handle messages sent to the GUI.
+                  This method should be overridden in the subclass that needs to receive the message.
+           @param rxDict The dict containing the message to be handled."""
+        raise Exception(f"Unhandled GUI msg: {rxDict}. You need to override  _handle_gui_message() in a subclass of GUIBase.")
+
+    def _start_background_thread(self, method, args=()):
+        """@brief Start a background thread. Useful to stop GUI thread blocking.
+           @param method The method to be called.
+           @param args The arguments to be passed to the method."""
+        t = threading.Thread(target=method, args=args)
+        t.daemon = True
+        t.start()
 
 class Finances(GUIBase):
 
-    GUI_TIMER_SECONDS = 0.1
     YES = "Yes"
     NO = "No"
 
@@ -762,8 +854,6 @@ class Finances(GUIBase):
 
         self._update_gui_from_config()
 
-        ui.timer(interval=Finances.GUI_TIMER_SECONDS, callback=self.gui_timer_callback)
-
         self._init_monthly_spending_dialog()
 
         self._show_config_location(location='bottom')
@@ -801,10 +891,6 @@ class Finances(GUIBase):
 
         else:
             raise Exception(f"{data_folder} data folder not found.")
-
-    def gui_timer_callback(self):
-        """@brief Called periodically to update the GUI."""
-        pass
 
     def _init_dialogs(self):
         """@brief Create the dialogs used by the app."""
@@ -1337,12 +1423,12 @@ class Finances(GUIBase):
                 'Show the current savings and pension totals.')
 
         with ui.row():
-            ui.button('Basic Retirement Prediction', on_click=lambda: self._report1()).tooltip(
-                'Show how your finances could increase/decrease in the future. This report allows you to manually enter each amount you wish to take from pensions and savings and also add any income you expect (E.G Annuity, rental income, etc)')
+            ui.button('Drawdown Retirement prediction not inc tax', on_click=lambda: self._report2()).tooltip(
+                "Show how your finances could increase/decrease in the future. This allows the user to enter a target income and predict how long it's likely to last.")
 
         with ui.row():
-            ui.button('Drawdown Retirement Prediction', on_click=lambda: self._report2()).tooltip(
-                "Show how your finances could increase/decrease in the future. This allows the user to enter a target income and predict how long it's likely to last.")
+            ui.button('Retirement Prediction including tax', on_click=lambda: self._report1()).tooltip(
+                'Show how your finances could increase/decrease in the future. This report allows you to manually enter each amount you wish to take from pensions and savings and also add any income you expect (E.G Annuity, rental income, etc)')
 
     def _init_config_tab(self):
         self._my_name_field = ui.input(label=Finances.MY_NAME_FIELD).style('width: 300px;').tooltip('Enter your name here.')
@@ -1449,8 +1535,9 @@ class Finances(GUIBase):
         # Define a secondary page
         @ui.page('/report1_page')
         def report1_page():
-            ui.page_title('Basic Retirement Prediction')
-            Report1GUI(self._config, self._pension_owner_list)
+            page_title = 'Retirement Prediction Including Tax'
+            ui.page_title(page_title)
+            Report1GUI(self._config, self._pension_owner_list, page_title)
         # This will open in a separate browser window
         ui.run_javascript("window.open('/report1_page', '_blank')")
 
@@ -1459,8 +1546,9 @@ class Finances(GUIBase):
         # Define a secondary page
         @ui.page('/future_plot_page2')
         def future_plot_page2():
-            ui.page_title('Drawdown Retirement Prediction')
-            FuturePlotGUI(self._config, self._pension_owner_list)
+            page_title = 'Drawdown Retirement Prediction Not Including Tax'
+            ui.page_title(page_title)
+            FuturePlotGUI(self._config, self._pension_owner_list, page_title)
         # This will open in a separate browser window
         ui.run_javascript("window.open('/future_plot_page2', '_blank')")
 
@@ -2055,9 +2143,10 @@ class FuturePlotGUI(GUIBase):
            @param date_str The string to be converted into a date."""
         return datetime.strptime(date_str, '%d-%m-%Y')
 
-    def __init__(self, config, pension_owner_list):
+    def __init__(self, config, pension_owner_list, page_title):
         self._config = config
         self._pension_owner_list = pension_owner_list
+        self._page_title = page_title
         self._last_pp_year = None
         self._ensure_keys_present()
         self._init_gui()
@@ -2159,7 +2248,7 @@ class FuturePlotGUI(GUIBase):
 
     def _init_gui(self):
         with ui.row():
-            ui.label("Drawdown Retirement Prediction").style('font-size: 32px; font-weight: bold;')
+            ui.label(self._page_title).style('font-size: 32px; font-weight: bold;')
         with ui.row():
             ui.label("The following parameters can be changed to alter your retirement prediction. "
                      "This report will attempt to meet the monthly budget/income from savings until "
@@ -2802,8 +2891,7 @@ class FuturePlotGUI(GUIBase):
             first_date = datetime_list[0]
             last_date = first_date
             # A table, each row of which index 0 = date and index 1 = the required monthly income
-            monthly_budget_table = self._get_monthly_budget_table(
-                datetime_list)
+            monthly_budget_table = self._get_monthly_budget_table(datetime_list)
             monthly_savings_interest_list = []
             lump_sum_pension_withdrawals_table = self._convert_table(self._get_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE))
             pp_table = self._get_personal_pension_table()
@@ -3233,7 +3321,7 @@ class FuturePlotGUI(GUIBase):
         yearly_rate_list = self._get_param_value(FuturePlotGUI.PENSION_GROWTH_RATE_LIST)
         yearly_rate = self._get_yearly_rate(yearly_rate_list, year_index)
         yearly_rate = yearly_rate / 100
-        _, monthly_increase = self._get_monthly_growth(personal_pension_value, yearly_rate)
+        monthly_increase = Report1GUI.GetMonthlyGrowth(personal_pension_value, yearly_rate)
         return monthly_increase
 
     def _get_compound_growth_table(self, initial_value, growth_rate_list, datetime_list):
@@ -3264,7 +3352,7 @@ class FuturePlotGUI(GUIBase):
     def _get_personal_pension_table(self):
         """@return A table that contains the total amounts in all our personal pension
                    accounts over time. This is not predicted but comprises the total of all
-                   savings accounts."""
+                   pensions."""
         pp_dfl = self._get_personal_pension_pd_dfl()
         return self._get_amalgamated_table(pp_dfl)
 
@@ -3353,7 +3441,7 @@ class FuturePlotGUI(GUIBase):
                 pd_dataframe_list.append(pd_dataframe)
         return pd_dataframe_list
 
-    def _get_merged_dfl(self, pd_dataframe_list):
+    def PJA_NOT_USED_get_merged_dfl(self, pd_dataframe_list):
         """@brief Get a merged dataframe list.
            @param pd_dataframe_list Has a Date and a Value column in each.
            @return A table, a list of lists/rows, each row holding a date and value."""
@@ -3584,6 +3672,62 @@ class FuturePlotGUI(GUIBase):
                     initial_value = 0.0
                 # If the initial date we're interested in is before the first user data date
                 elif initial_date < date_value_table[0][0]:
+                    # PJA tried following as per _get_initial_valu() in Report1GUI but it stopped report generation ???
+                    # raise Exception("Start date to early. We have no data for this start date.")
+                    # The table value/amount = 0
+                    initial_value = 0.0
+                else:
+                    last_value = None
+                    for row in date_value_table:
+                        _date = row[0]
+                        _value = row[1]
+                        if last_value is None:
+                            last_value = _value
+                        # DEBUG print(f"PJA: initial_date={initial_date}, _date={_date}, _value={_value}, previous_value={previous_value}")
+                        # We could linterp this data to try and predict the value at the given initial date. However
+                        # this may not be correct due to values not increasing in this fashion (I.E savings accounts
+                        # interest paid on a date each year). Therefore as we may not have the data, we choose the
+                        # closest value we have at or prior to the date of interest.
+                        if _date == initial_date:
+                            initial_value = _value
+                            break
+
+                        elif _date > initial_date:
+                            initial_value = last_value
+                            break
+
+                        else:
+                            initial_value = last_value
+
+                        last_value = _value
+
+            if initial_value is None:
+                # If value not found use the last (most up to date) savings value we have.
+                last_row = date_value_table[-1]
+                initial_value = last_row[1]
+
+            # DEBUG print(f"PJA: _get_initial_value(): initial_value={initial_value}")
+            return initial_value
+
+    def PJA_OLD_get_initial_value(self, date_value_table, initial_date=None):
+        """@brief Get the first value to be used from the table (date,value rows)
+           @param date_value_table A 2 D table of date and value rows.
+           @param initial_date If None then we use the first value in the table.
+                               If a datetime is provided then we check the date_value_table
+                               for the initial_date and use the date before or equal to this
+                               for the value we're after."""
+        if len(date_value_table) == 0:
+            return 0
+
+        else:
+            initial_value = None
+            if initial_date:
+                # If we have no entries in the table
+                if len(date_value_table) == 0:
+                    # The initial value/amount = 0
+                    initial_value = 0.0
+                # If the initial date we're interested in is before the first user data date
+                elif initial_date < date_value_table[0][0]:
                     # The table value/amount = 0
                     initial_value = 0.0
                 else:
@@ -3702,9 +3846,61 @@ class Report1GUI(GUIBase):
     BY_MONTH = "By Month"
     BY_YEAR = "By Year"
 
-    def __init__(self, config, pension_owner_list):
+    TABLE_TYPE_PENSION = "PENSION"
+    TABLE_TYPE_OTHER_INCOME = "OTHER_INCOME"
+    TABLE_TYPE_MY_STATE_PENSION = "MY_STATE_PENSION"
+    TABLE_TYPE_SAVINGS = "SAVINGS"
+    TABLE_TYPE_PARTNER_STATE_PENSION = "PARTNER_STATE_PENSION"
+
+    MY_INCOME_TABLE = "MY_INCOME_TABLE"
+    PARTNER_INCOME_TABLE = "PARTNER_INCOME_TABLE"
+    PENSION_PREDICTION_TABLE = "PENSION_PREDICTION_TABLE"
+    SAVINGS_PREDICTION_TABLE = "SAVINGS_PREDICTION_TABLE"
+    MONTHLY_SPENDING_TABLE = "MONTHLY_SPENDING_TABLE"
+    PENSIONS_WITHDRAWAL_TABLE = "PENSIONS_WITHDRAWAL_TABLE"
+    SAVINGS_WITHDRAWAL_TABLE = "SAVINGS_WITHDRAWAL_TABLE"
+
+    PENSION_AND_SAVING_TABLE_DF_LIST = 'PENSION_AND_SAVING_TABLE_DF_LIST'
+
+    PLOT_TABLE_DICT = "PLOT_TABLE_DICT"
+
+    DATE = 'Date'
+
+    @staticmethod
+    def FirstOfNextMonth(dt):
+        """@brief Determine the first day of the following month.
+           @param dt A datetime instance.
+           @return A datetime instance of the first date of the next month."""
+        # move to the first day of the current month, then add 32 days (enough to reach next month)
+        next_month = (dt.replace(day=1) + timedelta(days=32)).replace(day=1)
+        return next_month
+
+    @staticmethod
+    def GetMonthlyGrowth(principal, annual_rate):
+        """
+        Calculate the new balance after one month with daily compounding interest.
+
+        Args:
+            principal (float): Initial amount.
+            annual_rate (float): Annual interest rate as a decimal (e.g. 0.10 for 10%).
+
+        Returns:
+            float: interest_earned
+        """
+        days_in_year = 365.25
+        days_in_month = days_in_year / 12  # average month length
+
+        growth_factor = (1 + (annual_rate / days_in_year)) ** days_in_month
+        new_balance = principal * growth_factor
+        interest_earned = new_balance - principal
+
+        return round(interest_earned, 2)
+
+    def __init__(self, config, pension_owner_list, page_title):
+        super().__init__()
         self._config = config
         self._pension_owner_list = pension_owner_list
+        self.page_title = page_title
         self._ensure_keys_present()
         self._init_gui()
         self._report_start_date = None
@@ -3753,6 +3949,8 @@ class Report1GUI(GUIBase):
         if Report1GUI.OTHER_INCOME_TABLE not in plot_attr_dict:
             plot_attr_dict[Report1GUI.OTHER_INCOME_TABLE] = []
 
+        multiple_report1_plot_attrs_dict[Report1GUI.DEFAULT] = plot_attr_dict
+        self._config.save_multiple_report1_plot_attrs()
         return plot_attr_dict
 
     def _get_param_value(self, param_name):
@@ -3774,7 +3972,7 @@ class Report1GUI(GUIBase):
         self._init_ok_to_delete_dialog()
         self._init_edit_row_dialog()
         with ui.row():
-            ui.label("Basic Retirement Prediction").style('font-size: 32px; font-weight: bold;')
+            ui.label(self.page_title).style('font-size: 32px; font-weight: bold;')
 
         with ui.row():
             ui.label("The following parameters can be changed to alter the prediction.")
@@ -3808,27 +4006,13 @@ class Report1GUI(GUIBase):
         with ui.row():
             savings_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
                                {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT}]
-            with ui.column():
-                with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Add planned savings withdrawals here."):
-                    ui.label("Savings withdrawals").style(
-                        'font-weight: bold;')
-                    self._savings_withdrawals_table = ui.table(columns=savings_columns,
-                                                               rows=[],
-                                                               row_key=Report1GUI.DATE,
-                                                               selection='multiple')
-                    self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
-
-                    with ui.row():
-                        ui.button('Add', on_click=lambda: self._add_savings_withdrawal()).tooltip(
-                            'Add to the savings withdrawals table.')
-                        ui.button('Delete', on_click=lambda: self._del_savings_withdrawal()).tooltip(
-                            'Delete a savings withdrawal from the table.')
-                        ui.button('Edit', on_click=lambda: self._edit_savings_withdrawal()).tooltip(
-                            'Edit a savings withdrawal in the table.')
-
             pensions_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
                                 {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
                                 {'name': Report1GUI.AMOUNT_TAXABLE, 'label': Report1GUI.AMOUNT_TAXABLE, 'field': Report1GUI.AMOUNT_TAXABLE}]
+            other_income_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
+                                    {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
+                                    {'name': Report1GUI.AMOUNT_TAXABLE, 'label': Report1GUI.AMOUNT_TAXABLE, 'field': Report1GUI.AMOUNT_TAXABLE}]
+
             with ui.column():
                 with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Add planned pension withdrawals here."):
                     ui.label("Pension withdrawals").style(
@@ -3847,9 +4031,6 @@ class Report1GUI(GUIBase):
                         ui.button('Edit', on_click=lambda: self._edit_pension_withdrawal()).tooltip(
                             'Edit a pension withdrawal in the table.')
 
-            other_income_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
-                                    {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
-                                    {'name': Report1GUI.AMOUNT_TAXABLE, 'label': Report1GUI.AMOUNT_TAXABLE, 'field': Report1GUI.AMOUNT_TAXABLE}]
             with ui.column():
                 with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Other income (E.G Annuity, rent, part time job etc)"):
                     ui.label("Other Income").style(
@@ -3868,6 +4049,24 @@ class Report1GUI(GUIBase):
                         ui.button('Edit', on_click=lambda: self._edit_other_income()).tooltip(
                             'Edit a value in the other income table.')
 
+            with ui.column():
+                with ui.card().style("height: 440px; overflow-y: auto;").tooltip("Add planned savings withdrawals here."):
+                    ui.label("Savings withdrawals").style(
+                        'font-weight: bold;')
+                    self._savings_withdrawals_table = ui.table(columns=savings_columns,
+                                                               rows=[],
+                                                               row_key=Report1GUI.DATE,
+                                                               selection='multiple')
+                    self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
+
+                    with ui.row():
+                        ui.button('Add', on_click=lambda: self._add_savings_withdrawal()).tooltip(
+                            'Add to the savings withdrawals table.')
+                        ui.button('Delete', on_click=lambda: self._del_savings_withdrawal()).tooltip(
+                            'Delete a savings withdrawal from the table.')
+                        ui.button('Edit', on_click=lambda: self._edit_savings_withdrawal()).tooltip(
+                            'Edit a savings withdrawal in the table.')
+
             self._update_gui_tables()
 
         with ui.row():
@@ -3877,12 +4076,10 @@ class Report1GUI(GUIBase):
                     self._settings_name_list = self._get_settings_name_list()
                     if Report1GUI.DEFAULT not in self._settings_name_list:
                         self._settings_name_list.append(Report1GUI.DEFAULT)
-                    retirement_predictions_settings_name = self._get_selected_retirement_predictions_settings_name()
                     self._settings_name_select = ui.select(self._settings_name_list,
                                                            label='Name',
                                                            on_change=lambda e: self._select_settings_name(
-                                                               e.value),
-                                                           value=retirement_predictions_settings_name).style('width: 400px;')
+                                                               e.value)).style('width: 400px;')
                     self._new_settings_name_input = ui.input(label='New name').style('width: 400px;')
 
                 with ui.row():
@@ -3892,21 +4089,25 @@ class Report1GUI(GUIBase):
                         'Delete the selected pension prediction parameters.')
 
         with ui.row():
-            ui.button('Show prediction', on_click=lambda: self._calc()).tooltip(
-                'Perform calculation and plot the results.')
-            self._show_progress_button = ui.button('Show progress', on_click=lambda: self._show_progress()).tooltip(
-                'Show your progress against a prediction.')
-            self._last_year_to_plot_field = ui.input(label="Last year to plot", value="").style(
-                        'width: 200px;').tooltip('The last year you wish to plot. Leave this blank to plot all years.')
+            self._show_progress_button = ui.button('Show progress', on_click=lambda: self._start_calc()).tooltip('Show your progress against a prediction.')
+            self._last_year_to_plot_field = ui.number(label="Last year to plot").style('width: 200px;').tooltip('The last year you wish to plot. Leave this blank to plot all years.')
             self._interval_radio = ui.radio([Report1GUI.BY_MONTH, Report1GUI.BY_YEAR], value=Report1GUI.BY_MONTH).props('inline')
 
         self._update_gui_from_dict()
-        self._load_settings(retirement_predictions_settings_name)
+
+    def _handle_gui_message(self, rxDict):
+        """@brief Handle messages sent to the GUI.
+                  This method should be overridden in the subclass that needs to receive the message.
+           @param rxDict The dict containing the message to be handled."""
+        print("PJA: CALLING _create_plot_page()")
+        if Report1GUI.PLOT_TABLE_DICT in rxDict:
+            self._create_plot_page(rxDict[Report1GUI.PLOT_TABLE_DICT])
 
     def _add_other_income(self):
         """@brief Called when the add to other income table button is selected."""
         self._button_selected = Report1GUI.ADD_OTHER_INCOME_BUTTON
         self._amount_taxable_field.visible = True
+        self._repeat_until_end_field.value = False
         self._add_row_dialog.open()
 
     def _del_other_income(self):
@@ -4082,7 +4283,9 @@ class Report1GUI(GUIBase):
     def _add_savings_withdrawal(self):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = Report1GUI.ADD_SAVINGS_WITHDRAWAL_BUTTON
+        self._amount_taxable_field.value = False
         self._amount_taxable_field.visible = False
+        self._repeat_until_end_field.value = False
         self._add_row_dialog.open()
 
     def _del_savings_withdrawal(self):
@@ -4124,10 +4327,10 @@ class Report1GUI(GUIBase):
 
         selected_dict_list = withdrawal_table.selected
         if len(selected_dict_list) == 0:
-            ui.notify("No row is selected.", type='negative')
+            self._show_negative_notify_msg("No row is selected.")
 
         elif len(selected_dict_list) > 1:
-            ui.notify("Only one row should be selected when editing.", type='negative')
+            self._show_negative_notify_msg("Only one row should be selected when editing.")
 
         else:
             date_found = False
@@ -4163,6 +4366,7 @@ class Report1GUI(GUIBase):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = Report1GUI.ADD_PENSION_WITHDRAWAL_BUTTON
         self._amount_taxable_field.visible = True
+        self._repeat_until_end_field.value = False
         self._add_row_dialog.open()
 
     def _del_pension_withdrawal(self):
@@ -4186,9 +4390,6 @@ class Report1GUI(GUIBase):
 
     def _get_settings_name_list(self):
         """@return a list of name of the saved future plot parameters."""
-#        selected_retirement_parameters_name_dict = self._config.get_selected_report1_parameters_name_dict()
-#        return list(selected_retirement_parameters_name_dict.keys())
-    # PJA
         # I'm not sure this is correct as the name list is stored in the wrong dict. However so as not to loose old
         # prediction values leave as is.
         multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
@@ -4240,6 +4441,8 @@ class Report1GUI(GUIBase):
 
     def _update_gui_from_dict(self):
         """@brief Load config from persistent storage and display in GUI."""
+        retirement_predictions_settings_name = self._get_selected_retirement_predictions_settings_name()
+        self._settings_name_select.value = retirement_predictions_settings_name
         self._my_dob_field.value = self._get_param_value(Report1GUI.MY_DATE_OF_BIRTH)
         self._my_max_age_field.value = self._get_param_value(Report1GUI.MY_MAX_AGE)
         self._partner_dob_field.value = self._get_param_value(Report1GUI.PARTNER_DATE_OF_BIRTH)
@@ -4269,11 +4472,16 @@ class Report1GUI(GUIBase):
             self._date_input_field = GUIBase.GetInputDateField(Report1GUI.DATE)
             with ui.row():
                 self._amount_field = ui.number(label=Report1GUI.AMOUNT)
-                self._amount_taxable_field = ui.checkbox('Taxable').tooltip("This should be checked if this amount is taxable.")
+                self._amount_taxable_field = ui.checkbox('Taxable', value=True).tooltip("This should be checked if this amount is taxable.")
             with ui.row():
                 self._yearly_percentage_increase_field = ui.number(label="Yearly % increase").tooltip("Enter a +ve percentage if you wish to increase the amount on a yearly basis. Set to 0 if you do not wish to increase the amount every year.")
             self._repeat_field = ui.select([Report1GUI.YEARLY, Report1GUI.MONTHLY], value='Yearly')
-            self._repeat_count_field = ui.number(label="Occurrences", value=1, min=1)
+            with ui.row():
+                with ui.column():
+                    self._repeat_count_field = ui.number(label="Occurrences", value=1, min=1)
+                with ui.column():
+                    self._repeat_until_end_field = ui.checkbox('Repeat until end', on_change=self.on_repeat_until_end_field_change).tooltip("Select this checkbox if you wish to copy this entry for every month.")
+
             self._info_field = ui.input(label=Report1GUI.INFO).style('width: 500px;')
             self._info_field.tooltip("You may add information here. E.G what the withdrawal was for.")
             with ui.row():
@@ -4281,8 +4489,78 @@ class Report1GUI(GUIBase):
                 ui.button(
                     "Cancel", on_click=self._add_row_dialog_cancel_button_press)
 
+    def on_repeat_until_end_field_change(self, event):
+        # If selected
+        if self._repeat_until_end_field.value:
+            # If user has not entered a date select the start of the next month and calc how many more monthly values are required.
+            if len(self._date_input_field.value) == 0:
+                # Calc the number of entries between the last current entry and the end
+                next_datetime = self._get_next_datetime_for_report()
+                saved_next_datetime = next_datetime
+                max_planning_date = self._get_max_date()
+                count = 0
+                while next_datetime <= max_planning_date:
+                    next_datetime = Report1GUI.FirstOfNextMonth(next_datetime)
+                    count += 1
+                self._repeat_count_field.value = count
+                self._repeat_field.value = Report1GUI.MONTHLY
+                self._date_input_field.value = saved_next_datetime.strftime("%d-%m-%Y")
+
+            else:
+                # If the user has entered a date use this as the start and calc how many more monthly values are required.
+                try:
+                    start_date = datetime.strptime(self._date_input_field.value, '%d-%m-%Y')
+                    next_datetime = start_date + relativedelta(months=1)
+                    max_planning_date = self._get_max_date()
+                    count = 0
+                    while next_datetime <= max_planning_date:
+                        next_datetime = next_datetime + relativedelta(months=1)
+                        count += 1
+                    self._repeat_count_field.value = count
+                    self._repeat_field.value = Report1GUI.MONTHLY
+                except ValueError:
+                    self._show_negative_notify_msg(f"{self._date_input_field.value} is not a valid date (DD-MM-YYYY)")
+
+            self._repeat_count_field.disable()
+
+        else:
+            # Allow the user to enter the value manually.
+            self._repeat_count_field.enable()
+
+    def _get_next_datetime_for_report(self):
+        """@return The next datetime value to be added to the pensions, other income or savings tables."""
+        table_rows = None
+        if self._button_selected == Report1GUI.ADD_SAVINGS_WITHDRAWAL_BUTTON:
+            table_rows = self._savings_withdrawals_table.rows
+
+        elif self._button_selected == Report1GUI.ADD_PENSION_WITHDRAWAL_BUTTON:
+            table_rows = self._pension_withdrawals_table.rows
+
+        elif self._button_selected == Report1GUI.ADD_OTHER_INCOME_BUTTON:
+            table_rows = self._other_income_table.rows
+
+        else:
+            raise Exception(f"self._button_selected state is unknown: self._button_selected={self._button_selected}")
+
+        if table_rows:
+            # Parse the dates (accepts both single-digit and zero-padded days)
+            dates = [datetime.strptime(row[Report1GUI.DATE], '%d-%m-%Y') for row in table_rows]
+
+            # Find the latest one
+            latest_date = max(dates)
+            next_dt = Report1GUI.FirstOfNextMonth(latest_date)
+
+        else:
+            next_dt = Report1GUI.FirstOfNextMonth(datetime.now())
+
+        return next_dt
+
     def _add_row_dialog_ok_button_press(self):
-        if Report1GUI.CheckValidDateString(self._date_input_field.value,
+        if Report1GUI.CheckZeroOrGreater(self._amount_field.value,
+                                         field_name=self._amount_field.props['label']) and \
+            Report1GUI.CheckZeroOrGreater(self._yearly_percentage_increase_field.value,
+                                          field_name=self._yearly_percentage_increase_field.props['label']) and \
+           Report1GUI.CheckValidDateString(self._date_input_field.value,
                                            field_name=self._date_input_field.props['label']) and \
            Report1GUI.CheckGreaterThanZero(self._repeat_count_field.value,
                                            field_name=self._repeat_count_field.props['label']):
@@ -4298,7 +4576,8 @@ class Report1GUI(GUIBase):
                 monthly = True
 
             occurrence_count = self._repeat_count_field.value
-            the_date = self._date_input_field.value
+            date_obj = datetime.strptime(self._date_input_field.value, "%d-%m-%Y")
+            the_date = date_obj.strftime("%d-%m-%Y")
             last_date = the_date
             amount = self._amount_field.value
             amount_taxable = self._amount_taxable_field.value
@@ -4320,7 +4599,7 @@ class Report1GUI(GUIBase):
                 if self._button_selected == Report1GUI.ADD_SAVINGS_WITHDRAWAL_BUTTON:
                     rows = self._get_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
                     if self._check_date_in_table(the_date, rows):
-                        ui.notify(f"{the_date} is already in the table.", type='negative')
+                        self._show_negative_notify_msg(f"{the_date} is already in the table.")
                         return
 
                     else:
@@ -4332,7 +4611,7 @@ class Report1GUI(GUIBase):
                 elif self._button_selected == Report1GUI.ADD_PENSION_WITHDRAWAL_BUTTON:
                     rows = self._get_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE)
                     if self._check_date_in_table(the_date, rows):
-                        ui.notify(f"{the_date} is already in the table.", type='negative')
+                        self._show_negative_notify_msg(f"{the_date} is already in the table.")
                         return
 
                     else:
@@ -4344,7 +4623,7 @@ class Report1GUI(GUIBase):
                 elif self._button_selected == Report1GUI.ADD_OTHER_INCOME_BUTTON:
                     rows = self._get_param_value(Report1GUI.OTHER_INCOME_TABLE)
                     if self._check_date_in_table(the_date, rows):
-                        ui.notify(f"{the_date} is already in the table.", type='negative')
+                        self._show_negative_notify_msg(f"{the_date} is already in the table.")
                         return
 
                     else:
@@ -4404,15 +4683,15 @@ class Report1GUI(GUIBase):
         self._del_ret_pred_param_dialog.close()
         name = self._settings_name_select.value
         if name == Report1GUI.DEFAULT:
-            ui.notify(
-                f"{Report1GUI.DEFAULT} cannot be deleted.", type='negative')
+            self._show_negative_notify_msg(f"{Report1GUI.DEFAULT} cannot be deleted.")
+
         else:
             # Remove the name from the dict
             multiple_report1_plot_attrs_dict = self._config.get_multiple_report1_plot_attrs_dict()
             if name in multiple_report1_plot_attrs_dict:
                 del multiple_report1_plot_attrs_dict[name]
                 self._config.save_multiple_report1_plot_attrs()
-                ui.notify(f"Deleted {name}.")
+                self._show_negative_notify_msg(f"Deleted {name}.")
             # Remove the name from the displayed name list
             if name in self._settings_name_list:
                 self._settings_name_list.remove(name)
@@ -4454,13 +4733,969 @@ class Report1GUI(GUIBase):
 
         return valid
 
-    def _show_progress(self):
-        self._calc(overlay_real_performance=True)
+    def _start_calc(self):
+        # Save the currently entered settings so the report can be reproduced.
+        # We call _save inside the GUI thread because it may call ui.notify()
+        self._save()
+        self._start_background_thread(self._calc)
 
-    def _calc(self, overlay_real_performance=False):
+    def _calc(self):
         """@brief Perform calculation."""
-        print("PJA: DO CALC...")
+        try:
+            self._create_charts()
 
+        except Exception as ex:
+            # PJA
+            print(ex)
+            traceback.print_tb(ex.__traceback__)
+            self._show_negative_notify_msg(str(ex))
+
+    def _create_charts(self):
+        """@brief _perform_calc()"""
+        max_planning_date = self._get_max_date()
+        report_start_date = self._get_report_start_date()
+        final_year = self._get_final_year()
+
+        # Check for valid report dates.
+        if final_year > 0 and report_start_date.year > final_year:
+            self._show_negative_notify_msg("The report start date cannot be after the last year to plot.")
+            return
+
+        # Get a list of all dates for the report. These are the first dates (and times) of each month until the death of both me and my partner.
+        monthly_datetime_list = FuturePlotGUI.GetDateTimeList(report_start_date, max_planning_date)
+
+        # Create the tables we need to create the charts.
+        table_dict = self._create_tables(monthly_datetime_list, report_start_date)
+        cmd_dict = {Report1GUI.PLOT_TABLE_DICT: table_dict}
+        self._update_gui(cmd_dict)
+
+    def _create_tables(self, monthly_datetime_list, report_start_date):
+        """@brief Create tables to plot data from.
+           @param monthly_datetime_list The datetime for the start of each month in the report.
+           @param The date of the start of the report.
+           @return A dict containing the tables with the data to be plotted."""
+        start_t = time()
+        print("PJA: _create_tables() start")
+        result_dict = {}
+        my_total_income_table_df = None
+        partner_total_income_table_df = None
+        for year in self._get_year_list(monthly_datetime_list):
+            pension_income_rows = self._rows_in_year(self._pension_withdrawals_table.rows, year, table_type=Report1GUI.TABLE_TYPE_PENSION)
+            other_income_rows = self._rows_in_year(self._other_income_table.rows, year, table_type=Report1GUI.TABLE_TYPE_OTHER_INCOME)
+            my_state_pension_table = self._rows_in_year(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, True), year, table_type=Report1GUI.TABLE_TYPE_MY_STATE_PENSION)
+            receiving_state_pension = self._is_receiving_state_pension(my_state_pension_table)
+            savings_withdrawals_table = self._rows_in_year(self._savings_withdrawals_table.rows, year, table_type=Report1GUI.TABLE_TYPE_SAVINGS)
+            all_income_rows = pension_income_rows + other_income_rows + my_state_pension_table + savings_withdrawals_table
+            gross_income_for_year, net_income_for_year = self._calc_tax_this_year(year, all_income_rows, receiving_state_pension)
+            year_income_table_df = self._create_income_table(all_income_rows, gross_income_for_year, net_income_for_year)
+            if my_total_income_table_df is None:
+                my_total_income_table_df = year_income_table_df
+            else:
+                my_total_income_table_df = pd.concat([my_total_income_table_df, year_income_table_df], ignore_index=True)
+
+            # In this scenario the partners income is the state pension which maybe taxable in the future !!!
+            partner_state_pension_table = self._rows_in_year(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, False), year, table_type=Report1GUI.TABLE_TYPE_PARTNER_STATE_PENSION)
+            receiving_state_pension = self._is_receiving_state_pension(partner_state_pension_table)
+            gross_income_for_year, net_income_for_year = self._calc_tax_this_year(year, partner_state_pension_table, receiving_state_pension)
+            partner_year_income_table_df = self._create_income_table(partner_state_pension_table, gross_income_for_year, net_income_for_year)
+            if partner_total_income_table_df is None:
+                partner_total_income_table_df = partner_year_income_table_df
+            else:
+                partner_total_income_table_df = pd.concat([partner_total_income_table_df, partner_year_income_table_df], ignore_index=True)
+
+# PJA
+        # Build the dict containing all the data
+#        result_dict[Report1GUI.MY_INCOME_TABLE] = my_total_income_table_df
+#        result_dict[Report1GUI.PARTNER_INCOME_TABLE] = partner_total_income_table_df
+        # Calc pension growth/fall based on amount taken from it and predicted/guessed growth rates
+#        pension_prediction_table_df = self._get_predicted_personal_pension(monthly_datetime_list, report_start_date, self._pension_withdrawals_table.rows)
+#        result_dict[Report1GUI.PENSION_PREDICTION_TABLE] = pension_prediction_table_df
+        # Calc savings growth/fall based on amount taken from it and predicted/guessed growth/interest rates
+#        savings_prediction_table_df = self._get_predicted_savings(monthly_datetime_list, report_start_date, self._savings_withdrawals_table.rows)
+#        result_dict[Report1GUI.SAVINGS_PREDICTION_TABLE] = savings_prediction_table_df
+        # Create a table containing real and average monthly spending
+#        monthly_spending_table_df = self._get_actual_monthly_spending_table(report_start_date)
+#        result_dict[Report1GUI.MONTHLY_SPENDING_TABLE] = monthly_spending_table_df
+#        result_dict[Report1GUI.PENSIONS_WITHDRAWAL_TABLE] = self._pension_withdrawals_table.rows
+#        result_dict[Report1GUI.SAVINGS_WITHDRAWAL_TABLE] = self._savings_withdrawals_table.rows
+
+        pension_prediction_table_df = self._get_predicted_personal_pension(monthly_datetime_list, report_start_date, self._pension_withdrawals_table.rows)
+        savings_prediction_table_df = self._get_predicted_savings(monthly_datetime_list, report_start_date, self._savings_withdrawals_table.rows)
+        # Rename the columns
+        pension_table_df = pension_prediction_table_df.rename(columns={'Amount': 'Personal Pension'})
+        savings_table_df = savings_prediction_table_df.rename(columns={'Amount': 'Savings'})
+        savings_table_df = savings_table_df.rename(columns={'Yearly Growth': 'Yearly Savings Growth'})
+        # Merge the pensions and savings tables.
+        total_pensions_and_savings_table_df = pd.merge(pension_table_df, savings_table_df, on='Date', how='outer')
+        # Add a total column (sum of the two)
+        total_pensions_and_savings_table_df['Total'] = total_pensions_and_savings_table_df['Personal Pension'] + total_pensions_and_savings_table_df['Savings']
+
+        start_report_date = self._get_report_start_date()
+
+        # This is the actual value of the personal pension over time
+        actual_personal_pension_table = self._get_personal_pension_table()
+        actual_personal_pension_table_df = pd.DataFrame(actual_personal_pension_table, columns=[Report1GUI.DATE, 'Actual Personal Pension'])
+        # Remove any data before the report start date
+        actual_personal_pension_table_df = actual_personal_pension_table_df[actual_personal_pension_table_df['Date'] >= start_report_date]
+
+        actual_savings_table = self._get_savings_table()
+        actual_savings_table_df = pd.DataFrame(actual_savings_table, columns=[Report1GUI.DATE, 'Actual Savings'])
+        # Remove any data before the report start date
+        actual_savings_table_df = actual_savings_table_df[actual_savings_table_df['Date'] >= start_report_date]
+
+        actual_total_table = self._get_total_table()
+        actual_total_table_df = pd.DataFrame(actual_total_table, columns=[Report1GUI.DATE, 'Actual Total'])
+        # Remove any data before the report start date
+        actual_total_table_df = actual_total_table_df[actual_total_table_df['Date'] >= start_report_date]
+
+        plot_columns = ('Actual Total',
+                        'Actual Personal Pension',
+                        'Actual Savings',
+                        'Total',
+                        'Personal Pension',
+                        'Savings')
+
+        result_dict[Report1GUI.PENSION_AND_SAVING_TABLE_DF_LIST] = [plot_columns,
+                                                                    actual_total_table_df,
+                                                                    actual_personal_pension_table_df,
+                                                                    actual_savings_table_df,
+                                                                    total_pensions_and_savings_table_df,
+                                                                    pension_table_df,
+                                                                    savings_table_df]
+
+        # This is the actual value of the personal pension over time
+#        actual_personal_pension_table = self._get_personal_pension_table()
+#        actual_personal_pension_table_df = pd.DataFrame(actual_personal_pension_table, columns=[Report1GUI.DATE, 'Actual Personal Pension'])
+#        print(f"PJA: actual_personal_pension_table_df={actual_personal_pension_table_df}")
+
+#        actual_savings_table = self._get_savings_table()
+#        actual_savings_table_df = pd.DataFrame(actual_savings_table, columns=[Report1GUI.DATE, 'Actual Savings'])
+#        print(f"PJA: actual_savings_table_df={actual_savings_table_df}")
+
+#        actual_total_table = self._get_total_table()
+#        actual_total_table_df = pd.DataFrame(actual_total_table, columns=[Report1GUI.DATE, 'Actual Total'])
+#        print(f"PJA: actual_total_table_df={actual_total_table_df}")
+
+#        result_dict[Report1GUI.ACTUAL_PENSION_AND_SAVING_TABLE_DF] = [actual_total_table_df, actual_personal_pension_table, actual_savings_table_df]
+
+        print(f"PJA: _create_tables() stop, took {round(time()-start_t, 2)} seconds.")
+        return result_dict
+
+    def _get_total_table(self):
+        """@return A table that contains the total amounts in our personal
+                   pension and savings over time. This is not predicted but
+                   comprises the total of all personal pension and savings accounts."""
+        pp_dfl = self._get_personal_pension_pd_dfl()
+        savings_dfl = self._get_savings_pd_dfl()
+        return self._get_amalgamated_table(pp_dfl+savings_dfl)
+
+    def _get_actual_monthly_spending_table(self, report_start_date):
+        """@brief Get a table containing the monthly spending.
+           @return A pandas dataframe, each row containing
+                   Date: A datetime instance
+                   Amount: A float value
+                   Yearly Average: The average monthly spending for the year"""
+        monthly_spending_dict = self._config.get_monthly_spending_dict()
+        monthly_spending_table = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
+        # Create DataFrame
+        df = pd.DataFrame(monthly_spending_table, columns=[Report1GUI.DATE, 'Amount'])
+        # Convert Date to datetime
+        df[Report1GUI.DATE] = pd.to_datetime(df[Report1GUI.DATE], format='%d-%m-%Y')
+        # Extract Year
+        df['Year'] = df[Report1GUI.DATE].dt.year
+        # Compute average monthly spend per year
+        avg_per_year = df.groupby('Year')['Amount'].mean().reset_index()
+        # Ensure the monthly spending table does not include dates before the report start date.
+        output_table = []
+        for row in monthly_spending_table:
+            row_date = datetime.strptime(row[0], '%d-%m-%Y')
+            if row_date >= report_start_date:
+                spending_this_month = row[1]
+                avg_spending_this_year = avg_per_year.loc[avg_per_year['Year'] == row_date.year, 'Amount'].iloc[0]
+                output_table.append((row_date, spending_this_month, avg_spending_this_year))
+
+        # Convert to pandas dataframe
+        output_table_df = pd.DataFrame(output_table, columns=[Report1GUI.DATE, 'Amount', 'Yearly Average'])
+        return output_table_df
+
+    def _get_predicted_savings(self, monthly_datetime_list, report_start_date, savings_deductions_rows):
+        """@brief Get the predicted state of savings over time given the initial value at
+                  the report start date, the monthly money taken from the savings and the guessed/predicted growth/interest rate.
+                  We calculate this on a monthly basis, making deductions first and then calculating
+                  the subsequent growth for each month.
+           @param monthly_datetime_list A list of all the months to consider.
+           @param report_start_date The date at which we take the value of the savings to start the prediction.
+           @param savings_deductions_rows The table detailing the amount being taken out of the savings (more guess work).
+           @return A pandas dataframe, each row containing
+                   Date: A datetime instance
+                   Amount: A float value"""
+        savings_table = self._get_savings_table()
+        initial_savings_value = self._get_initial_value(savings_table, report_start_date)
+        savings_value = initial_savings_value
+        predicted_savings_state_table = []
+        last_date = monthly_datetime_list[0]
+        year_index = 0
+        growth_this_year = 0
+        for _date in monthly_datetime_list:
+            # If the year has rolled over
+            if _date.year != last_date.year:
+                year_index += 1
+                last_date = _date
+                savings_value += growth_this_year
+                saved_growth_this_year = growth_this_year
+                row = [_date, savings_value, saved_growth_this_year]
+                growth_this_year = 0
+            else:
+                row = [_date, savings_value, 0]
+            predicted_savings_state_table.append(row)
+
+            savings_withdrawal_this_month = self._get_sum_for_month(savings_deductions_rows, _date.month, _date.year)
+            # Deduct the amount we want to drawdown this month.
+            savings_value -= savings_withdrawal_this_month
+            # Determine interest this month that will be applied yearly.
+            growth_this_month = self._get_savings_increase_this_month(savings_value, year_index)
+            growth_this_year += growth_this_month
+
+        # Convert to pandas dataframe
+        predicted_savings_state_table_df = pd.DataFrame(predicted_savings_state_table, columns=[Report1GUI.DATE, 'Amount', 'Yearly Growth'])
+        return predicted_savings_state_table_df
+
+    def _get_savings_increase_this_month(self, savings_amount, year_index):
+        """@brief Get the increase in the savings this month using the predicted interest rate.
+           @param savings_amount The current value of our savings.
+           @param year_index An index from the start of the report to this year. Used to determine the predicted interest rate.
+           @return As per the brief."""
+        yearly_rate_list = self._get_param_value(FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST)
+        yearly_rate = self._get_yearly_rate(yearly_rate_list, year_index)
+        yearly_increase = savings_amount * (yearly_rate/100)
+        monthly_increase = yearly_increase / 12
+        return monthly_increase
+
+    def _get_savings_table(self):
+        """@param start_date The start date. Dates before this are ignored.
+           @return A table that contains the total amounts in all our savings accounts
+                   over time. This is not predicted but comprises the total of all
+                   savings accounts."""
+        savings_dfl = self._get_savings_pd_dfl()
+        return self._get_amalgamated_table(savings_dfl)
+
+    def _get_savings_pd_dfl(self):
+        # Build a list of pandas dataframes
+        pd_dataframe_list = []
+        bank_accounts_dict_list = self._config.get_bank_accounts_dict_list()
+        for bank_accounts_dict in bank_accounts_dict_list:
+            active = bank_accounts_dict[BankAccountGUI.ACCOUNT_ACTIVE]
+            if active:
+                data_dict = self._get_data_dict(bank_accounts_dict[BankAccountGUI.TABLE], table_type="savings")
+                pd_dataframe = pd.DataFrame(data_dict)
+                pd_dataframe_list.append(pd_dataframe)
+        return pd_dataframe_list
+
+    def _get_predicted_personal_pension(self, monthly_datetime_list, report_start_date, pension_income_rows):
+        """@brief Get the predicted state of the personal pensions over time given the initial value at
+                  the report start date, the monthly money taken from the pensions and the predicted growth rate.
+                  We calculate this on a monthly basis, making deductions first and then calculating
+                  the subsequent growth for each month.
+           @param monthly_datetime_list A list of all the months to consider.
+           @param report_start_date The date at which we take the value of the pensions to start the prediction.
+           @param pension_income_rows The table detailing the amount being taken out (drawn down) on the pension.
+           @return A pandas dataframe, each row containing
+                   Date: A datetime instance
+                   Amount: A float value"""
+        pp_table = self._get_personal_pension_table()
+        initial_personal_pension_value = self._get_initial_value(pp_table, report_start_date)
+        personal_pension_value = initial_personal_pension_value
+        predicted_pension_state_table = []
+        last_date = monthly_datetime_list[0]
+        year_index = 0
+        for _date in monthly_datetime_list:
+            row = [_date, personal_pension_value]
+            predicted_pension_state_table.append(row)
+            pension_withdrawal_this_month = self._get_sum_for_month(pension_income_rows, _date.month, _date.year)
+            # Deduct the amount we want to drawdown this month.
+            personal_pension_value -= pension_withdrawal_this_month
+            # Add the growth this month.
+            growth_this_month = self._get_pension_increase_this_month(personal_pension_value, year_index)
+            personal_pension_value += growth_this_month
+            # If the year has rolled over
+            if _date.year != last_date.year:
+                year_index += 1
+                last_date = _date
+
+        # Convert to pandas dataframe
+        predicted_pension_state_table_df = pd.DataFrame(predicted_pension_state_table, columns=[Report1GUI.DATE, 'Amount'])
+        return predicted_pension_state_table_df
+
+    def _get_pension_increase_this_month(self, personal_pension_value, year_index):
+        """@brief Get the increase in the pension this month using the predicted growth rate.
+                  This assumes that growth compounds daily.
+           @param personal_pension_value The current value of our pensions.
+           @param year_index An index from the start of the report to this year. Used to determine the predicted interest rate.
+           @return The increase in the pension value."""
+        yearly_rate_list = self._get_param_value(Report1GUI.PENSION_GROWTH_RATE_LIST)
+        yearly_rate = self._get_yearly_rate(yearly_rate_list, year_index)
+        yearly_rate = yearly_rate / 100
+        monthly_increase = Report1GUI.GetMonthlyGrowth(personal_pension_value, yearly_rate)
+        return monthly_increase
+
+    def _get_sum_for_month(self, table, month, year):
+        total = 0.0
+        for row in table:
+            # Parse the date string (assumed to be in DD-MM-YYYY format)
+            date = datetime.strptime(row[Report1GUI.DATE], '%d-%m-%Y')
+            if date.month == month and date.year == year:
+                total += row['Amount']
+        return total
+
+    def _get_personal_pension_table(self):
+        """@return A table that contains the total amounts in all our personal pension
+                   accounts over time. This is not predicted but comprises the total of all
+                   pensions."""
+        pp_dfl = self._get_personal_pension_pd_dfl()
+        return self._get_amalgamated_table(pp_dfl)
+
+    def _get_personal_pension_pd_dfl(self):
+        # Build a list of pandas dataframes
+        pd_dataframe_list = []
+        pension_dict_list = self._config.get_pension_dict_list()
+        for pension_dict in pension_dict_list:
+            state_pension = pension_dict[PensionGUI.STATE_PENSION]
+            if not state_pension:
+                data_dict = self._get_data_dict(pension_dict[PensionGUI.PENSION_TABLE], table_type="pensions")
+                pd_dataframe = pd.DataFrame(data_dict)
+                pd_dataframe_list.append(pd_dataframe)
+        return pd_dataframe_list
+
+    def _get_amalgamated_table(self, dataframe_list, return_total_table=True):
+        """@brief Get an amalgamated table such that the total value of all input tables
+                  can be seen over time. This was originally aimed at combining multiple
+                  savings account tables into one so that the single table shows the
+                  total amount of savings and how it changes over time as the user enters
+                  the value in each savings account.
+           @param dataframe_list A list of pandas dataframes. Each dataframe must have
+                                 a Report1GUI.DATE and a 'Value' column.
+           @param return_total_table If True then the table returned just has two columns
+                                     Date and Total.
+                                     If False then the table returned has the same Date
+                                     column but has separate columns for the total of
+                                     each of the input tables."""
+        table_index = 0
+        for df in dataframe_list:
+            # Convert Report1GUI.DATE column to datetime
+            df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y", errors="coerce")
+            # Ensure Value column is a float
+            df["Value"] = df["Value"].astype(float)
+            # We need to ensure that the Value column is different in each table
+            # So that they can be merged into one table without a column name clash.
+            df.rename(columns={'Value': f'Value_{table_index}'}, inplace=True)
+            # Inc the table index.
+            table_index += 1
+
+        if len(dataframe_list) > 0:
+            # Merge all tables in the list
+            merged_table = dataframe_list[0]
+            for table in dataframe_list[1:]:
+                merged_table = merged_table.merge(table, on=Report1GUI.DATE, how='outer').sort_values(by="Date")
+            # Fill NaN values with previous row value if NaN
+            # merged_table.fillna(method='ffill', inplace=True)
+            merged_table.ffill(inplace=True)
+
+            # Fall any NaN columns left over from above (no previous value in column) with 0
+            merged_table.fillna(0.0, inplace=True)
+
+            # Sum all the columns so that we know the total value each time it changes
+            merged_table['Total'] = merged_table.drop(columns=[Report1GUI.DATE]).sum(axis=1)
+
+            merged_table[Report1GUI.DATE] = merged_table[Report1GUI.DATE].apply(lambda x: x.to_pydatetime())
+
+            if return_total_table:
+                # Reset the Date index column so it is appears as any other table column
+                table1 = merged_table.reset_index()
+                # Only include the Date and Total columns on the returned table
+                table2 = table1[[Report1GUI.DATE, 'Total']]
+            else:
+                # Return a table that has the date column and a separate column for
+                # the total of each input table.
+                table2 = merged_table
+
+            return table2.values.tolist()
+
+        else:
+            return []
+
+    def _get_data_dict(self, table, table_type=""):
+        # We want to limit data in the table to dates on or after the report start date
+        if self._report_start_date:
+            # Filter based on parsed date
+            filtered = [
+                (date_str, value)
+                for date_str, value in table
+                if datetime.strptime(date_str, '%d-%m-%Y') >= self._report_start_date
+            ]
+
+            # Unpack results
+            if filtered:
+                new_dates, new_values = zip(*filtered)
+            # If unable to select a date on or after the report start date use the latest data we have.
+            # and assume this is available at the report start date. A bit of an assumption !!!
+            else:
+                dates, values = zip(*table)
+                # Ensure we always returns lists even when we only have one entry
+                new_dates = [self._report_start_date,]
+                new_values = [values[-1]]
+            dates = new_dates
+            values = new_values
+
+        else:
+            # If no report start date then use all the data we have
+            # We should never really get here as a report start date is required.
+            dates, values = zip(*table)
+
+        return {"Date": dates, "Value": values}
+
+    def _create_income_table(self, all_income_rows, gross_income_for_year, net_income_for_year):
+        """@return an income table containing
+
+           Date
+           Gross Income
+           Net Income
+
+           columns"""
+        # Aggregate by date
+        totals = defaultdict(float)
+        for row in all_income_rows:
+            totals[row[Report1GUI.DATE]] += row['Amount']
+
+        # Convert to DataFrame for a nice table
+        df = pd.DataFrame(
+            [{Report1GUI.DATE: date, 'Gross Income': amount} for date, amount in totals.items()]
+        ).sort_values(Report1GUI.DATE)
+        # Add the net income column
+        yearly_tax = gross_income_for_year-net_income_for_year
+        df['Net Income'] = df['Gross Income'] - (yearly_tax/12)
+        return df
+
+    def _is_receiving_state_pension(self, state_pension_table):
+        receiving_state_pension = False
+        for row_dict in state_pension_table:
+            if row_dict['Amount'] > 0:
+                receiving_state_pension = True
+                break
+        return receiving_state_pension
+
+    def _get_predicted_state_pension(self, datetime_list, report_start_date, my_state_pension):
+        """ @param datetime_list A list of datetime instances
+            @param report_start_date The date for the start of the future prediction report.
+            @param my_state_pension If True then get my state pension. If False get partner state pension.
+            @return A list containing rows of each months state pension. Each row is a dict containing the following keys (values may change)
+                Report1GUI.DATE: '1-1-2025'
+                'Amount': 1047.5
+                'Taxable': True
+            """
+        global_configuration_dict = self._config.get_global_configuration_dict()
+        if my_state_pension:
+            owner_name = global_configuration_dict[Finances.MY_NAME_FIELD]
+        else:
+            owner_name = global_configuration_dict[Finances.PARTNER_NAME_FIELD]
+        # Calculate the income from state pensions into the future
+        state_pension_income_rows = []
+        pension_dict_list = self._config.get_pension_dict_list()
+        for pension_dict in pension_dict_list:
+            # Ignore other state pension
+            if owner_name != pension_dict[PensionGUI.PENSION_OWNER]:
+                continue
+
+            state_pension_income_table = self._process_state_pension_table(pension_dict, datetime_list, report_start_date)
+            # If a state pension was found
+            if state_pension_income_table:
+
+                if not state_pension_income_rows:
+                    state_pension_income_rows = state_pension_income_table
+                else:
+                    # Add to current state pension table
+                    for index in range(0, len(state_pension_income_rows)):
+                        state_pension_income_rows[index][1] += state_pension_income_table[index][1]
+
+        # Convert into a format where each row is a dict, E.G
+        # Report1GUI.DATE: '1-1-2025'
+        # 'Amount': 1047.5
+        # 'Taxable': True
+        state_pension_dict_rows = []
+        for row in state_pension_income_rows:
+            dt = row[0]
+            amount = row[1]
+            if amount > 0:
+                amount = amount / 12
+            # Add the row. The state pension may not reach your personal allowance on it's own
+            # but is included in taxable income.
+            row_dict = {Report1GUI.DATE: dt.strftime("%d-%m-%Y"), 'Amount': amount, 'Taxable': True}
+            state_pension_dict_rows.append(row_dict)
+        return state_pension_dict_rows
+
+    def _process_state_pension_table(self, pension_dict, datetime_list, report_start_date):
+        """@brief Process a state pension.
+           @param pension_dict A dict holding the pension details.
+           @param datetime_list A list of monthly datetime instances.
+           @return A 2D table each row containing
+                   0 = Date
+                   1 = The monthly amount from the pension.
+
+                   Or None if the this pension is not a state pension."""
+        future_table = None
+        state_pension = pension_dict[PensionGUI.STATE_PENSION]
+        owner = pension_dict[PensionGUI.PENSION_OWNER]
+        if state_pension:
+            future_table = []
+            date_value_table = self._convert_table(pension_dict[PensionGUI.PENSION_TABLE])
+            state_pension_start_date_str = pension_dict[PensionGUI.STATE_PENSION_START_DATE]
+            state_pension_start_date = datetime.strptime(state_pension_start_date_str, '%d-%m-%Y')
+            last_datetime = datetime_list[0]
+            # Get the initial state pension amount based on the start date for the calc
+            state_pension_amount = self._get_initial_value(date_value_table, initial_date=report_start_date)
+            year_index = 0
+            receiving_state_pension = False
+            for this_datetime in datetime_list:
+                # If the state pension changes, this occurs on 6 Apr for the new tax year.
+                # We approximate this to the 1 may as we won't get a full months pension until then.
+                # This means that the prediction will miss some of the first months state pension but
+                # we accept this for purposes of this report.
+                if this_datetime.month == 5 and year_index > 0:
+                    yearly_increase_list = self._get_param_value(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST)
+                    state_pension_amount = self._calc_new_account_value(state_pension_amount,
+                                                                        yearly_increase_list,
+                                                                        year_index)
+
+                # Determine if the state pension has started yet
+                if this_datetime >= state_pension_start_date:
+                    receiving_state_pension = True
+                else:
+                    receiving_state_pension = False
+
+                # We assume that if the owner is not alive they are not receiving state pension
+                # We assume that the partner receives none of the state pension. This may not be
+                # the case as pension rules prior to 2016 but for the purposes of this tool
+                # this is the assumption.
+                if not self._is_pension_owner_alive(owner, this_datetime):
+                    receiving_state_pension = False
+
+                # We assume that if your partner dies then their state pension stops. You may get some
+                # money from the DWP but for purposes of this prediction we assume worst case.
+                if not self._is_partner_alive(owner, this_datetime):
+                    receiving_state_pension = False
+
+                if receiving_state_pension:
+                    future_table.append([this_datetime, state_pension_amount])
+                else:
+                    future_table.append([this_datetime, 0.0])
+
+                # If the year has rolled over
+                if this_datetime.year != last_datetime.year:
+                    last_datetime = this_datetime
+                    year_index = year_index + 1
+
+        return future_table
+
+    def _convert_table(self, date_value_table):
+        """@brief Convert a table of rows = <date str>,<value str> to a table of rows = <datetime>,<float>
+            @param date_value_table A list of tuples where each tuple contains a date string and a value string.
+            @return A list of tuples where each tuple contains a datetime object and a float value."""
+        converted_table = []
+        # date_value_table may have two columns or three (added a notes field)
+        # but we're only interested in the first two here.
+        for row in date_value_table:
+            date_str = row[0]
+            value_str = row[1]
+            info_str = ""
+            if len(row) > 2:
+                info_str = row[2]
+            date_obj = datetime.strptime(date_str, '%d-%m-%Y')
+            value_float = float(value_str)
+            converted_table.append((date_obj, value_float, info_str))
+        return converted_table
+
+    def _get_initial_value(self, date_value_table, initial_date=None):
+        """@brief Get the first value to be used from the table (date,value rows)
+           @param date_value_table A 2 D table of date and value rows.
+           @param initial_date If None then we use the first value in the table.
+                               If a datetime is provided then we check the date_value_table
+                               for the initial_date and use the date before or equal to this
+                               for the value we're after."""
+        if len(date_value_table) == 0:
+            return 0
+
+        else:
+            initial_value = None
+            if initial_date:
+                # If we have no entries in the table
+                if len(date_value_table) == 0:
+                    # The initial value/amount = 0
+                    initial_value = 0.0
+                # If the initial date we're interested in is before the first user data date
+                elif initial_date < date_value_table[0][0]:
+                    raise Exception("Start date to early. We have no data for this start date.")
+
+                else:
+                    last_value = None
+                    for row in date_value_table:
+                        _date = row[0]
+                        _value = row[1]
+                        if last_value is None:
+                            last_value = _value
+                        # DEBUG print(f"PJA: initial_date={initial_date}, _date={_date}, _value={_value}, previous_value={previous_value}")
+                        # We could linterp this data to try and predict the value at the given initial date. However
+                        # this may not be correct due to values not increasing in this fashion (I.E savings accounts
+                        # interest paid on a date each year). Therefore as we may not have the data, we choose the
+                        # closest value we have at or prior to the date of interest.
+                        if _date == initial_date:
+                            initial_value = _value
+                            break
+
+                        elif _date > initial_date:
+                            initial_value = last_value
+                            break
+
+                        last_value = _value
+
+            if initial_value is None:
+                # If value not found use the last (most up to date) savings value we have.
+                last_row = date_value_table[-1]
+                initial_value = last_row[1]
+
+            # DEBUG print(f"PJA: _get_initial_value(): initial_value={initial_value}")
+            return initial_value
+
+    def _calc_new_account_value(self,
+                                current_value,
+                                rate_list,
+                                year_index,
+                                rate_divisor=1):
+        """@brief Calculate the new value of an account.
+           @param current_value The current value of the account.
+           @param rate_list A list of (strings) detailing the predicted rates in future years (0=this year, 1=next year and so on).
+           @param The index to the above list of rates. If the index is greater than the number of elements in the ate_list then the last rate is used.
+           @param rate_divisor If 1 then the yearly % is used. If 12 then the monthly % is used."""
+        selected_rate = self._get_yearly_rate(rate_list, year_index)
+        selected_rate = selected_rate / rate_divisor
+        new_value = current_value * (1 + selected_rate / 100)
+        return new_value
+
+    def _get_yearly_rate(self,
+                         rate_list,
+                         year_index):
+        """@brief Get the interest/growth rate for the year.
+           @param rate_list A list detailing the predicted interest/growth rates in future years (0=this year, 1=next year and so on). This may also be a comma separated string.
+           @param The index to the above list of rates. If the index is greater than the number of elements in the ate_list then the last rate is used."""
+        if len(rate_list) < 1:
+            raise Exception("Rate list error. The rate_list must have at least one element.")
+        if isinstance(rate_list, str):
+            rate_list = rate_list.split(',')
+        selected_rate = rate_list[0]
+        if year_index >= 0 and year_index < len(rate_list):
+            selected_rate = rate_list[year_index]
+        else:
+            selected_rate = rate_list[-1]
+        selected_rate = float(selected_rate)
+        return selected_rate
+
+    def _is_pension_owner_alive(self, owner, report_date):
+        """@brief Determine if (for the purposes of this report) the pension owner is alive and this pension is owned by you.
+           @return True if you are still alive."""
+        alive = True
+        me = self._pension_owner_list[0]
+        partner = self._pension_owner_list[1]
+        if owner not in self._pension_owner_list:
+            raise Exception(f"{owner} is an unknown pension owner. Must be {me} or {partner}")
+
+        if owner == me:
+            me_max_date = self._get_my_max_date()
+            if report_date > me_max_date:
+                alive = False
+        return alive
+
+    def _is_partner_alive(self, owner, report_date):
+        """@brief Determine if (for the purposes of this report) your partner is alive and this pension is owned by your partner.
+           @return True if they are still alive."""
+        alive = True
+        me = self._pension_owner_list[0]
+        partner = self._pension_owner_list[1]
+        if partner not in self._pension_owner_list:
+            raise Exception(f"{owner} is an unknown pension owner. Must be {me} or {partner}")
+
+        if owner == partner:
+            partner_max_date = self._get_partner_max_date()
+            # If partner DOB exists
+            if partner_max_date:
+                # If partner has died
+                if report_date > partner_max_date:
+                    alive = False
+            # If partner is not listed as having a DOB
+            else:
+                alive = False
+
+        return alive
+
+    def _calc_tax_this_year(self, year, income_rows, receiving_state_pension):
+        taxable_income = 0
+        non_taxable_income = 0
+        for row in income_rows:
+            if Report1GUI.AMOUNT_TAXABLE in row and Report1GUI.AMOUNT in row:
+                if row[Report1GUI.AMOUNT_TAXABLE]:
+                    taxable_income += row[Report1GUI.AMOUNT]
+                else:
+                    non_taxable_income += row[Report1GUI.AMOUNT]
+        # PJA receives_state_pension needs to be set dependant upon if the state pension is being received.
+        result = HMRC.CalcNetPay(taxable_income, receives_state_pension=receiving_state_pension)
+        return (result['gross_annual'], result['net_annual'])
+
+    def _get_year_list(self, monthly_datetime_list):
+        """@Get a list of years from the list of months."""
+        years = []
+        for d in monthly_datetime_list:
+            if d.year not in years:
+                years.append(d.year)
+        years.sort()
+        return years
+
+    def _rows_in_year(self, table, year, table_type):
+        """@return The rows in the table that match the year."""
+        results = []
+        for row in table:
+            row['TABLE_TYPE'] = table_type
+            dt = datetime.strptime(row[Report1GUI.DATE], '%d-%m-%Y')
+            if dt.year == year:
+                results.append(row)
+        return results
+
+    def _rows_in_month(self, table, month, year):
+        """@return The rows in the table that match the month and year."""
+        results = []
+        for row in table:
+            dt = datetime.strptime(row[Report1GUI.DATE], '%d-%m-%Y')
+            if dt.month == month and dt.year == year:
+                results.append(row)
+        return results
+
+    def _get_my_max_date(self):
+        """@return The maximum date I (for trhe purposes of this report) hope to be alive."""
+        my_dob_str = self._get_param_value(Report1GUI.MY_DATE_OF_BIRTH)
+        my_dob = datetime.strptime(my_dob_str, '%d-%m-%Y')
+        my_max_age = int(self._get_param_value(Report1GUI.MY_MAX_AGE))
+        my_max_date = my_dob + relativedelta(years=my_max_age)
+        return my_max_date
+
+    def _get_partner_max_date(self):
+        """@return The maximum date my partner (for the purposes of this report) hopes to be alive or None
+                   if no partner details entered into the retirement prediction form."""
+        partner_max_date = None
+        partner_dob_str = self._get_param_value(Report1GUI.PARTNER_DATE_OF_BIRTH)
+        if partner_dob_str and len(partner_dob_str) > 0:
+            partner_dob = datetime.strptime(partner_dob_str, '%d-%m-%Y')
+            partner_max_age = int(self._get_param_value(Report1GUI.PARTNER_MAX_AGE))
+            partner_max_date = partner_dob + relativedelta(years=partner_max_age)
+        return partner_max_date
+
+    def _get_max_date(self):
+        """@brief Get the maximum date we need to plan for.
+           @return a datetime instance of the max year."""
+        self._update_dict_from_gui()
+        my_max_date = self._get_my_max_date()
+        max_date = my_max_date
+
+        partner_max_date = self._get_partner_max_date()
+        if partner_max_date is not None and partner_max_date > my_max_date:
+            max_date = partner_max_date
+
+        return max_date
+
+    def _get_report_start_date(self):
+        """@return The date entered as the report start date."""
+        return datetime.strptime(self._get_param_value(Report1GUI.REPORT_START_DATE), '%d-%m-%Y')
+
+    def _get_final_year(self):
+        """@brief Get the final year of the prediction.
+           @return The year to end the plot or -1 if not end is defined"""
+        final_year = -1
+        try:
+            if self._last_year_to_plot_field.value is not None:
+                final_year = self._last_year_to_plot_field.value
+                now = datetime.now()
+                if final_year < now.year:
+                    raise Exception(f"Invalid year. The last year to plot must be greater than or equal to {now.year}")
+
+        except ValueError:
+            raise Exception("Invalid last year to plot. This must be a year in the future.")
+        return final_year
+
+    def _create_plot_page(self, table_dict):
+        print("PJA _create_plot_page EXECUTING")
+        # Define a secondary page
+        @ui.page('/_create_plot_page')
+        def _create_plot_page():
+            try:
+                self._create_chart_page(table_dict)
+            except Exception as ex:
+                # PJA
+                print(ex)
+                traceback.print_tb(ex.__traceback__)
+                ui.notify(str(ex), type='negative')
+
+        # This will open in a separate browser window
+        ui.run_javascript("window.open('/_create_plot_page', '_blank')")
+
+    def _check_plot_by_year(self, table_df, last_value_of_year=True):
+        """@brief Check to see if the user wishes to plot the data by year rather than month (raw data format)
+           @param table_df A pandas DataFrame instance.
+           @param last_value_of_year If the user wishes to show the results by year and last_value_of_year == True
+                  then the last value of the year is stored as the value for the year.
+                  If last_value_of_year == False then the value for the year is the sum of all the values on each month."""
+        plot_by_year = False
+        if self._interval_radio.value == Report1GUI.BY_YEAR:
+            plot_by_year = True
+            # convert to a table that has one row for each year and the other monthly columns hold the last value that year
+            # Group by year, take the last row in each year
+            if last_value_of_year:
+                table_df = table_df.groupby(table_df['Date'].dt.year, as_index=False).last()
+            else:
+                _table_df = table_df.groupby(table_df['Date'].dt.year, as_index=False)
+                _table_df = _table_df.sum(numeric_only=True)
+
+            # Replace Date with end of year
+            table_df['Date'] = pd.to_datetime(table_df['Date'].dt.year.astype(str) + '-12-31')
+        return (plot_by_year, table_df)
+
+    def _get_plot_pane_list(self, count=4):
+        """@return a list of plot panes (ui.element() instances)"""
+        plot_pane_list = []
+        for _ in range(0,count):
+            with ui.column().style('width: 100%; margin: 0 auto;'):
+                plot_pane_list.append(ui.element('div').style('width: 100%;'))
+        return plot_pane_list
+
+    def _create_chart_page(self, table_dict):
+        """@brief Create a new window displaying the data in table_dict on charts.
+        @param table_dict A dict holding the pandas dataframes containing the data to be plotted."""
+
+        # Set the doc name (appears ni browser tab) so user can identify with name to associate the plot with
+        ui.page_title("'Retirement Prediction Including Tax'")
+
+        plot_panel_1, plot_panel_2, plot_panel_3, plot_panel_4 = self._get_plot_pane_list()
+
+        pensions_and_savings_table_df_list = table_dict[Report1GUI.PENSION_AND_SAVING_TABLE_DF_LIST]
+        # First element is the list of columns to plot in the dataframe
+        plot_columns = pensions_and_savings_table_df_list[0]
+        # First element is list of columns to plot
+        pensions_and_savings_table_df_list = pensions_and_savings_table_df_list[1:]
+
+#        plot_by_year, pensions_and_savings_table_df = self._check_plot_by_year(pensions_and_savings_table_df, False)
+        plot_by_year = False
+
+        # Prediction traces are dotted lines as this tends to indicate their unclear nature.
+        # Actual values are plotted as solid lines.
+        # line_types, line_widths and report_zero_value_list must have a value for each column/trace
+        line_types = ['solid', 'solid','solid', 'dot', 'dot', 'dot']
+        line_widths = [2,2,2,2,2,2]
+        report_zero_value_list = [True, True, True, True, True, True]
+
+        self._draw_plot_pane(plot_panel_1,
+                             plot_columns,
+                             pensions_and_savings_table_df_list,
+                             line_types,
+                             line_widths,
+                             report_zero_value_list,
+                             plot_by_year)
+
+    def _draw_plot_pane(self,
+                        plot_panel,
+                        plot_columns,
+                        pandas_dataframe_list,
+                        line_types,
+                        line_widths,
+                        report_zero_value_list,
+                        plot_by_year):
+        # If the user wishes to limit the max year, then delete all rows after this year
+        max_year = self._get_max_year()
+
+        fig = go.Figure()
+        plot_dict = {}
+        dataframe_index = 0
+        for column_name in plot_columns:
+            df = pandas_dataframe_list[dataframe_index]
+            if max_year:
+                # Remove data after the max year if set
+                df = df[df['Date'].dt.year <= max_year]
+
+            date_list = df[Report1GUI.DATE]
+            value_list = df[column_name]
+            plot_dict[column_name] = (date_list, value_list)
+            dataframe_index += 1
+
+        max_y = -1E10
+        trace_index = 0
+        for plot_name in plot_dict:
+            x = plot_dict[plot_name][0]
+            y = plot_dict[plot_name][1]
+            # Scale the plot to 1.1 * max value
+            _max_y = int(max(y) * 1.1)
+            if _max_y > max_y:
+                max_y = _max_y
+
+            report_zero_value = report_zero_value_list[trace_index]
+            # Let the user know this one of the traces dropped to zero
+            if report_zero_value and (y <= 0).any():
+                ui.notify(f"{plot_name} dropped to zero.", type='warning')
+
+            if plot_by_year:
+                # Display bar charts if plotting by year
+                fig.add_trace(go.Bar(name=plot_name, x=x, y=y))
+            else:
+                line_type = line_types[trace_index]
+                line_width = line_widths[trace_index]
+                line_dict = dict(dash=line_type, width=line_width)
+                # option mode='lines+markers'
+                fig.add_trace(go.Scatter(name=plot_name, x=x, y=y, mode='lines', line=line_dict))
+
+            trace_index += 1
+
+        fig.update_layout(margin=dict(l=40, r=40, t=40, b=40),
+                          showlegend=True,
+                          plot_bgcolor="black",       # Background for the plot area
+                          paper_bgcolor="black",      # Background for the entire figure
+                          # Font color for labels and title
+                          font=dict(color="yellow"),
+                          xaxis=dict(
+                              title='Date',
+                              tickformat='%d-%m-%Y',  # Format as day-month-year
+                              color="yellow",         # Axis label color
+                              gridcolor="gray",       # Gridline color
+                              zerolinecolor="gray"    # Zero line color
+        ),
+            yaxis=dict(
+                              title="£",
+                              color="yellow",         # Axis label color
+                              gridcolor="gray",       # Gridline color
+                              zerolinecolor="gray",   # Zero line color
+                              range=[0, max_y]    # Ensure 0 is on Y axis
+        ),)
+
+        if plot_by_year:
+            fig.update_xaxes(tickformat="%Y")  # only show the year on xaxis
+
+        if plot_panel:
+            plot_panel.clear()
+            with plot_panel:
+                ui.plotly(fig).style('width: 100%; height: 100%;')
+
+    def _get_max_year(self):
+        """@return the max year that the user is interested in or None if unlimited."""
+        max_year = None
+        try:
+            max_year = int(self._last_year_to_plot_field.value)
+
+        except Exception:
+            if self._last_year_to_plot_field.value:
+                ui.notify(f"{self._last_year_to_plot_field.value} is an invalid year.", type='negative')
+
+        return max_year
 
 class Plot1GUI(GUIBase):
     """@brief Responsible for plotting the data of the predicted changes in the savings as we draw out money."""
@@ -4912,6 +6147,163 @@ class Plot1GUI(GUIBase):
         # Let the user know this prediction ran out of money before you, and your partner (if you have one) passed away.
         if self._money_ran_out:
             ui.notify("You ran out of money", type='negative')
+
+
+class HMRC:
+    """
+    # --- Example Usage ---
+    if __name__ == "__main__":
+        print("=== Annual gross £45,000 ===")
+        print(HMRC.CalcNetPay(45000, period="annual"))
+
+        print("\n=== Monthly gross £3,750 ===")
+        print(HMRC.CalcNetPay(3750, period="monthly"))
+
+        print("\n=== Fortnightly gross £1,730.77 ===")
+        print(HMRC.CalcNetPay(1730.77, period="fortnightly"))
+
+        print("\n=== Weekly gross £865.38 ===")
+        print(HMRC.CalcNetPay(865.38, period="weekly"))
+
+    generates the following output
+
+    === Annual gross £45,000 ===
+    {'period': 'annual', 'gross_period': 45000.0, 'income_tax_period': 6486.0, 'ni_period': 2594.4, 'net_period': 35919.6, 'gross_annual': 45000.0, 'income_tax': 6486.0, 'national_insurance': 2594.4, 'net_annual': 35919.6, 'net_monthly': 2993.3, 'receives_state_pension': False}
+
+    === Monthly gross £3,750 ===
+    {'period': 'monthly', 'gross_period': 3750.0, 'income_tax_period': 540.5, 'ni_period': 216.2, 'net_period': 2993.3, 'gross_annual': 45000.0, 'income_tax': 6486.0, 'national_insurance': 2594.4, 'net_annual': 35919.6, 'net_monthly': 2993.3, 'receives_state_pension': False}
+
+    === Fortnightly gross £1,730.77 ===
+    {'period': 'fortnightly', 'gross_period': 1730.77, 'income_tax_period': 249.46, 'ni_period': 99.78, 'net_period': 1381.52, 'gross_annual': 45000.02, 'income_tax': 6486.0, 'national_insurance': 2594.4, 'net_annual': 35919.62, 'net_monthly': 2993.3, 'receives_state_pension': False}
+
+    === Weekly gross £865.38 ===
+    {'period': 'weekly', 'gross_period': 865.38, 'income_tax_period': 124.73, 'ni_period': 49.89, 'net_period': 690.76, 'gross_annual': 44999.76, 'income_tax': 6485.95, 'national_insurance': 2594.38, 'net_annual': 35919.43, 'net_monthly': 2993.29, 'receives_state_pension': False}
+    """
+
+    @staticmethod
+    def CalcNetPay(gross: float, receives_state_pension: bool = False, period: str = "annual", dt=None):
+        """
+        Calculate UK net pay (England/Wales/N.I., 2024/25) from annual, monthly, fortnightly, or weekly gross pay.
+
+        Args:
+            gross: Gross pay (float)
+            receives_state_pension: If True, no National Insurance is applied
+            period: "annual", "monthly", "fortnightly", or "weekly"
+        Returns:
+            Dictionary with gross, income tax, NI, net pay (annual & monthly), and state pension flag
+        """
+        if not dt:
+            dt = datetime.now()
+
+        if dt:
+            # In future if changes are made we can add extra methods to calc tax at new rates based upn the date dt
+            return HMRC.UKNetPay20242025(gross,
+                                         receives_state_pension,
+                                         period)
+
+    @staticmethod
+    def UKNetPay20242025(gross: float, receives_state_pension: bool = False, period: str = "annual") -> dict:
+        """
+        Calculate UK net pay (England/Wales/N.I., 2024/25) from annual, monthly, fortnightly, or weekly gross pay.
+
+        Args:
+            gross: Gross pay (float)
+            receives_state_pension: If True, no National Insurance is applied
+            period: "annual", "monthly", "fortnightly", or "weekly"
+        Returns:
+            Dictionary with gross, income tax, NI, net pay (annual & monthly), and state pension flag
+        """
+        D = Decimal
+
+        # --- Convert to annual gross for calculation ---
+        if period == "annual":
+            gross_annual = D(str(gross))
+            periods_per_year = 1
+        elif period == "monthly":
+            gross_annual = D(str(gross)) * D("12")
+            periods_per_year = 12
+        elif period == "fortnightly":
+            gross_annual = D(str(gross)) * D("26")
+            periods_per_year = 26
+        elif period == "weekly":
+            gross_annual = D(str(gross)) * D("52")
+            periods_per_year = 52
+        else:
+            raise ValueError("period must be one of: 'annual', 'monthly', 'fortnightly', 'weekly'")
+
+        # --- Tax thresholds ---
+        personal_allowance = D("12570")
+        basic_rate_limit = D("50270")
+        basic_rate = D("0.20")
+        higher_rate = D("0.40")
+        additional_rate = D("0.45")
+
+        # --- Income Tax ---
+        taxable_income = max(D("0"), gross_annual - personal_allowance)
+        if gross_annual <= basic_rate_limit:
+            income_tax = taxable_income * basic_rate
+        elif gross_annual <= D("125140"):
+            income_tax = (basic_rate_limit - personal_allowance) * basic_rate
+            income_tax += (gross_annual - basic_rate_limit) * higher_rate
+        else:
+            allowance_reduction = min(personal_allowance, (gross_annual - D("100000")) / 2)
+            effective_allowance = personal_allowance - allowance_reduction
+            taxable_income = gross_annual - effective_allowance
+            income_tax = D("0")
+            if taxable_income > D("0"):
+                if gross_annual <= basic_rate_limit:
+                    income_tax += taxable_income * basic_rate
+                elif gross_annual <= D("125140"):
+                    income_tax += (basic_rate_limit - effective_allowance) * basic_rate
+                    income_tax += (gross_annual - basic_rate_limit) * higher_rate
+                else:
+                    income_tax += (basic_rate_limit - effective_allowance) * basic_rate
+                    income_tax += (D("125140") - basic_rate_limit) * higher_rate
+                    income_tax += (gross_annual - D("125140")) * additional_rate
+
+        income_tax = income_tax.quantize(D("0.01"), rounding=ROUND_HALF_UP)
+
+        # --- National Insurance ---
+        if receives_state_pension:
+            ni = D("0.00")
+        else:
+            lower_threshold = D("12570")
+            upper_threshold = D("50270")
+            ni_basic = D("0.08")
+            ni_upper = D("0.02")
+
+            if gross_annual <= lower_threshold:
+                ni = D("0.00")
+            elif gross_annual <= upper_threshold:
+                ni = (gross_annual - lower_threshold) * ni_basic
+            else:
+                ni = (upper_threshold - lower_threshold) * ni_basic
+                ni += (gross_annual - upper_threshold) * ni_upper
+
+            ni = ni.quantize(D("0.01"), rounding=ROUND_HALF_UP)
+
+        # --- Net Pay ---
+        net_annual = gross_annual - income_tax - ni
+        net_monthly = (net_annual / D("12")).quantize(D("0.01"), rounding=ROUND_HALF_UP)
+        net_period = (net_annual / D(str(periods_per_year))).quantize(D("0.01"), rounding=ROUND_HALF_UP)
+
+        gross_period = (gross_annual / D(str(periods_per_year))).quantize(D("0.01"), rounding=ROUND_HALF_UP)
+        income_tax_period = (income_tax / D(str(periods_per_year))).quantize(D("0.01"), rounding=ROUND_HALF_UP)
+        ni_period = (ni / D(str(periods_per_year))).quantize(D("0.01"), rounding=ROUND_HALF_UP)
+
+        return {
+            "period": period,
+            "gross_period": float(gross_period),
+            "income_tax_period": float(income_tax_period),
+            "ni_period": float(ni_period),
+            "net_period": float(net_period),
+            "gross_annual": float(gross_annual),
+            "income_tax": float(income_tax),
+            "national_insurance": float(ni),
+            "net_annual": float(net_annual),
+            "net_monthly": float(net_monthly),
+            "receives_state_pension": receives_state_pension,
+        }
 
 
 def main():
