@@ -17,7 +17,9 @@ cryptography = "*"
 click = "*"
 p3lib = "^1.1.135"
 requests = "*"
-nicegui = "^2.21.1"
+# nicegui = "^2.21.1" # Does not allow table selection with shift key
+nicegui = "2.24.2"
+# nicegui 3.0.0 an later requires major changes due to codebase
 matplotlib = "*"
 plotly = "*"
 python-dateutil = "*"

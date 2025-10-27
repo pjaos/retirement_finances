@@ -703,18 +703,7 @@ class Finances(GUIBase):
             # Remove entered password
             self._password_input.value = ""
 
-    def initGUI(self,
-                debugEnabled,
-                reload=True,
-                address='127.0.0.1',
-                port=9090):
-        self._address = address
-        self._port = port
-        self._reload = reload
-
-        self._guiLogLevel = "warning"
-        if debugEnabled:
-            self._guiLogLevel = "debug"
+    def initGUI(self, debugEnabled):
 
         # If not allow the user to enter the app password.
         # main page (password must be entered to decrypt data/config files)
@@ -743,13 +732,6 @@ class Finances(GUIBase):
             ui.button('OK', on_click=self._open_main_window)
 
         self._show_config_location()
-
-        ui.run(host=address,
-               port=port,
-               title="Retirement Finances",
-               dark=True,
-               uvicorn_logging_level=self._guiLogLevel,
-               reload=reload)
 
     def _valid_password(self, password):
         """@brief Check if the password is valid. I.E meets the complexity criteria.
@@ -3441,33 +3423,6 @@ class FuturePlotGUI(GUIBase):
                 pd_dataframe_list.append(pd_dataframe)
         return pd_dataframe_list
 
-    def PJA_NOT_USED_get_merged_dfl(self, pd_dataframe_list):
-        """@brief Get a merged dataframe list.
-           @param pd_dataframe_list Has a Date and a Value column in each.
-           @return A table, a list of lists/rows, each row holding a date and value."""
-        # Convert 'Date' column to datetime
-        for df in pd_dataframe_list:
-            df["Date"] = pd.to_datetime(df["Date"], format="%d-%m-%Y", errors="coerce")
-
-        # Combine all DataFrames
-        pd_dataframe_list_merged = pd.concat(pd_dataframe_list).sort_values(by="Date")
-
-        # Compute cumulative sum
-        full_date_range = pd.date_range(start=pd_dataframe_list_merged["Date"].min(), end=pd_dataframe_list_merged["Date"].max())
-        final_pd_dataframe_list = (
-            pd_dataframe_list_merged.set_index("Date")
-            .reindex(full_date_range)
-            .fillna({"Value": 0})
-            .rename_axis("Date")
-        )
-        final_pd_dataframe_list["Value"] = final_pd_dataframe_list["Value"].astype(float)
-        final_pd_dataframe_list["Cumulative Value"] = final_pd_dataframe_list["Value"].cumsum()
-        table1 = final_pd_dataframe_list.reset_index()
-        table2 = table1.drop(columns=["Value"])
-        table2["Date"] = table2["Date"].dt.strftime("%d-%m-%Y")
-
-        return self._convert_table(table2.values.tolist())
-
     def _get_data_dict(self, table, table_type=""):
         # We want to limit data in the table to dates on or after the report start date
         if self._report_start_date:
@@ -3709,48 +3664,6 @@ class FuturePlotGUI(GUIBase):
             # DEBUG print(f"PJA: _get_initial_value(): initial_value={initial_value}")
             return initial_value
 
-    def PJA_OLD_get_initial_value(self, date_value_table, initial_date=None):
-        """@brief Get the first value to be used from the table (date,value rows)
-           @param date_value_table A 2 D table of date and value rows.
-           @param initial_date If None then we use the first value in the table.
-                               If a datetime is provided then we check the date_value_table
-                               for the initial_date and use the date before or equal to this
-                               for the value we're after."""
-        if len(date_value_table) == 0:
-            return 0
-
-        else:
-            initial_value = None
-            if initial_date:
-                # If we have no entries in the table
-                if len(date_value_table) == 0:
-                    # The initial value/amount = 0
-                    initial_value = 0.0
-                # If the initial date we're interested in is before the first user data date
-                elif initial_date < date_value_table[0][0]:
-                    # The table value/amount = 0
-                    initial_value = 0.0
-                else:
-                    for row in date_value_table:
-                        _date = row[0]
-                        _value = row[1]
-                        # DEBUG print(f"PJA: initial_date={initial_date}, _date={_date}, _value={_value}, previous_value={previous_value}")
-                        # We could linterp this data to try and predict the value at the given initial date. However
-                        # this may not be correct due to values not increasing in this fashion (I.E savings accounts
-                        # interest paid on a date each year). Therefore as we may not have the data, we choose the
-                        # closest value we have.
-                        if _date >= initial_date:
-                            initial_value = _value
-                            break
-                        else:
-                            initial_value = _value
-
-            if initial_value is None:
-                raise Exception("Start date to early. Data is missing for this start date.")
-
-            # DEBUG print(f"PJA: _get_initial_value(): initial_value={initial_value}")
-            return initial_value
-
     def _get_monthly_budget_table(self, datetime_list):
         """@brief Get a table detailing how much we plan to spend each month from our savings and pension."""
         future_table = []
@@ -3860,7 +3773,10 @@ class Report1GUI(GUIBase):
     PENSIONS_WITHDRAWAL_TABLE = "PENSIONS_WITHDRAWAL_TABLE"
     SAVINGS_WITHDRAWAL_TABLE = "SAVINGS_WITHDRAWAL_TABLE"
 
-    PENSION_AND_SAVING_TABLE_DF_LIST = 'PENSION_AND_SAVING_TABLE_DF_LIST'
+    PLOT_PANE_1_LIST = 'PLOT_PANE_1_LIST'
+    PLOT_PANE_2_LIST = 'PLOT_PANE_2_LIST'
+    PLOT_PANE_3_LIST = 'PLOT_PANE_3_LIST'
+    PLOT_PANE_4_LIST = 'PLOT_PANE_4_LIST'
 
     PLOT_TABLE_DICT = "PLOT_TABLE_DICT"
 
@@ -3905,6 +3821,7 @@ class Report1GUI(GUIBase):
         self._init_gui()
         self._report_start_date = None
         self._withdrawal_edit_table = None
+        self._last_selected_row_dict = None
 
     def _ensure_keys_present(self):
         """@brief Ensure the required keys are present in the config dict that relate to the future plot attrs.
@@ -4021,6 +3938,7 @@ class Report1GUI(GUIBase):
                                                                rows=[],
                                                                row_key=Report1GUI.DATE,
                                                                selection='multiple')
+                    self._pension_withdrawals_table.on('rowClick', self._pension_withdrawals_table_rowclick)
                     self._pension_withdrawals_table.on('row-dblclick', self._on_pension_withdrawal_table_double_click)
 
                     with ui.row():
@@ -4039,6 +3957,7 @@ class Report1GUI(GUIBase):
                                                         rows=[],
                                                         row_key=Report1GUI.DATE,
                                                         selection='multiple')
+                    self._other_income_table.on('rowClick', self._other_income_table_rowclick)
                     self._other_income_table.on('row-dblclick', self._on_other_income_table_double_click)
 
                     with ui.row():
@@ -4057,6 +3976,7 @@ class Report1GUI(GUIBase):
                                                                rows=[],
                                                                row_key=Report1GUI.DATE,
                                                                selection='multiple')
+                    self._savings_withdrawals_table.on('rowClick', self._savings_withdrawals_table_rowclick)
                     self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
 
                     with ui.row():
@@ -4095,11 +4015,76 @@ class Report1GUI(GUIBase):
 
         self._update_gui_from_dict()
 
+    def _pension_withdrawals_table_rowclick(self, event):
+        """@brief Allow the user to select the first row in the table, then the last
+                  row while holding down the shift key to select all rows in between."""
+        shift_down = event.args[0]['shiftKey']
+        selected_row_dict = event.args[1]
+        select_row = False
+        selected_row_list = []
+        for row in self._pension_withdrawals_table.rows:
+            if self._last_selected_row_dict and row == self._last_selected_row_dict:
+                select_row = True
+
+            if select_row:
+                selected_row_list.append(row)
+
+            if row == selected_row_dict:
+                select_row = False
+
+        self._last_selected_row_dict = selected_row_dict
+
+        if shift_down:
+            self._pension_withdrawals_table.selected = selected_row_list
+
+    def _other_income_table_rowclick(self, event):
+        """@brief Allow the user to select the first row in the table, then the last
+                  row while holding down the shift key to select all rows in between."""
+        shift_down = event.args[0]['shiftKey']
+        selected_row_dict = event.args[1]
+        select_row = False
+        selected_row_list = []
+        for row in self._other_income_table.rows:
+            if self._last_selected_row_dict and row == self._last_selected_row_dict:
+                select_row = True
+
+            if select_row:
+                selected_row_list.append(row)
+
+            if row == selected_row_dict:
+                select_row = False
+
+        self._last_selected_row_dict = selected_row_dict
+
+        if shift_down:
+            self._other_income_table.selected = selected_row_list
+
+    def _savings_withdrawals_table_rowclick(self, event):
+        """@brief Allow the user to select the first row in the table, then the last
+                  row while holding down the shift key to select all rows in between."""
+        shift_down = event.args[0]['shiftKey']
+        selected_row_dict = event.args[1]
+        select_row = False
+        selected_row_list = []
+        for row in self._savings_withdrawals_table.rows:
+            if self._last_selected_row_dict and row == self._last_selected_row_dict:
+                select_row = True
+
+            if select_row:
+                selected_row_list.append(row)
+
+            if row == selected_row_dict:
+                select_row = False
+
+        self._last_selected_row_dict = selected_row_dict
+
+        if shift_down:
+            self._savings_withdrawals_table.selected = selected_row_list
+
     def _handle_gui_message(self, rxDict):
         """@brief Handle messages sent to the GUI.
                   This method should be overridden in the subclass that needs to receive the message.
            @param rxDict The dict containing the message to be handled."""
-        print("PJA: CALLING _create_plot_page()")
         if Report1GUI.PLOT_TABLE_DICT in rxDict:
             self._create_plot_page(rxDict[Report1GUI.PLOT_TABLE_DICT])
 
@@ -4475,7 +4460,7 @@ class Report1GUI(GUIBase):
                 self._amount_taxable_field = ui.checkbox('Taxable', value=True).tooltip("This should be checked if this amount is taxable.")
             with ui.row():
                 self._yearly_percentage_increase_field = ui.number(label="Yearly % increase").tooltip("Enter a +ve percentage if you wish to increase the amount on a yearly basis. Set to 0 if you do not wish to increase the amount every year.")
-            self._repeat_field = ui.select([Report1GUI.YEARLY, Report1GUI.MONTHLY], value='Yearly')
+            self._repeat_field = ui.select([Report1GUI.MONTHLY, Report1GUI.YEARLY], value=Report1GUI.MONTHLY)
             with ui.row():
                 with ui.column():
                     self._repeat_count_field = ui.number(label="Occurrences", value=1, min=1)
@@ -4736,6 +4721,8 @@ class Report1GUI(GUIBase):
     def _start_calc(self):
         # Save the currently entered settings so the report can be reproduced.
         # We call _save inside the GUI thread because it may call ui.notify()
+        self._show_progress_button.disable()
+        ui.notify("Processing data...")
         self._save()
         self._start_background_thread(self._calc)
 
@@ -4745,9 +4732,8 @@ class Report1GUI(GUIBase):
             self._create_charts()
 
         except Exception as ex:
-            # PJA
-            print(ex)
             traceback.print_tb(ex.__traceback__)
+            print(ex)
             self._show_negative_notify_msg(str(ex))
 
     def _create_charts(self):
@@ -4768,57 +4754,11 @@ class Report1GUI(GUIBase):
         table_dict = self._create_tables(monthly_datetime_list, report_start_date)
         cmd_dict = {Report1GUI.PLOT_TABLE_DICT: table_dict}
         self._update_gui(cmd_dict)
+        # This should fail as it's outside the GUI thread but doesn't
+        self._show_progress_button.enable()
 
-    def _create_tables(self, monthly_datetime_list, report_start_date):
-        """@brief Create tables to plot data from.
-           @param monthly_datetime_list The datetime for the start of each month in the report.
-           @param The date of the start of the report.
-           @return A dict containing the tables with the data to be plotted."""
-        start_t = time()
-        print("PJA: _create_tables() start")
-        result_dict = {}
-        my_total_income_table_df = None
-        partner_total_income_table_df = None
-        for year in self._get_year_list(monthly_datetime_list):
-            pension_income_rows = self._rows_in_year(self._pension_withdrawals_table.rows, year, table_type=Report1GUI.TABLE_TYPE_PENSION)
-            other_income_rows = self._rows_in_year(self._other_income_table.rows, year, table_type=Report1GUI.TABLE_TYPE_OTHER_INCOME)
-            my_state_pension_table = self._rows_in_year(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, True), year, table_type=Report1GUI.TABLE_TYPE_MY_STATE_PENSION)
-            receiving_state_pension = self._is_receiving_state_pension(my_state_pension_table)
-            savings_withdrawals_table = self._rows_in_year(self._savings_withdrawals_table.rows, year, table_type=Report1GUI.TABLE_TYPE_SAVINGS)
-            all_income_rows = pension_income_rows + other_income_rows + my_state_pension_table + savings_withdrawals_table
-            gross_income_for_year, net_income_for_year = self._calc_tax_this_year(year, all_income_rows, receiving_state_pension)
-            year_income_table_df = self._create_income_table(all_income_rows, gross_income_for_year, net_income_for_year)
-            if my_total_income_table_df is None:
-                my_total_income_table_df = year_income_table_df
-            else:
-                my_total_income_table_df = pd.concat([my_total_income_table_df, year_income_table_df], ignore_index=True)
-
-            # In this scenario the partners income is the state pension which maybe taxable in the future !!!
-            partner_state_pension_table = self._rows_in_year(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, False), year, table_type=Report1GUI.TABLE_TYPE_PARTNER_STATE_PENSION)
-            receiving_state_pension = self._is_receiving_state_pension(partner_state_pension_table)
-            gross_income_for_year, net_income_for_year = self._calc_tax_this_year(year, partner_state_pension_table, receiving_state_pension)
-            partner_year_income_table_df = self._create_income_table(partner_state_pension_table, gross_income_for_year, net_income_for_year)
-            if partner_total_income_table_df is None:
-                partner_total_income_table_df = partner_year_income_table_df
-            else:
-                partner_total_income_table_df = pd.concat([partner_total_income_table_df, partner_year_income_table_df], ignore_index=True)
-
-# PJA
-        # Build the dict containing all the data
-#        result_dict[Report1GUI.MY_INCOME_TABLE] = my_total_income_table_df
-#        result_dict[Report1GUI.PARTNER_INCOME_TABLE] = partner_total_income_table_df
-        # Calc pension growth/fall based on amount taken from it and predicted/guessed growth rates
-#        pension_prediction_table_df = self._get_predicted_personal_pension(monthly_datetime_list, report_start_date, self._pension_withdrawals_table.rows)
-#        result_dict[Report1GUI.PENSION_PREDICTION_TABLE] = pension_prediction_table_df
-        # Calc savings growth/fall based on amount taken from it and predicted/guessed growth/interest rates
-#        savings_prediction_table_df = self._get_predicted_savings(monthly_datetime_list, report_start_date, self._savings_withdrawals_table.rows)
-#        result_dict[Report1GUI.SAVINGS_PREDICTION_TABLE] = savings_prediction_table_df
-        # Create a table containing real and average monthly spending
-#        monthly_spending_table_df = self._get_actual_monthly_spending_table(report_start_date)
-#        result_dict[Report1GUI.MONTHLY_SPENDING_TABLE] = monthly_spending_table_df
-#        result_dict[Report1GUI.PENSIONS_WITHDRAWAL_TABLE] = self._pension_withdrawals_table.rows
-#        result_dict[Report1GUI.SAVINGS_WITHDRAWAL_TABLE] = self._savings_withdrawals_table.rows
-
+    def _add_plot_pane_1_data(self, result_dict, monthly_datetime_list, report_start_date):
+        """@brief Add the data needed for the traces in plot pane 1 (the top plot pane)."""
         pension_prediction_table_df = self._get_predicted_personal_pension(monthly_datetime_list, report_start_date, self._pension_withdrawals_table.rows)
         savings_prediction_table_df = self._get_predicted_savings(monthly_datetime_list, report_start_date, self._savings_withdrawals_table.rows)
         # Rename the columns
@@ -4854,31 +4794,297 @@ class Report1GUI(GUIBase):
                         'Total',
                         'Personal Pension',
                         'Savings')
+        # Prediction traces are dotted lines as this tends to indicate their unclear nature.
+        # Actual values are plotted as solid lines.
+        # line_types, line_widths and report_zero_value_list must have a value for each column/trace
+        line_types = ['solid', 'solid','solid', 'dot', 'dot', 'dot']
+        line_widths = [2,2,2,2,2,2]
+        report_zero_value_list = [True, True, True, True, True, True]
 
-        result_dict[Report1GUI.PENSION_AND_SAVING_TABLE_DF_LIST] = [plot_columns,
-                                                                    actual_total_table_df,
-                                                                    actual_personal_pension_table_df,
-                                                                    actual_savings_table_df,
-                                                                    total_pensions_and_savings_table_df,
-                                                                    pension_table_df,
-                                                                    savings_table_df]
+        result_dict[Report1GUI.PLOT_PANE_1_LIST] = [plot_columns,
+                                                    line_types,
+                                                    line_widths,
+                                                    report_zero_value_list,
+                                                    actual_total_table_df,
+                                                    actual_personal_pension_table_df,
+                                                    actual_savings_table_df,
+                                                    total_pensions_and_savings_table_df,
+                                                    pension_table_df,
+                                                    savings_table_df]
 
-        # This is the actual value of the personal pension over time
-#        actual_personal_pension_table = self._get_personal_pension_table()
-#        actual_personal_pension_table_df = pd.DataFrame(actual_personal_pension_table, columns=[Report1GUI.DATE, 'Actual Personal Pension'])
-#        print(f"PJA: actual_personal_pension_table_df={actual_personal_pension_table_df}")
+    def _get_income(self, table_list):
 
-#        actual_savings_table = self._get_savings_table()
-#        actual_savings_table_df = pd.DataFrame(actual_savings_table, columns=[Report1GUI.DATE, 'Actual Savings'])
-#        print(f"PJA: actual_savings_table_df={actual_savings_table_df}")
+        taxable_df_list = []
+        non_taxable_df_list = []
+        for table_row_dict in table_list:
+            table_df = pd.DataFrame(table_row_dict)
+            table_df['Date'] = pd.to_datetime(table_df['Date'], format='%d-%m-%Y')
+            taxable_df = table_df[table_df['Taxable']].copy()
+            nontaxable_df = table_df[~table_df['Taxable']].copy()
+            taxable_df_list.append(taxable_df)
+            non_taxable_df_list.append(nontaxable_df)
 
-#        actual_total_table = self._get_total_table()
-#        actual_total_table_df = pd.DataFrame(actual_total_table, columns=[Report1GUI.DATE, 'Actual Total'])
-#        print(f"PJA: actual_total_table_df={actual_total_table_df}")
+        # 🔹 Step 1: combine all into one dataframe
+        taxable_df = pd.concat(taxable_df_list, ignore_index=True)
+        nontaxable_df = pd.concat(non_taxable_df_list, ignore_index=True)
 
-#        result_dict[Report1GUI.ACTUAL_PENSION_AND_SAVING_TABLE_DF] = [actual_total_table_df, actual_personal_pension_table, actual_savings_table_df]
+        # 🔹 Step 2: floor each date to the first day of its month
+        taxable_df['Date'] = taxable_df['Date'].dt.to_period('M').dt.to_timestamp()
+        nontaxable_df['Date'] = nontaxable_df['Date'].dt.to_period('M').dt.to_timestamp()
 
-        print(f"PJA: _create_tables() stop, took {round(time()-start_t, 2)} seconds.")
+        # 🔹 Step 3: group by Month and sum the Amounts
+        taxable_df = taxable_df.groupby('Date', as_index=False)['Amount'].sum()
+        nontaxable_df = nontaxable_df.groupby('Date', as_index=False)['Amount'].sum()
+
+        # 🔹 Step 4: Rename columns
+        taxable_df.columns = ['Date', 'Taxable Amount']
+        nontaxable_df.columns = ['Date', 'Untaxable Amount']
+
+        income_table_df = pd.merge(taxable_df, nontaxable_df, on='Date', how='outer')
+        income_table_df['Taxable Amount+Untaxable Amount'] = income_table_df['Taxable Amount'] + income_table_df['Untaxable Amount']
+
+        return income_table_df
+
+    def _add_plot_pane_2_data(self, result_dict, monthly_datetime_list, report_start_date):
+        """@brief Add the data needed for the traces in plot pane 2 (second one down from the top)."""
+        # Convert my pension to the same format as the other tables
+        my_state_pension_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, True), columns=['Date', 'Amount'])
+        my_state_pension_df['Taxable'] = True
+        my_income_df = self._get_income([self._pension_withdrawals_table.rows,
+                                         self._other_income_table.rows,
+                                         self._savings_withdrawals_table.rows,
+                                         my_state_pension_df])
+
+        # Add a tax year column
+        my_income_df[['TaxYearStart', 'TaxYearStop', 'TaxYear']] = pd.DataFrame(my_income_df['Date'].apply(self._get_uk_tax_year).tolist(), index=my_income_df.index)
+
+        # Group by tax year and sum the Taxable Amounts
+        tax_year_df = my_income_df.groupby('TaxYear', as_index=False)['Taxable Amount'].sum()
+
+        # Add amount after tax column
+        tax_year_df['Yearly Tax Amount'] = tax_year_df.apply(self._get_yearly_tax_to_pay_by_me, axis=1)
+
+        my_income_df['TaxToPay'] = my_income_df.apply(self._get_monthly_tax_to_pay, tax_year_df=tax_year_df, axis=1)
+
+        my_income_df['TaxedAmount'] = my_income_df['Taxable Amount'] - my_income_df['TaxToPay']
+
+        my_income_df['Net Income'] = my_income_df['Untaxable Amount'] + my_income_df['TaxedAmount']
+
+#for _, row in my_income_df.iterrows():
+#    print("PJA: my_income_df: ", row)
+
+# PJA don't leave this here !!!
+#my_income_df:
+#Date                               2025-01-01 00:00:00
+#Taxable Amount                                  1047.5
+#Untaxable Amount                                1802.5
+#Taxable Amount+Untaxable Amount                 2850.0
+#TaxYearStart                       2024-04-06 00:00:00
+#TaxYearStop                        2025-04-05 00:00:00
+#TaxYear                                      2024-2025
+#TaxToPay                                           0.0
+#TaxedAmount                                     1047.5
+#Net Income                                      2850.0
+
+        # Now the same again for partner income (only source is state pension)
+        partner_income_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, False), columns=['Date', 'Amount'])
+        # Convert Date str instance to datetime instance
+        partner_income_df['Date'] = pd.to_datetime(partner_income_df['Date'], format='%d-%m-%Y')
+        # Rename the columns
+        partner_income_df = partner_income_df.rename(columns={'Amount': 'Taxable Amount'})
+
+        # Add a tax year column
+        partner_income_df[['TaxYearStart', 'TaxYearStop', 'TaxYear']] = pd.DataFrame(partner_income_df['Date'].apply(self._get_uk_tax_year).tolist(), index=partner_income_df.index)
+
+        # Group by tax year and sum the Taxable Amounts
+        partner_tax_year_df = partner_income_df.groupby('TaxYear', as_index=False)['Taxable Amount'].sum()
+
+        # Add amount after tax column
+        partner_tax_year_df['Yearly Tax Amount'] = partner_tax_year_df.apply(self._get_yearly_tax_to_pay_by_partner, axis=1)
+
+        partner_income_df['TaxToPay'] = partner_income_df.apply(self._get_monthly_tax_to_pay, tax_year_df=partner_tax_year_df, axis=1)
+
+        partner_income_df['TaxedAmount'] = partner_income_df['Taxable Amount'] - partner_income_df['TaxToPay']
+
+        # Give the same name as my_income_df
+        partner_income_df['Net Income'] = partner_income_df['TaxedAmount']
+
+        # merge our two incomes
+        our_income_df = my_income_df
+        our_income_df['Partner Taxable Amount'] = partner_income_df['Taxable Amount']
+        our_income_df['Partner TaxToPay'] = partner_income_df['TaxToPay']
+        our_income_df['Partner Net Income'] = partner_income_df['Net Income']
+        our_income_df['Joint Net Income'] = my_income_df['Net Income'] +  partner_income_df['Net Income']
+        # As partner income is only state pension which is taxed this only comprises my untaxed income
+        our_income_df['Joint Untaxed Income'] = my_income_df['Untaxable Amount']
+        # As partner income is only state pension which is taxed this only comprises my untaxed income
+        our_income_df['Joint Taxable Income'] = my_income_df['Taxable Amount'] + partner_income_df['Taxable Amount']
+        our_income_df['Joint State Pension'] = my_state_pension_df['Amount'] + partner_income_df['Taxable Amount']
+        monthly_spending_table_df = self._get_actual_monthly_spending_table(report_start_date)
+        our_income_df['Actual Monthly Spending'] = monthly_spending_table_df['Amount']
+        our_income_df['Yearly Average Actual monthly Spending'] = monthly_spending_table_df['Yearly Average']
+
+        # Remove NaN entries
+        our_income_df['Net Income'] = our_income_df['Net Income'].fillna(0)
+        our_income_df['Joint Net Income'] = our_income_df['Joint Net Income'].fillna(0)
+        our_income_df['Joint Untaxed Income'] = our_income_df['Joint Untaxed Income'].fillna(0)
+        our_income_df['Actual Monthly Spending'] = our_income_df['Actual Monthly Spending'].fillna(0)
+        our_income_df['Yearly Average Actual monthly Spending'] = our_income_df['Yearly Average Actual monthly Spending'].fillna(0)
+
+# PJA DONT leave this here !!!
+# our_income_df:
+# Date                                      2025-06-01 00:00:00
+# Taxable Amount                                         1047.5
+# Untaxable Amount                                       1802.5
+# Taxable Amount+Untaxable Amount                        2850.0
+# TaxYearStart                              2025-04-06 00:00:00
+# TaxYearStop                               2026-04-05 00:00:00
+# TaxYear                                             2025-2026
+# TaxToPay                                           142.208333
+# TaxedAmount                                        905.291667
+# Net Income                                        2707.791667
+# Partner Taxable Amount                                    0.0
+# Partner TaxToPay                                          0.0
+# Partner Net Income                                        0.0
+# Joint Net Income                                  2707.791667
+# Joint Untaxed Income                                   1802.5
+# Joint Taxable Income                                   1047.5
+# Joint State Pension                                       0.0
+# Actual Monthly Spending                               3220.99
+# Yearly Average Actual monthly Spending               2837.079
+
+# PJA
+#        for _, row in our_income_df.iterrows():
+#            print("PJA: our_income_df: ", row)
+
+        plot_columns = ('Actual Monthly Spending',
+                        'Yearly Average Actual monthly Spending',
+                        'Joint Net Income',
+                        'Joint Untaxed Income',
+                        'Joint Taxable Income',
+                        'Joint State Pension')
+        line_types = ['solid', 'solid', 'dot', 'dot', 'dot', 'dot']
+        line_widths = [2, 3, 2, 2, 2, 3]
+        report_zero_value_list = [False] * len(plot_columns)
+
+        result_dict[Report1GUI.PLOT_PANE_2_LIST] = [plot_columns,
+                                                    line_types,
+                                                    line_widths,
+                                                    report_zero_value_list,
+                                                    our_income_df,
+                                                    our_income_df,
+                                                    our_income_df,
+                                                    our_income_df,
+                                                    our_income_df,
+                                                    our_income_df]
+
+    def _add_plot_pane_3_data(self, result_dict, monthly_datetime_list, report_start_date):
+        """@brief Add the data needed for the traces in plot pane 3 (second one down from the top)."""
+        savings_prediction_table_df = self._get_predicted_savings(monthly_datetime_list, report_start_date, self._savings_withdrawals_table.rows)
+        savings_prediction_table_df['Yearly Savings Growth'] = savings_prediction_table_df['Yearly Growth']
+        # Extract the year
+        savings_prediction_table_df['Year'] = savings_prediction_table_df['Date'].dt.year
+        # Group by year and sum Growth
+        annual_savings_prediction_table_df = savings_prediction_table_df.groupby('Year', as_index=False)['Yearly Savings Growth'].sum()
+        # Replace Year with Date = first day of that year
+        annual_savings_prediction_table_df['Date'] = pd.to_datetime(annual_savings_prediction_table_df['Year'].astype(str) + '-01-01')
+
+        plot_columns = ('Yearly Savings Growth',)
+        line_types = ['dot']
+        line_widths = [2]
+        report_zero_value_list = [False]
+
+        result_dict[Report1GUI.PLOT_PANE_3_LIST] = [plot_columns,
+                                                    line_types,
+                                                    line_widths,
+                                                    report_zero_value_list,
+                                                    annual_savings_prediction_table_df]
+
+
+    def _add_plot_pane_4_data(self, result_dict, monthly_datetime_list, report_start_date):
+        """@brief Add the data needed for the traces in plot pane 4 (second one down from the top)."""
+        savings_withdrawal_table_df = pd.DataFrame(self._savings_withdrawals_table.rows, columns=[Report1GUI.DATE, 'Amount'])
+        savings_withdrawal_table_df[Report1GUI.DATE] = pd.to_datetime(savings_withdrawal_table_df[Report1GUI.DATE], format='%d-%m-%Y')
+        savings_withdrawal_table_df['Savings Withdrawals'] = savings_withdrawal_table_df['Amount']
+        savings_withdrawal_table_df['Savings Withdrawals'] = savings_withdrawal_table_df['Savings Withdrawals'].fillna(0)
+        savings_withdrawal_table_df = savings_withdrawal_table_df.resample('M', on='Date')['Savings Withdrawals'].sum().reset_index()
+
+        pensions_withdrawal_table_df = pd.DataFrame(self._pension_withdrawals_table.rows, columns=[Report1GUI.DATE, 'Amount'])
+        pensions_withdrawal_table_df[Report1GUI.DATE] = pd.to_datetime(pensions_withdrawal_table_df[Report1GUI.DATE], format='%d-%m-%Y')
+        pensions_withdrawal_table_df['Pension Withdrawals'] = pensions_withdrawal_table_df['Amount']
+        pensions_withdrawal_table_df['Pension Withdrawals'] = pensions_withdrawal_table_df['Pension Withdrawals'].fillna(0)
+        pensions_withdrawal_table_df = pensions_withdrawal_table_df.resample('M', on='Date')['Pension Withdrawals'].sum().reset_index()
+
+        plot_columns = ('Savings Withdrawals',
+                        'Pension Withdrawals')
+        line_types = ['dot', 'dot']
+        line_widths = [2,2]
+        report_zero_value_list = [False, False]
+
+        result_dict[Report1GUI.PLOT_PANE_4_LIST] = [plot_columns,
+                                                    line_types,
+                                                    line_widths,
+                                                    report_zero_value_list,
+                                                    savings_withdrawal_table_df,
+                                                    pensions_withdrawal_table_df]
+
+
+    def _get_monthly_tax_to_pay(self, row, tax_year_df):
+        """@brief given a row of taxable income, calc the tax to pay each month for the full 12 months of the year."""
+        row_tax_year = row['TaxYear']
+        tax_year_df = tax_year_df.set_index("TaxYear")
+        yearly_tax_to_pay = tax_year_df.at[row_tax_year, "Yearly Tax Amount"]
+        if yearly_tax_to_pay:
+            return yearly_tax_to_pay/12
+        return 0
+
+    def _get_yearly_tax_to_pay_by_me(self, row):
+        return self._get_yearly_tax_to_pay(row, True)
+
+    def _get_yearly_tax_to_pay_by_partner(self, row):
+        return self._get_yearly_tax_to_pay(row, False)
+
+    def _get_yearly_tax_to_pay(self, row, me):
+        tax_year_str = row['TaxYear']
+        tax_year_start_year = int(tax_year_str.split('-')[0])
+        tax_year_start_dt = datetime(tax_year_start_year, 4, 6)
+        taxable_amount = row['Taxable Amount']
+        receiving_state_pension = self._is_receiving_state_pension(tax_year_start_dt, me)
+        result = HMRC.CalcNetPay(taxable_amount, receives_state_pension=receiving_state_pension)
+        gross = result['gross_annual']
+        net = result['net_annual']
+        yearly_tax_to_pay = 0
+        if gross and net:
+            yearly_tax_to_pay = gross - net
+        return yearly_tax_to_pay
+
+    def _get_uk_tax_year(self, _date):
+        """@param _date The date to check.
+           @return A tuple containing
+                    0 = A datetime instance of the start of the tax year.
+                    1 = A datetime instance of the end of the tax year.
+                    2 = A String detailing the tax year (E.G 2024-2025)."""
+        year = _date.year
+        # If before April 6, belongs to previous tax year
+        if _date < pd.Timestamp(year=year, month=4, day=6):
+            start_year = year - 1
+        else:
+            start_year = year
+        start_dt = datetime(start_year, 4, 6)
+        end_dt = datetime(start_year+1, 4, 5)
+        return (start_dt, end_dt, f"{start_dt.year}-{end_dt.year}")
+
+    def _create_tables(self, monthly_datetime_list, report_start_date):
+        """@brief Create tables to plot data from.
+           @param monthly_datetime_list The datetime for the start of each month in the report.
+           @param The date of the start of the report.
+           @return A dict containing the tables with the data to be plotted."""
+        start_t = time()
+        result_dict = {}
+        self._add_plot_pane_1_data(result_dict, monthly_datetime_list, report_start_date)
+        self._add_plot_pane_2_data(result_dict, monthly_datetime_list, report_start_date)
+        self._add_plot_pane_3_data(result_dict, monthly_datetime_list, report_start_date)
+        self._add_plot_pane_4_data(result_dict, monthly_datetime_list, report_start_date)
         return result_dict
 
     def _get_total_table(self):
@@ -5175,12 +5381,34 @@ class Report1GUI(GUIBase):
         df['Net Income'] = df['Gross Income'] - (yearly_tax/12)
         return df
 
-    def _is_receiving_state_pension(self, state_pension_table):
+    def _is_receiving_state_pension(self, tax_year_start_dt, me):
+        """@brief Determine if receiving state pension.
+           @param tax_year_start_dt The start date of the tax year of interest (a datetime instance).
+           @param me If True check my state pension. If False check partners state pension.
+           @return True If receiving state pension."""
         receiving_state_pension = False
-        for row_dict in state_pension_table:
-            if row_dict['Amount'] > 0:
-                receiving_state_pension = True
-                break
+        global_configuration_dict = self._config.get_global_configuration_dict()
+        if me:
+            owner_name = global_configuration_dict[Finances.MY_NAME_FIELD]
+        else:
+            owner_name = global_configuration_dict[Finances.PARTNER_NAME_FIELD]
+
+        pension_dict_list = self._config.get_pension_dict_list()
+        for pension_dict in pension_dict_list:
+            state_pension = False
+            if PensionGUI.STATE_PENSION in pension_dict:
+                state_pension = pension_dict[PensionGUI.STATE_PENSION]
+
+            if PensionGUI.PENSION_OWNER in pension_dict:
+                this_pension_owner = pension_dict[PensionGUI.PENSION_OWNER]
+                if this_pension_owner == owner_name and state_pension:
+                    if PensionGUI.STATE_PENSION_START_DATE in pension_dict:
+                        try:
+                            start_state_pension_date = datetime.strptime(pension_dict[PensionGUI.STATE_PENSION_START_DATE], '%d-%m-%Y')
+                            if start_state_pension_date >= tax_year_start_dt:
+                                receiving_state_pension = True
+                        except Exception:
+                            ui.notify(f"Error reading {owner_name}'s state pension state date. Check it's entered correctly under Pensions.")
         return receiving_state_pension
 
     def _get_predicted_state_pension(self, datetime_list, report_start_date, my_state_pension):
@@ -5361,7 +5589,6 @@ class Report1GUI(GUIBase):
                 last_row = date_value_table[-1]
                 initial_value = last_row[1]
 
-            # DEBUG print(f"PJA: _get_initial_value(): initial_value={initial_value}")
             return initial_value
 
     def _calc_new_account_value(self,
@@ -5433,19 +5660,6 @@ class Report1GUI(GUIBase):
                 alive = False
 
         return alive
-
-    def _calc_tax_this_year(self, year, income_rows, receiving_state_pension):
-        taxable_income = 0
-        non_taxable_income = 0
-        for row in income_rows:
-            if Report1GUI.AMOUNT_TAXABLE in row and Report1GUI.AMOUNT in row:
-                if row[Report1GUI.AMOUNT_TAXABLE]:
-                    taxable_income += row[Report1GUI.AMOUNT]
-                else:
-                    non_taxable_income += row[Report1GUI.AMOUNT]
-        # PJA receives_state_pension needs to be set dependant upon if the state pension is being received.
-        result = HMRC.CalcNetPay(taxable_income, receives_state_pension=receiving_state_pension)
-        return (result['gross_annual'], result['net_annual'])
 
     def _get_year_list(self, monthly_datetime_list):
         """@Get a list of years from the list of months."""
@@ -5527,7 +5741,6 @@ class Report1GUI(GUIBase):
         return final_year
 
     def _create_plot_page(self, table_dict):
-        print("PJA _create_plot_page EXECUTING")
         # Define a secondary page
         @ui.page('/_create_plot_page')
         def _create_plot_page():
@@ -5542,15 +5755,20 @@ class Report1GUI(GUIBase):
         # This will open in a separate browser window
         ui.run_javascript("window.open('/_create_plot_page', '_blank')")
 
+    def _plot_by_year(self):
+        """@return True if the user wishes to plot by year rather than month."""
+        plot_by_year = False
+        if self._interval_radio.value == Report1GUI.BY_YEAR:
+            plot_by_year = True
+        return plot_by_year
+
     def _check_plot_by_year(self, table_df, last_value_of_year=True):
         """@brief Check to see if the user wishes to plot the data by year rather than month (raw data format)
            @param table_df A pandas DataFrame instance.
            @param last_value_of_year If the user wishes to show the results by year and last_value_of_year == True
                   then the last value of the year is stored as the value for the year.
                   If last_value_of_year == False then the value for the year is the sum of all the values on each month."""
-        plot_by_year = False
-        if self._interval_radio.value == Report1GUI.BY_YEAR:
-            plot_by_year = True
+        if self._plot_by_year():
             # convert to a table that has one row for each year and the other monthly columns hold the last value that year
             # Group by year, take the last row in each year
             if last_value_of_year:
@@ -5561,7 +5779,8 @@ class Report1GUI(GUIBase):
 
             # Replace Date with end of year
             table_df['Date'] = pd.to_datetime(table_df['Date'].dt.year.astype(str) + '-12-31')
-        return (plot_by_year, table_df)
+
+        return table_df
 
     def _get_plot_pane_list(self, count=4):
         """@return a list of plot panes (ui.element() instances)"""
@@ -5574,27 +5793,23 @@ class Report1GUI(GUIBase):
     def _create_chart_page(self, table_dict):
         """@brief Create a new window displaying the data in table_dict on charts.
         @param table_dict A dict holding the pandas dataframes containing the data to be plotted."""
-
-        # Set the doc name (appears ni browser tab) so user can identify with name to associate the plot with
-        ui.page_title("'Retirement Prediction Including Tax'")
+        # Set the doc name (appears in browser tab) so user can identify with name to associate the plot with
+        ui.page_title(self._settings_name_select.value)
 
         plot_panel_1, plot_panel_2, plot_panel_3, plot_panel_4 = self._get_plot_pane_list()
 
-        pensions_and_savings_table_df_list = table_dict[Report1GUI.PENSION_AND_SAVING_TABLE_DF_LIST]
-        # First element is the list of columns to plot in the dataframe
+        pensions_and_savings_table_df_list = table_dict[Report1GUI.PLOT_PANE_1_LIST]
         plot_columns = pensions_and_savings_table_df_list[0]
-        # First element is list of columns to plot
-        pensions_and_savings_table_df_list = pensions_and_savings_table_df_list[1:]
+        line_types = pensions_and_savings_table_df_list[1]
+        line_widths = pensions_and_savings_table_df_list[2]
+        report_zero_value_list = pensions_and_savings_table_df_list[3]
 
-#        plot_by_year, pensions_and_savings_table_df = self._check_plot_by_year(pensions_and_savings_table_df, False)
-        plot_by_year = False
+        pensions_and_savings_table_df_list = pensions_and_savings_table_df_list[4:]
 
-        # Prediction traces are dotted lines as this tends to indicate their unclear nature.
-        # Actual values are plotted as solid lines.
-        # line_types, line_widths and report_zero_value_list must have a value for each column/trace
-        line_types = ['solid', 'solid','solid', 'dot', 'dot', 'dot']
-        line_widths = [2,2,2,2,2,2]
-        report_zero_value_list = [True, True, True, True, True, True]
+        bar_chart = False
+        plot_by_year = self._plot_by_year()
+        if plot_by_year:
+            bar_chart = True
 
         self._draw_plot_pane(plot_panel_1,
                              plot_columns,
@@ -5602,7 +5817,60 @@ class Report1GUI(GUIBase):
                              line_types,
                              line_widths,
                              report_zero_value_list,
-                             plot_by_year)
+                             bar_chart=bar_chart,
+                             plot_by_year=plot_by_year)
+
+        income_table_df_list = table_dict[Report1GUI.PLOT_PANE_2_LIST]
+        plot_columns = income_table_df_list[0]
+        line_types = income_table_df_list[1]
+        line_widths = income_table_df_list[2]
+        report_zero_value_list = income_table_df_list[3]
+        income_table_df_list = income_table_df_list[4:]
+        bar_chart = False
+        plot_by_year = False
+
+        self._draw_plot_pane(plot_panel_2,
+                             plot_columns,
+                             income_table_df_list,
+                             line_types,
+                             line_widths,
+                             report_zero_value_list,
+                             bar_chart=bar_chart,
+                             plot_by_year=plot_by_year)
+
+        savings_growth_table_df_list = table_dict[Report1GUI.PLOT_PANE_3_LIST]
+        plot_columns = savings_growth_table_df_list[0]
+        line_types = savings_growth_table_df_list[1]
+        line_widths = savings_growth_table_df_list[2]
+        report_zero_value_list = savings_growth_table_df_list[3]
+        savings_growth_table_df_list = savings_growth_table_df_list[4:]
+        plot_by_year = self._plot_by_year()
+        # Last two charts are always bar
+        bar_chart = True
+
+        self._draw_plot_pane(plot_panel_3,
+                             plot_columns,
+                             savings_growth_table_df_list,
+                             line_types,
+                             line_widths,
+                             report_zero_value_list,
+                             bar_chart=bar_chart,
+                             plot_by_year=plot_by_year)
+
+        plot_columns = table_dict[Report1GUI.PLOT_PANE_4_LIST][0]
+        line_types = table_dict[Report1GUI.PLOT_PANE_4_LIST][1]
+        line_widths = table_dict[Report1GUI.PLOT_PANE_4_LIST][2]
+        report_zero_value_list = table_dict[Report1GUI.PLOT_PANE_4_LIST][3]
+        savings_growth_table_df_list = table_dict[Report1GUI.PLOT_PANE_4_LIST][4:]
+
+        self._draw_plot_pane(plot_panel_4,
+                             plot_columns,
+                             savings_growth_table_df_list,
+                             line_types,
+                             line_widths,
+                             report_zero_value_list,
+                             bar_chart=bar_chart,
+                             plot_by_year=plot_by_year)
 
     def _draw_plot_pane(self,
                         plot_panel,
@@ -5611,7 +5879,8 @@ class Report1GUI(GUIBase):
                         line_types,
                         line_widths,
                         report_zero_value_list,
-                        plot_by_year):
+                        bar_chart=False,
+                        plot_by_year=False):
         # If the user wishes to limit the max year, then delete all rows after this year
         max_year = self._get_max_year()
 
@@ -5620,6 +5889,12 @@ class Report1GUI(GUIBase):
         dataframe_index = 0
         for column_name in plot_columns:
             df = pandas_dataframe_list[dataframe_index]
+            # PJA maybe works but looks bad.
+            if plot_by_year:
+                # reduce to year and take last value PJA no good for other plots
+                df = df.groupby(df['Date'].dt.year, as_index=False).last()
+                df = df.resample('Y', on='Date').sum().reset_index()
+
             if max_year:
                 # Remove data after the max year if set
                 df = df[df['Date'].dt.year <= max_year]
@@ -5644,9 +5919,12 @@ class Report1GUI(GUIBase):
             if report_zero_value and (y <= 0).any():
                 ui.notify(f"{plot_name} dropped to zero.", type='warning')
 
-            if plot_by_year:
-                # Display bar charts if plotting by year
+            if bar_chart:
                 fig.add_trace(go.Bar(name=plot_name, x=x, y=y))
+                fig.update_layout(
+                    bargap=0.05,   # space between bars
+                    bargroupgap=0  # space between groups
+                )
             else:
                 line_type = line_types[trace_index]
                 line_width = line_widths[trace_index]
@@ -5677,8 +5955,9 @@ class Report1GUI(GUIBase):
                               range=[0, max_y]    # Ensure 0 is on Y axis
         ),)
 
-        if plot_by_year:
-            fig.update_xaxes(tickformat="%Y")  # only show the year on xaxis
+# PJA
+#        if plot_by_year:
+#            fig.update_xaxes(tickformat="%Y")  # only show the year on xaxis
 
         if plot_panel:
             plot_panel.clear()
@@ -5851,7 +6130,7 @@ class Plot1GUI(GUIBase):
 
     def _init_gui(self):
         """@brief plot the data in the plot table."""
-        # Set the doc name (appears ni browser tab) so user can identify with name to associate the plot with
+        # Set the doc name (appears in browser tab) so user can identify with name to associate the plot with
         ui.page_title(self._name)
 
         with ui.column().style('width: 100%; margin: 0 auto;'):
@@ -6339,7 +6618,21 @@ def main():
             if options.example:
                 # For the example we start the server on the next port
                 port += 1
-            finances.initGUI(options.debug, port=port, reload=options.reload)
+
+            @ui.page('/')
+            def main_page():
+                finances.initGUI(options.debug)
+
+            guiLogLevel = "warning"
+            if options.debug:
+                guiLogLevel = "debug"
+
+            ui.run(host='127.0.0.1',
+                port=options.port,
+                title="Retirement Finances",
+                dark=True,
+                uvicorn_logging_level=guiLogLevel,
+                reload=options.reload)
 
     # If the program throws a system exit exception
     except SystemExit:
