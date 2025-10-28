@@ -598,6 +598,28 @@ class GUIBase(object):
         t.daemon = True
         t.start()
 
+    def _table_rowclick(self, table, event):
+        """@brief Allow the user to select the first row in the table, then the last
+                  row while holding down the shift key to select all rows in between."""
+        shift_down = event.args[0]['shiftKey']
+        selected_row_dict = event.args[1]
+        select_row = False
+        selected_row_list = []
+        for row in table.rows:
+            if self._last_selected_row_dict and row == self._last_selected_row_dict:
+                select_row = True
+
+            if select_row:
+                selected_row_list.append(row)
+
+            if row == selected_row_dict:
+                select_row = False
+
+        self._last_selected_row_dict = selected_row_dict
+
+        if shift_down:
+            table.selected = selected_row_list
+
 class Finances(GUIBase):
 
     YES = "Yes"
@@ -4030,68 +4052,17 @@ class Report1GUI(GUIBase):
     def _pension_withdrawals_table_rowclick(self, event):
         """@brief Allow the user to select the first row in the table, then the last
                   row while holding down the shift key to select all rows in between."""
-        shift_down = event.args[0]['shiftKey']
-        selected_row_dict = event.args[1]
-        select_row = False
-        selected_row_list = []
-        for row in self._pension_withdrawals_table.rows:
-            if self._last_selected_row_dict and row == self._last_selected_row_dict:
-                select_row = True
-
-            if select_row:
-                selected_row_list.append(row)
-
-            if row == selected_row_dict:
-                select_row = False
-
-        self._last_selected_row_dict = selected_row_dict
-
-        if shift_down:
-            self._pension_withdrawals_table.selected = selected_row_list
+        self._table_rowclick(self._pension_withdrawals_table, event)
 
     def _other_income_table_rowclick(self, event):
         """@brief Allow the user to select the first row in the table, then the last
                   row while holding down the shift key to select all rows in between."""
-        shift_down = event.args[0]['shiftKey']
-        selected_row_dict = event.args[1]
-        select_row = False
-        selected_row_list = []
-        for row in self._other_income_table.rows:
-            if self._last_selected_row_dict and row == self._last_selected_row_dict:
-                select_row = True
-
-            if select_row:
-                selected_row_list.append(row)
-
-            if row == selected_row_dict:
-                select_row = False
-
-        self._last_selected_row_dict = selected_row_dict
-
-        if shift_down:
-            self._other_income_table.selected = selected_row_list
+        self._table_rowclick(self._other_income_table, event)
 
     def _savings_withdrawals_table_rowclick(self, event):
         """@brief Allow the user to select the first row in the table, then the last
                   row while holding down the shift key to select all rows in between."""
-        shift_down = event.args[0]['shiftKey']
-        selected_row_dict = event.args[1]
-        select_row = False
-        selected_row_list = []
-        for row in self._savings_withdrawals_table.rows:
-            if self._last_selected_row_dict and row == self._last_selected_row_dict:
-                select_row = True
-
-            if select_row:
-                selected_row_list.append(row)
-
-            if row == selected_row_dict:
-                select_row = False
-
-        self._last_selected_row_dict = selected_row_dict
-
-        if shift_down:
-            self._savings_withdrawals_table.selected = selected_row_list
+        self._table_rowclick(self._savings_withdrawals_table, event)
 
     def _handle_gui_message(self, rxDict):
         """@brief Handle messages sent to the GUI.
