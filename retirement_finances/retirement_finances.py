@@ -4734,9 +4734,14 @@ class Report1GUI(GUIBase):
         # Save the currently entered settings so the report can be reproduced.
         # We call _save inside the GUI thread because it may call ui.notify()
         self._show_progress_button.disable()
-        ui.notify("Processing data...")
-        self._save()
-        self._start_background_thread(self._calc)
+        try:
+            ui.notify("Processing data...")
+            self._save()
+            self._start_background_thread(self._calc)
+
+        finally:
+            # This should fail as it's outside the GUI thread but doesn't
+            self._show_progress_button.enable()
 
     def _calc(self):
         """@brief Perform calculation."""
@@ -4766,8 +4771,6 @@ class Report1GUI(GUIBase):
         table_dict = self._create_tables(monthly_datetime_list, report_start_date)
         cmd_dict = {Report1GUI.PLOT_TABLE_DICT: table_dict}
         self._update_gui(cmd_dict)
-        # This should fail as it's outside the GUI thread but doesn't
-        self._show_progress_button.enable()
 
     def _add_plot_pane_1_data(self, result_dict, monthly_datetime_list, report_start_date):
         """@brief Add the data needed for the traces in plot pane 1 (the top plot pane)."""
@@ -4829,6 +4832,8 @@ class Report1GUI(GUIBase):
         taxable_df_list = []
         non_taxable_df_list = []
         for table_row_dict in table_list:
+            if len(table_row_dict) == 0:
+                raise Exception("All three tables must have at least one entry. Also there must be at least one pension defined in the pensions tab.")
             table_df = pd.DataFrame(table_row_dict)
             table_df['Date'] = pd.to_datetime(table_df['Date'], format='%d-%m-%Y')
             taxable_df = table_df[table_df['Taxable']].copy()
