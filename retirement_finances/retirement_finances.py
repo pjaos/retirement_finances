@@ -4887,21 +4887,21 @@ class Report1GUI(GUIBase):
 
         my_income_df['Net Income'] = my_income_df['Untaxable Amount'] + my_income_df['TaxedAmount']
 
-#for _, row in my_income_df.iterrows():
-#    print("PJA: my_income_df: ", row)
+        # Debug to print pandas dataframe contents
+        #for _, row in my_income_df.iterrows():
+        #    print("PJA: my_income_df: ", row)
 
-# PJA don't leave this here !!!
-#my_income_df:
-#Date                               2025-01-01 00:00:00
-#Taxable Amount                                  1047.5
-#Untaxable Amount                                1802.5
-#Taxable Amount+Untaxable Amount                 2850.0
-#TaxYearStart                       2024-04-06 00:00:00
-#TaxYearStop                        2025-04-05 00:00:00
-#TaxYear                                      2024-2025
-#TaxToPay                                           0.0
-#TaxedAmount                                     1047.5
-#Net Income                                      2850.0
+        #my_income_df:
+        #Date                               2025-01-01 00:00:00
+        #Taxable Amount                                     1.0
+        #Untaxable Amount                                   1.0
+        #Taxable Amount+Untaxable Amount                    1.0
+        #TaxYearStart                       2024-04-06 00:00:00
+        #TaxYearStop                        2025-04-05 00:00:00
+        #TaxYear                                      2024-2025
+        #TaxToPay                                           1.0
+        #TaxedAmount                                        1.0
+        #Net Income                                         1.0
 
         # Now the same again for partner income (only source is state pension)
         partner_income_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, False), columns=['Date', 'Amount'])
@@ -4948,31 +4948,31 @@ class Report1GUI(GUIBase):
         our_income_df['Actual Monthly Spending'] = our_income_df['Actual Monthly Spending'].fillna(0)
         our_income_df['Yearly Average Actual monthly Spending'] = our_income_df['Yearly Average Actual monthly Spending'].fillna(0)
 
-# PJA DONT leave this here !!!
-# our_income_df:
-# Date                                      2025-06-01 00:00:00
-# Taxable Amount                                         1047.5
-# Untaxable Amount                                       1802.5
-# Taxable Amount+Untaxable Amount                        2850.0
-# TaxYearStart                              2025-04-06 00:00:00
-# TaxYearStop                               2026-04-05 00:00:00
-# TaxYear                                             2025-2026
-# TaxToPay                                           142.208333
-# TaxedAmount                                        905.291667
-# Net Income                                        2707.791667
-# Partner Taxable Amount                                    0.0
-# Partner TaxToPay                                          0.0
-# Partner Net Income                                        0.0
-# Joint Net Income                                  2707.791667
-# Joint Untaxed Income                                   1802.5
-# Joint Taxable Income                                   1047.5
-# Joint State Pension                                       0.0
-# Actual Monthly Spending                               3220.99
-# Yearly Average Actual monthly Spending               2837.079
 
-# PJA
-#        for _, row in our_income_df.iterrows():
-#            print("PJA: our_income_df: ", row)
+        # Debug to print pandas dataframe contents
+        #        for _, row in our_income_df.iterrows():
+        #            print("PJA: our_income_df: ", row)
+
+        # our_income_df:
+        # Date                                      2025-06-01 00:00:00
+        # Taxable Amount                                            1.0
+        # Untaxable Amount                                          1.0
+        # Taxable Amount+Untaxable Amount                           1.0
+        # TaxYearStart                              2025-04-06 00:00:00
+        # TaxYearStop                               2026-04-05 00:00:00
+        # TaxYear                                             2025-2026
+        # TaxToPay                                                  1.0
+        # TaxedAmount                                               1.0
+        # Net Income                                                1.0
+        # Partner Taxable Amount                                    0.0
+        # Partner TaxToPay                                          0.0
+        # Partner Net Income                                        0.0
+        # Joint Net Income                                          1.0
+        # Joint Untaxed Income                                      1.0
+        # Joint Taxable Income                                      1.0
+        # Joint State Pension                                       0.0
+        # Actual Monthly Spending                                   1.0
+        # Yearly Average Actual monthly Spending                    1.0
 
         plot_columns = ('Actual Monthly Spending',
                         'Yearly Average Actual monthly Spending',
