@@ -15,8 +15,6 @@ import tempfile
 
 from queue import Queue
 
-from time import time
-
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal, ROUND_HALF_UP
@@ -621,6 +619,7 @@ class GUIBase(object):
 
         if shift_down:
             table.selected = selected_row_list
+
 
 class Finances(GUIBase):
 
@@ -4123,7 +4122,6 @@ class Report1GUI(GUIBase):
         self._withdrawal_edit_table = Report1GUI.OTHER_INCOME_TABLE
 
         amount = row_dict[Report1GUI.AMOUNT]
-        amount_after_tax = amount
         if Report1GUI.AMOUNT_TAXABLE in row_dict:
             amount_taxable = row_dict[Report1GUI.AMOUNT_TAXABLE]
 
@@ -4584,7 +4582,6 @@ class Report1GUI(GUIBase):
                         row = (the_date, amount, info_str, amount_taxable)
                     last_date = the_date
 
-                    the_datetime = datetime.strptime(the_date, "%d-%m-%Y")
                 if self._button_selected == Report1GUI.ADD_SAVINGS_WITHDRAWAL_BUTTON:
                     rows = self._get_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
                     if self._check_date_in_table(the_date, rows):
@@ -4804,8 +4801,8 @@ class Report1GUI(GUIBase):
         # Prediction traces are dotted lines as this tends to indicate their unclear nature.
         # Actual values are plotted as solid lines.
         # line_types, line_widths and report_zero_value_list must have a value for each column/trace
-        line_types = ['solid', 'solid','solid', 'dot', 'dot', 'dot']
-        line_widths = [2,2,2,2,2,2]
+        line_types = ['solid', 'solid', 'solid', 'dot', 'dot', 'dot']
+        line_widths = [2, 2, 2, 2, 2, 2]
         report_zero_value_list = [True, True, True, True, True, True]
 
         result_dict[Report1GUI.PLOT_PANE_1_LIST] = [plot_columns,
@@ -4880,20 +4877,20 @@ class Report1GUI(GUIBase):
         my_income_df['Net Income'] = my_income_df['Untaxable Amount'] + my_income_df['TaxedAmount']
 
         # Debug to print pandas dataframe contents
-        #for _, row in my_income_df.iterrows():
+        # for _, row in my_income_df.iterrows():
         #    print("PJA: my_income_df: ", row)
 
-        #my_income_df:
-        #Date                               2025-01-01 00:00:00
-        #Taxable Amount                                     1.0
-        #Untaxable Amount                                   1.0
-        #Taxable Amount+Untaxable Amount                    1.0
-        #TaxYearStart                       2024-04-06 00:00:00
-        #TaxYearStop                        2025-04-05 00:00:00
-        #TaxYear                                      2024-2025
-        #TaxToPay                                           1.0
-        #TaxedAmount                                        1.0
-        #Net Income                                         1.0
+        # my_income_df:
+        # Date                               2025-01-01 00:00:00
+        # Taxable Amount                                     1.0
+        # Untaxable Amount                                   1.0
+        # Taxable Amount+Untaxable Amount                    1.0
+        # TaxYearStart                       2024-04-06 00:00:00
+        # TaxYearStop                        2025-04-05 00:00:00
+        # TaxYear                                      2024-2025
+        # TaxToPay                                           1.0
+        # TaxedAmount                                        1.0
+        # Net Income                                         1.0
 
         # Now the same again for partner income (only source is state pension)
         partner_income_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, False), columns=['Date', 'Amount'])
@@ -4923,7 +4920,7 @@ class Report1GUI(GUIBase):
         our_income_df['Partner Taxable Amount'] = partner_income_df['Taxable Amount']
         our_income_df['Partner TaxToPay'] = partner_income_df['TaxToPay']
         our_income_df['Partner Net Income'] = partner_income_df['Net Income']
-        our_income_df['Joint Net Income'] = my_income_df['Net Income'] +  partner_income_df['Net Income']
+        our_income_df['Joint Net Income'] = my_income_df['Net Income'] + partner_income_df['Net Income']
         # As partner income is only state pension which is taxed this only comprises my untaxed income
         our_income_df['Joint Untaxed Income'] = my_income_df['Untaxable Amount']
         # As partner income is only state pension which is taxed this only comprises my untaxed income
@@ -4939,7 +4936,6 @@ class Report1GUI(GUIBase):
         our_income_df['Joint Untaxed Income'] = our_income_df['Joint Untaxed Income'].fillna(0)
         our_income_df['Actual Monthly Spending'] = our_income_df['Actual Monthly Spending'].fillna(0)
         our_income_df['Yearly Average Actual monthly Spending'] = our_income_df['Yearly Average Actual monthly Spending'].fillna(0)
-
 
         # Debug to print pandas dataframe contents
         #        for _, row in our_income_df.iterrows():
@@ -5009,8 +5005,7 @@ class Report1GUI(GUIBase):
                                                     report_zero_value_list,
                                                     annual_savings_prediction_table_df]
 
-
-    def _add_plot_pane_4_data(self, result_dict, monthly_datetime_list, report_start_date):
+    def _add_plot_pane_4_data(self, result_dict):
         """@brief Add the data needed for the traces in plot pane 4 (second one down from the top)."""
         savings_withdrawal_table_df = pd.DataFrame(self._savings_withdrawals_table.rows, columns=[Report1GUI.DATE, 'Amount'])
         savings_withdrawal_table_df[Report1GUI.DATE] = pd.to_datetime(savings_withdrawal_table_df[Report1GUI.DATE], format='%d-%m-%Y')
@@ -5027,7 +5022,7 @@ class Report1GUI(GUIBase):
         plot_columns = ('Savings Withdrawals',
                         'Pension Withdrawals')
         line_types = ['dot', 'dot']
-        line_widths = [2,2]
+        line_widths = [2, 2]
         report_zero_value_list = [False, False]
 
         result_dict[Report1GUI.PLOT_PANE_4_LIST] = [plot_columns,
@@ -5036,7 +5031,6 @@ class Report1GUI(GUIBase):
                                                     report_zero_value_list,
                                                     savings_withdrawal_table_df,
                                                     pensions_withdrawal_table_df]
-
 
     def _get_monthly_tax_to_pay(self, row, tax_year_df):
         """@brief given a row of taxable income, calc the tax to pay each month for the full 12 months of the year."""
@@ -5088,12 +5082,11 @@ class Report1GUI(GUIBase):
            @param monthly_datetime_list The datetime for the start of each month in the report.
            @param The date of the start of the report.
            @return A dict containing the tables with the data to be plotted."""
-        start_t = time()
         result_dict = {}
         self._add_plot_pane_1_data(result_dict, monthly_datetime_list, report_start_date)
         self._add_plot_pane_2_data(result_dict, monthly_datetime_list, report_start_date)
         self._add_plot_pane_3_data(result_dict, monthly_datetime_list, report_start_date)
-        self._add_plot_pane_4_data(result_dict, monthly_datetime_list, report_start_date)
+        self._add_plot_pane_4_data(result_dict)
         return result_dict
 
     def _get_total_table(self):
@@ -5794,7 +5787,7 @@ class Report1GUI(GUIBase):
     def _get_plot_pane_list(self, count=4):
         """@return a list of plot panes (ui.element() instances)"""
         plot_pane_list = []
-        for _ in range(0,count):
+        for _ in range(0, count):
             with ui.column().style('width: 100%; margin: 0 auto;'):
                 plot_pane_list.append(ui.element('div').style('width: 100%;'))
         return plot_pane_list
@@ -5984,6 +5977,7 @@ class Report1GUI(GUIBase):
                 ui.notify(f"{self._last_year_to_plot_field.value} is an invalid year.", type='negative')
 
         return max_year
+
 
 class Plot1GUI(GUIBase):
     """@brief Responsible for plotting the data of the predicted changes in the savings as we draw out money."""
@@ -6637,11 +6631,11 @@ def main():
                 guiLogLevel = "debug"
 
             ui.run(host='127.0.0.1',
-                port=options.port,
-                title="Retirement Finances",
-                dark=True,
-                uvicorn_logging_level=guiLogLevel,
-                reload=options.reload)
+                   port=options.port,
+                   title="Retirement Finances",
+                   dark=True,
+                   uvicorn_logging_level=guiLogLevel,
+                   reload=options.reload)
 
     # If the program throws a system exit exception
     except SystemExit:
