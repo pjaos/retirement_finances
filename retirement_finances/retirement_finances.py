@@ -3976,7 +3976,8 @@ class Report1GUI(GUIBase):
 
         with ui.row():
             savings_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
-                               {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT}]
+                               {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
+                               {'name': Report1GUI.AMOUNT_TAXABLE, 'label': Report1GUI.AMOUNT_TAXABLE, 'field': Report1GUI.AMOUNT_TAXABLE}]
             pensions_columns = [{'name': Report1GUI.DATE, 'label': Report1GUI.DATE, 'field': Report1GUI.DATE},
                                 {'name': Report1GUI.AMOUNT, 'label': Report1GUI.AMOUNT, 'field': Report1GUI.AMOUNT},
                                 {'name': Report1GUI.AMOUNT_TAXABLE, 'label': Report1GUI.AMOUNT_TAXABLE, 'field': Report1GUI.AMOUNT_TAXABLE}]
@@ -4095,7 +4096,7 @@ class Report1GUI(GUIBase):
         """@brief Called when the add to other income table button is selected."""
         self._button_selected = Report1GUI.ADD_OTHER_INCOME_BUTTON
         self._amount_taxable_field.visible = True
-        self._repeat_until_end_field.value = False
+        self._repeat_until_end_field.value = True
         self._add_row_dialog.open()
 
     def _del_other_income(self):
@@ -4352,7 +4353,9 @@ class Report1GUI(GUIBase):
     def _add_pension_withdrawal(self):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = Report1GUI.ADD_PENSION_WITHDRAWAL_BUTTON
-        self._amount_taxable_field.visible = True
+         #Pension income is taxable, don't allow user to deselect it
+        self._amount_taxable_field.value = True
+        self._amount_taxable_field.visible = False
         self._repeat_until_end_field.value = False
         self._add_row_dialog.open()
 
@@ -4739,7 +4742,7 @@ class Report1GUI(GUIBase):
 
         except Exception as ex:
             traceback.print_tb(ex.__traceback__)
-            print(ex)
+            print(str(ex))
             self._show_negative_notify_msg(str(ex))
 
     def _create_charts(self):
@@ -4816,172 +4819,202 @@ class Report1GUI(GUIBase):
                                                     pension_table_df,
                                                     savings_table_df]
 
-    def _get_income(self, table_list):
+    def _get_income(self, table_df_list):
 
         taxable_df_list = []
         non_taxable_df_list = []
-        for table_row_dict in table_list:
-            if len(table_row_dict) == 0:
+        for table_df in table_df_list:
+
+            if len(table_df) == 0:
                 raise Exception("All three tables must have at least one entry. Also there must be at least one pension defined in the pensions tab.")
-            table_df = pd.DataFrame(table_row_dict)
-            table_df['Date'] = pd.to_datetime(table_df['Date'], format='%d-%m-%Y')
+
             taxable_df = table_df[table_df['Taxable']].copy()
             nontaxable_df = table_df[~table_df['Taxable']].copy()
             taxable_df_list.append(taxable_df)
             non_taxable_df_list.append(nontaxable_df)
 
-        # 🔹 Step 1: combine all into one dataframe
+        # Combine all into one dataframe
         taxable_df = pd.concat(taxable_df_list, ignore_index=True)
         nontaxable_df = pd.concat(non_taxable_df_list, ignore_index=True)
 
-        # 🔹 Step 2: floor each date to the first day of its month
+        # Floor each date to the first day of its month
         taxable_df['Date'] = taxable_df['Date'].dt.to_period('M').dt.to_timestamp()
         nontaxable_df['Date'] = nontaxable_df['Date'].dt.to_period('M').dt.to_timestamp()
 
-        # 🔹 Step 3: group by Month and sum the Amounts
+        # Group by Month and sum the Amounts
         taxable_df = taxable_df.groupby('Date', as_index=False)['Amount'].sum()
         nontaxable_df = nontaxable_df.groupby('Date', as_index=False)['Amount'].sum()
 
-        # 🔹 Step 4: Rename columns
+        # Rename columns
         taxable_df.columns = ['Date', 'Taxable Amount']
-        nontaxable_df.columns = ['Date', 'Untaxable Amount']
-
+        nontaxable_df.columns = ['Date', 'Nontaxable Amount']
+        # Merge the two tables
         income_table_df = pd.merge(taxable_df, nontaxable_df, on='Date', how='outer')
-        income_table_df['Taxable Amount+Untaxable Amount'] = income_table_df['Taxable Amount'] + income_table_df['Untaxable Amount']
+        # Set NaN values to 0
+        income_table_df['Taxable Amount'] = income_table_df['Taxable Amount'].fillna(0)
+        income_table_df['Nontaxable Amount'] = income_table_df['Nontaxable Amount'].fillna(0)
+        # Calc total col
+        income_table_df['Total Amount'] = income_table_df['Taxable Amount'] + income_table_df['Nontaxable Amount']
 
         return income_table_df
 
-    def _add_plot_pane_2_data(self, result_dict, monthly_datetime_list, report_start_date):
-        """@brief Add the data needed for the traces in plot pane 2 (second one down from the top)."""
+    def _get_partner_state_pension_df(self, monthly_datetime_list, report_start_date):
+        """@brief Get details of partners state pension including any tax to pay.
+                  This assumes that the state pension is the only partners income. If not then
+                  they should be treated separatley as it would get to complicated to create a
+                  tool to mix two peoples finances including tax."""
         # Convert my pension to the same format as the other tables
+        partner_state_pension_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, False), columns=['Date', 'Amount'])
+        # Convert Date str instance to datetime instance
+        partner_state_pension_df['Date'] = pd.to_datetime(partner_state_pension_df['Date'], format='%d-%m-%Y')
+        # Add taxable column
+        partner_state_pension_df['Taxable'] = True
+        # Change column name so that they remain when merged
+        partner_state_pension_df['Taxable Amount'] = partner_state_pension_df['Amount']
+        # Delete Amount column as it's a duplicate of the
+        partner_state_pension_df = partner_state_pension_df.drop(columns=['Amount'])
+        # Add a tax year column
+        partner_state_pension_df[['TaxYearStart', 'TaxYearStop', 'TaxYear']] = pd.DataFrame(partner_state_pension_df['Date'].apply(self._get_uk_tax_year).tolist(), index=partner_state_pension_df.index)
+        # Group by tax year and sum the Taxable Amounts
+        partner_tax_year_df = partner_state_pension_df.groupby('TaxYear', as_index=False)['Taxable Amount'].sum()
+        # Add amount after tax column
+        partner_tax_year_df['Yearly Tax Amount'] = partner_tax_year_df.apply(self._get_yearly_tax_to_pay_by_partner, axis=1)
+        # Add tax to pay colummn
+        partner_state_pension_df['TaxToPay'] = partner_state_pension_df.apply(self._get_monthly_tax_to_pay, tax_year_df=partner_tax_year_df, axis=1)
+        # Add net amount column
+        partner_state_pension_df['NetAmount'] = partner_state_pension_df['Taxable Amount'] - partner_state_pension_df['TaxToPay']
+
+        return partner_state_pension_df
+
+    def _get_my_df_list(self, monthly_datetime_list, report_start_date):
+        my_personal_pension_drawdrown_df = pd.DataFrame(self._pension_withdrawals_table.rows)
+        # Convert Date str instance to datetime instance
+        my_personal_pension_drawdrown_df['Date'] = pd.to_datetime(my_personal_pension_drawdrown_df['Date'], format='%d-%m-%Y')
+
+        my_other_income_df = pd.DataFrame(self._other_income_table.rows)
+        # Convert Date str instance to datetime instance
+        my_other_income_df['Date'] = pd.to_datetime(my_other_income_df['Date'], format='%d-%m-%Y')
+
+        my_savings_withdrawal_df = pd.DataFrame(self._savings_withdrawals_table.rows)
+        # Convert Date str instance to datetime instance
+        my_savings_withdrawal_df['Date'] = pd.to_datetime(my_savings_withdrawal_df['Date'], format='%d-%m-%Y')
+
         my_state_pension_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, True), columns=['Date', 'Amount'])
+        # Convert Date str instance to datetime instance
+        my_state_pension_df['Date'] = pd.to_datetime(my_state_pension_df['Date'], format='%d-%m-%Y')
         my_state_pension_df['Taxable'] = True
-        my_income_df = self._get_income([self._pension_withdrawals_table.rows,
-                                         self._other_income_table.rows,
-                                         self._savings_withdrawals_table.rows,
-                                         my_state_pension_df])
+
+        my_tax_df = self._get_income([my_personal_pension_drawdrown_df,
+                                      my_other_income_df,
+                                      my_savings_withdrawal_df,
+                                      my_state_pension_df])
+
+        my_state_pension_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, True), columns=['Date', 'Amount'])
+        # Convert Date str instance to datetime instance
+        my_state_pension_df['Date'] = pd.to_datetime(my_state_pension_df['Date'], format='%d-%m-%Y')
+        my_state_pension_df['Taxable'] = True
+
+        my_personal_pension_drawdrown_df = pd.DataFrame(self._pension_withdrawals_table.rows)
+        # Convert Date str instance to datetime instance
+        my_personal_pension_drawdrown_df['Date'] = pd.to_datetime(my_personal_pension_drawdrown_df['Date'], format='%d-%m-%Y')
+
+        my_other_income_df = pd.DataFrame(self._other_income_table.rows)
+        # Convert Date str instance to datetime instance
+        my_other_income_df['Date'] = pd.to_datetime(my_other_income_df['Date'], format='%d-%m-%Y')
+
+        my_savings_withdrawal_df = pd.DataFrame(self._savings_withdrawals_table.rows)
+        # Convert Date str instance to datetime instance
+        my_savings_withdrawal_df['Date'] = pd.to_datetime(my_savings_withdrawal_df['Date'], format='%d-%m-%Y')
+
+        my_tax_df = self._get_income([my_state_pension_df,
+                                      my_personal_pension_drawdrown_df,
+                                      my_other_income_df,
+                                      my_savings_withdrawal_df])
 
         # Add a tax year column
-        my_income_df[['TaxYearStart', 'TaxYearStop', 'TaxYear']] = pd.DataFrame(my_income_df['Date'].apply(self._get_uk_tax_year).tolist(), index=my_income_df.index)
+        my_tax_df[['TaxYearStart', 'TaxYearStop', 'TaxYear']] = pd.DataFrame(my_tax_df['Date'].apply(self._get_uk_tax_year).tolist(), index=my_tax_df.index)
 
         # Group by tax year and sum the Taxable Amounts
-        tax_year_df = my_income_df.groupby('TaxYear', as_index=False)['Taxable Amount'].sum()
+        tax_year_df = my_tax_df.groupby('TaxYear', as_index=False)['Taxable Amount'].sum()
 
         # Add amount after tax column
         tax_year_df['Yearly Tax Amount'] = tax_year_df.apply(self._get_yearly_tax_to_pay_by_me, axis=1)
 
-        my_income_df['TaxToPay'] = my_income_df.apply(self._get_monthly_tax_to_pay, tax_year_df=tax_year_df, axis=1)
+        my_tax_df['TaxToPay'] = my_tax_df.apply(self._get_monthly_tax_to_pay, tax_year_df=tax_year_df, axis=1)
 
-        my_income_df['TaxedAmount'] = my_income_df['Taxable Amount'] - my_income_df['TaxToPay']
+        my_tax_df['NetAmount'] = my_tax_df['Taxable Amount'] - my_tax_df['TaxToPay']
 
-        my_income_df['Net Income'] = my_income_df['Untaxable Amount'] + my_income_df['TaxedAmount']
+        return (my_state_pension_df,
+                my_personal_pension_drawdrown_df,
+                my_other_income_df,
+                my_savings_withdrawal_df,
+                my_tax_df)
 
-        # Debug to print pandas dataframe contents
-        # for _, row in my_income_df.iterrows():
-        #    print("PJA: my_income_df: ", row)
+    def _add_plot_pane_2_data(self, result_dict, monthly_datetime_list, report_start_date):
+        """@brief Add the data needed for the traces in plot pane 2 (second one down from the top)."""
 
-        # my_income_df:
-        # Date                               2025-01-01 00:00:00
-        # Taxable Amount                                     1.0
-        # Untaxable Amount                                   1.0
-        # Taxable Amount+Untaxable Amount                    1.0
-        # TaxYearStart                       2024-04-06 00:00:00
-        # TaxYearStop                        2025-04-05 00:00:00
-        # TaxYear                                      2024-2025
-        # TaxToPay                                           1.0
-        # TaxedAmount                                        1.0
-        # Net Income                                         1.0
+        partner_state_pension_df = self._get_partner_state_pension_df(monthly_datetime_list, report_start_date)
 
-        # Now the same again for partner income (only source is state pension)
-        partner_income_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, False), columns=['Date', 'Amount'])
-        # Convert Date str instance to datetime instance
-        partner_income_df['Date'] = pd.to_datetime(partner_income_df['Date'], format='%d-%m-%Y')
-        # Rename the columns
-        partner_income_df = partner_income_df.rename(columns={'Amount': 'Taxable Amount'})
+        my_state_pension_df, \
+        my_personal_pension_drawdrown_df, \
+        my_other_income_df, \
+        my_savings_withdrawal_df, \
+        my_tax_df = self._get_my_df_list(monthly_datetime_list, report_start_date)
 
-        # Add a tax year column
-        partner_income_df[['TaxYearStart', 'TaxYearStop', 'TaxYear']] = pd.DataFrame(partner_income_df['Date'].apply(self._get_uk_tax_year).tolist(), index=partner_income_df.index)
+        # Merge tables. We have commong names for columns in both tables.
+        # pd.merge adds _x to to my_tax_df columns and _y to partner_state_pension_df columns
+        joint_table_df = pd.merge(my_tax_df, partner_state_pension_df, on='Date', how='outer')
+        # Get the total (gross) amount from all sources (personal pension, other income, savings and both state pensions)
+        joint_table_df['Gross Amount'] = joint_table_df['Total Amount'] + joint_table_df['Taxable Amount_y']
+        joint_table_df['Total Tax To Pay'] = joint_table_df['TaxToPay_x'] + joint_table_df['TaxToPay_y']
+        joint_table_df['Net Amount'] = joint_table_df['NetAmount_x'] + joint_table_df['NetAmount_y'] + joint_table_df['Nontaxable Amount']
 
-        # Group by tax year and sum the Taxable Amounts
-        partner_tax_year_df = partner_income_df.groupby('TaxYear', as_index=False)['Taxable Amount'].sum()
-
-        # Add amount after tax column
-        partner_tax_year_df['Yearly Tax Amount'] = partner_tax_year_df.apply(self._get_yearly_tax_to_pay_by_partner, axis=1)
-
-        partner_income_df['TaxToPay'] = partner_income_df.apply(self._get_monthly_tax_to_pay, tax_year_df=partner_tax_year_df, axis=1)
-
-        partner_income_df['TaxedAmount'] = partner_income_df['Taxable Amount'] - partner_income_df['TaxToPay']
-
-        # Give the same name as my_income_df
-        partner_income_df['Net Income'] = partner_income_df['TaxedAmount']
-
-        # merge our two incomes
-        our_income_df = my_income_df
-        our_income_df['Partner Taxable Amount'] = partner_income_df['Taxable Amount']
-        our_income_df['Partner TaxToPay'] = partner_income_df['TaxToPay']
-        our_income_df['Partner Net Income'] = partner_income_df['Net Income']
-        our_income_df['Joint Net Income'] = my_income_df['Net Income'] + partner_income_df['Net Income']
-        # As partner income is only state pension which is taxed this only comprises my untaxed income
-        our_income_df['Joint Untaxed Income'] = my_income_df['Untaxable Amount']
-        # As partner income is only state pension which is taxed this only comprises my untaxed income
-        our_income_df['Joint Taxable Income'] = my_income_df['Taxable Amount'] + partner_income_df['Taxable Amount']
-        our_income_df['Joint State Pension'] = my_state_pension_df['Amount'] + partner_income_df['Taxable Amount']
         monthly_spending_table_df = self._get_actual_monthly_spending_table(report_start_date)
-        our_income_df['Actual Monthly Spending'] = monthly_spending_table_df['Amount']
-        our_income_df['Yearly Average Actual monthly Spending'] = monthly_spending_table_df['Yearly Average']
+        monthly_spending_table_df['Actual Monthly Spending'] = monthly_spending_table_df['Amount']
+        monthly_spending_table_df['Average Actual monthly Spending'] = monthly_spending_table_df['Yearly Average']
 
-        # Remove NaN entries
-        our_income_df['Net Income'] = our_income_df['Net Income'].fillna(0)
-        our_income_df['Joint Net Income'] = our_income_df['Joint Net Income'].fillna(0)
-        our_income_df['Joint Untaxed Income'] = our_income_df['Joint Untaxed Income'].fillna(0)
-        our_income_df['Actual Monthly Spending'] = our_income_df['Actual Monthly Spending'].fillna(0)
-        our_income_df['Yearly Average Actual monthly Spending'] = our_income_df['Yearly Average Actual monthly Spending'].fillna(0)
+        # Merge both out state pension tables.
+        joint_state_pension_table_df = pd.merge(my_state_pension_df, partner_state_pension_df, on='Date', how='outer')
+        # Make a new column that is the total of my and my partners state pension before tax
+        joint_state_pension_table_df['Joint State Pension Total'] = joint_state_pension_table_df['Amount'] + joint_state_pension_table_df['Taxable Amount']
+        # Make new columns with a better names
+        my_personal_pension_drawdrown_df['Personal Pension Withdrawal'] = my_personal_pension_drawdrown_df['Amount']
+        my_savings_withdrawal_df['Savings Withdrawal'] = my_savings_withdrawal_df['Amount']
+        my_other_income_df['Other Income'] = my_other_income_df['Amount']
+        joint_table_df['Gross Available Funds'] = joint_table_df['Gross Amount']
+        joint_table_df['Tax On Available Funds'] = joint_table_df['Total Tax To Pay']
+        joint_table_df['Net Available Funds'] = joint_table_df['Net Amount']
 
-        # Debug to print pandas dataframe contents
-        #        for _, row in our_income_df.iterrows():
-        #            print("PJA: our_income_df: ", row)
-
-        # our_income_df:
-        # Date                                      2025-06-01 00:00:00
-        # Taxable Amount                                            1.0
-        # Untaxable Amount                                          1.0
-        # Taxable Amount+Untaxable Amount                           1.0
-        # TaxYearStart                              2025-04-06 00:00:00
-        # TaxYearStop                               2026-04-05 00:00:00
-        # TaxYear                                             2025-2026
-        # TaxToPay                                                  1.0
-        # TaxedAmount                                               1.0
-        # Net Income                                                1.0
-        # Partner Taxable Amount                                    0.0
-        # Partner TaxToPay                                          0.0
-        # Partner Net Income                                        0.0
-        # Joint Net Income                                          1.0
-        # Joint Untaxed Income                                      1.0
-        # Joint Taxable Income                                      1.0
-        # Joint State Pension                                       0.0
-        # Actual Monthly Spending                                   1.0
-        # Yearly Average Actual monthly Spending                    1.0
+# DEBUG PJA
+#        for _, row in joint_table_df.iterrows():
+#            print("PJA: joint_table_df: ", row)
 
         plot_columns = ('Actual Monthly Spending',
-                        'Yearly Average Actual monthly Spending',
-                        'Joint Net Income',
-                        'Joint Untaxed Income',
-                        'Joint Taxable Income',
-                        'Joint State Pension')
-        line_types = ['solid', 'solid', 'dot', 'dot', 'dot', 'dot']
-        line_widths = [2, 3, 2, 2, 2, 3]
-        report_zero_value_list = [False] * len(plot_columns)
+                        'Average Actual monthly Spending',
+                        'Joint State Pension Total',
+                        'Personal Pension Withdrawal',
+                        'Savings Withdrawal',
+                        'Other Income',
+                        'Gross Available Funds',
+                        'Tax On Available Funds',
+                        'Net Available Funds')
+        line_types = ['solid', 'solid', 'dot', 'dot', 'dot', 'dot', 'dot', 'dot', 'dot']
+        line_widths = [3, 3, 2, 2, 2, 2, 2, 2, 2]
+        report_zero_value_list = [False, False, False, False, False, False, False, False, False]
 
         result_dict[Report1GUI.PLOT_PANE_2_LIST] = [plot_columns,
                                                     line_types,
                                                     line_widths,
                                                     report_zero_value_list,
-                                                    our_income_df,
-                                                    our_income_df,
-                                                    our_income_df,
-                                                    our_income_df,
-                                                    our_income_df,
-                                                    our_income_df]
+                                                    monthly_spending_table_df,
+                                                    monthly_spending_table_df,
+                                                    joint_state_pension_table_df,
+                                                    my_personal_pension_drawdrown_df,
+                                                    my_savings_withdrawal_df,
+                                                    my_other_income_df,
+                                                    joint_table_df,
+                                                    joint_table_df,
+                                                    joint_table_df]
 
     def _add_plot_pane_3_data(self, result_dict, monthly_datetime_list, report_start_date):
         """@brief Add the data needed for the traces in plot pane 3 (second one down from the top)."""
@@ -5011,13 +5044,13 @@ class Report1GUI(GUIBase):
         savings_withdrawal_table_df[Report1GUI.DATE] = pd.to_datetime(savings_withdrawal_table_df[Report1GUI.DATE], format='%d-%m-%Y')
         savings_withdrawal_table_df['Savings Withdrawals'] = savings_withdrawal_table_df['Amount']
         savings_withdrawal_table_df['Savings Withdrawals'] = savings_withdrawal_table_df['Savings Withdrawals'].fillna(0)
-        savings_withdrawal_table_df = savings_withdrawal_table_df.resample('M', on='Date')['Savings Withdrawals'].sum().reset_index()
+        savings_withdrawal_table_df = savings_withdrawal_table_df.resample('ME', on='Date')['Savings Withdrawals'].sum().reset_index()
 
         pensions_withdrawal_table_df = pd.DataFrame(self._pension_withdrawals_table.rows, columns=[Report1GUI.DATE, 'Amount'])
         pensions_withdrawal_table_df[Report1GUI.DATE] = pd.to_datetime(pensions_withdrawal_table_df[Report1GUI.DATE], format='%d-%m-%Y')
         pensions_withdrawal_table_df['Pension Withdrawals'] = pensions_withdrawal_table_df['Amount']
         pensions_withdrawal_table_df['Pension Withdrawals'] = pensions_withdrawal_table_df['Pension Withdrawals'].fillna(0)
-        pensions_withdrawal_table_df = pensions_withdrawal_table_df.resample('M', on='Date')['Pension Withdrawals'].sum().reset_index()
+        pensions_withdrawal_table_df = pensions_withdrawal_table_df.resample('ME', on='Date')['Pension Withdrawals'].sum().reset_index()
 
         plot_columns = ('Savings Withdrawals',
                         'Pension Withdrawals')
@@ -5403,11 +5436,11 @@ class Report1GUI(GUIBase):
 
             if PensionGUI.PENSION_OWNER in pension_dict:
                 this_pension_owner = pension_dict[PensionGUI.PENSION_OWNER]
-                if this_pension_owner == owner_name and state_pension:
+                if owner_name == this_pension_owner and state_pension:
                     if PensionGUI.STATE_PENSION_START_DATE in pension_dict:
                         try:
                             start_state_pension_date = datetime.strptime(pension_dict[PensionGUI.STATE_PENSION_START_DATE], '%d-%m-%Y')
-                            if start_state_pension_date >= tax_year_start_dt:
+                            if tax_year_start_dt >= start_state_pension_date:
                                 receiving_state_pension = True
                         except Exception:
                             ui.notify(f"Error reading {owner_name}'s state pension state date. Check it's entered correctly under Pensions.")
