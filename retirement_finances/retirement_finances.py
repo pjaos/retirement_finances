@@ -601,6 +601,8 @@ class GUIBase(object):
     def _table_rowclick(self, table, event):
         """@brief Allow the user to select the first row in the table, then the last
                   row while holding down the shift key to select all rows in between."""
+        if not hasattr(self, "_last_selected_row_dict"):
+            self._last_selected_row_dict = None
         shift_down = event.args[0]['shiftKey']
         selected_row_dict = event.args[1]
         select_row = False
@@ -1294,6 +1296,7 @@ class Finances(GUIBase):
                                                      rows=[],
                                                      row_key=Finances.MONTHLY_SPEND_DATE,
                                                      selection='single').classes('h-96').props('virtual-scroll')
+                self._monthly_spend_table.on('rowClick', self._monthly_spend_table_rowclick)
                 self._show_monthly_spending_list()
 
             monthly_spending_dict = self._get_monthly_spending_dict()
@@ -1311,6 +1314,9 @@ class Finances(GUIBase):
                 'Delete from monthly spending table')
             ui.button('Edit', on_click=lambda: self._edit_monthly_spending()
                       ).tooltip('Edit monthly spending table')
+
+    def _monthly_spend_table_rowclick(self, event):
+        self._table_rowclick(self._monthly_spend_table, event)
 
     def _monthly_spend_notes_keypress(self, event):
         """@brief Called every time the user presses a key in the notes field to
@@ -1685,6 +1691,7 @@ class BankAccountGUI(GUIBase):
                                                    rows=[],
                                                    row_key=BankAccountGUI.DATE,
                                                    selection='single')
+                self._bank_acount_table.on('rowClick', self._bank_acount_table_rowclick)
 
                 self._display_table_rows()
 
@@ -1708,6 +1715,9 @@ class BankAccountGUI(GUIBase):
                                          bank_account_interest_type_field,
                                          bank_active_checkbox,
                                          bank_notes_field]
+
+    def _bank_acount_table_rowclick(self, event):
+        self._table_rowclick(self._bank_acount_table, event)
 
     def _save_button_selected(self):
         """@brief Called when the back button is selected."""
@@ -1921,6 +1931,7 @@ class PensionGUI(GUIBase):
                                                rows=[],
                                                row_key=PensionGUI.DATE,
                                                selection='single')
+                self._pension_table.on('rowClick', self._pension_table_rowclick)
 
         self._update_gui_from_pension()
 
@@ -1933,6 +1944,9 @@ class PensionGUI(GUIBase):
         with ui.row():
             ui.button("Save", on_click=self._save_button_selected).tooltip("Save the pension details.")
             ui.button("Back", on_click=lambda: ui.navigate.back()).tooltip("Go back to previous window.")
+
+    def _pension_table_rowclick(self, event):
+        self._table_rowclick(self._pension_table, event)
 
     def _save_button_selected(self):
         """@brief Called when the back button is selected."""
@@ -2328,6 +2342,7 @@ class FuturePlotGUI(GUIBase):
                                                                rows=[],
                                                                row_key=FuturePlotGUI.DATE,
                                                                selection='multiple')
+                    self._savings_withdrawals_table.on('rowClick', self._savings_withdrawals_table_rowclick)
                     self._savings_withdrawals_table.on('row-dblclick', self._on_savings_withdrawal_table_double_click)
 
                     with ui.row():
@@ -2346,6 +2361,7 @@ class FuturePlotGUI(GUIBase):
                                                                rows=[],
                                                                row_key=FuturePlotGUI.DATE,
                                                                selection='multiple')
+                    self._pension_withdrawals_table.on('rowClick', self._pension_withdrawals_table_rowclick)
                     self._pension_withdrawals_table.on('row-dblclick', self._on_pension_withdrawal_table_double_click)
 
                     with ui.row():
@@ -2389,6 +2405,12 @@ class FuturePlotGUI(GUIBase):
 
         self._update_gui_from_dict()
         self._load_settings(retirement_predictions_settings_name)
+
+    def _savings_withdrawals_table_rowclick(self, event):
+        self._table_rowclick(self._savings_withdrawals_table, event)
+
+    def _pension_withdrawals_table_rowclick(self, event):
+        self._table_rowclick(self._pension_withdrawals_table, event)
 
     def _init_ok_to_delete_dialog(self):
         """@brief Create a dialog presented to the user to check that they wish to delete a retirement prediction parameter set."""
@@ -3855,7 +3877,6 @@ class Report1GUI(GUIBase):
         self._init_gui()
         self._report_start_date = None
         self._withdrawal_edit_table = None
-        self._last_selected_row_dict = None
 
     def _ensure_keys_present(self):
         """@brief Ensure the required keys are present in the config dict that relate to the future plot attrs.
