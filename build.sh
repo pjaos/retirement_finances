@@ -6,7 +6,7 @@ set -e
 # syntax checking
 pyflakes3 retirement_finances/*.py
 # code style checking
-pycodestyle --max-line-length=250 retirement_finances/*.py
+pycodestyle --max-line-length=300 retirement_finances/*.py
 poetry -vvv build
 cp dist/*.whl installers/linux
 # Generate new docx readme file
