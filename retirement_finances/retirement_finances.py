@@ -11,6 +11,7 @@ import zipfile
 import sys
 import subprocess
 import threading
+import tempfile
 
 from queue import Queue
 
@@ -605,6 +606,14 @@ class Finances(GUIBase):
     MY_NAME_FIELD = "My Name"
     PARTNER_NAME_FIELD = "Partner Name"
 
+    @staticmethod
+    def GetExampleFolder():
+        """@brief Get the folder to be used for example data."""
+        temp_dir = os.path.join(tempfile.gettempdir(), "retirement_finances_example_data")
+        if not os.path.isdir(temp_dir):
+            os.makedirs(temp_dir)
+        return temp_dir
+
     def __init__(self, uio, password, folder, example_data=False):
         super().__init__()
         self._uio = uio
@@ -615,6 +624,9 @@ class Finances(GUIBase):
         self._monthly_spend_table = None
         self._first_password = None
         self._authenticated_password = None
+        if example_data:
+            self._folder = Finances.GetExampleFolder()
+
         self._config = Config(self._folder,
                               show_load_save_notifications=self._uio.isDebugEnabled(),
                               example_data=example_data)
