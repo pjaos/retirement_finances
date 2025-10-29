@@ -2512,6 +2512,7 @@ class FuturePlotGUI(GUIBase):
         """@brief Create a dialog presented to the user to edit a withdrawal rows in the savings or pension tables."""
         with ui.dialog() as self._edit_row_dialog, ui.card().style('width: 600px;'):
             self._edit_date_input_field = GUIBase.GetInputDateField(FuturePlotGUI.DATE)
+            self._edit_date_input_field.disable()
             self._edit_amount_field = ui.number(label=FuturePlotGUI.AMOUNT)
             self._edit_info_field = ui.input(label=FuturePlotGUI.INFO).style('width: 500px;')
             self._edit_info_field.tooltip("You may add information here. E.G what the withdrawal was for.")
@@ -4139,6 +4140,7 @@ class Report1GUI(GUIBase):
         """@brief Create a dialog presented to the user to edit a withdrawal rows in the savings or pension tables."""
         with ui.dialog() as self._edit_row_dialog, ui.card().style('width: 600px;'):
             self._edit_date_input_field = GUIBase.GetInputDateField(Report1GUI.DATE)
+            self._edit_date_input_field.disable()
             with ui.row():
                 self._edit_amount_field = ui.number(label=Report1GUI.AMOUNT)
                 self._edit_amount_taxable_field = ui.checkbox('Taxable').tooltip("This should be checked if this amount is taxable.")
