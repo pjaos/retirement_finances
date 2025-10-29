@@ -2461,6 +2461,7 @@ class FuturePlotGUI(GUIBase):
             self._config.save_multiple_future_plot_attrs()
             # Clear the new name field
             self._new_settings_name_input.value = ""
+            ui.notify(f"Saved '{self._settings_name_select.value}'")
 
     def _load_settings(self, selected_settings_name):
         """@brief Load the prediction parameters.
@@ -2687,7 +2688,7 @@ class FuturePlotGUI(GUIBase):
                     rows = self._get_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
                     if self._check_date_in_table(the_date, rows):
                         ui.notify(f"{the_date} is already in the table.", type='negative')
-                        return
+                        break
 
                     else:
                         rows.append(row)
@@ -2699,7 +2700,7 @@ class FuturePlotGUI(GUIBase):
                     rows = self._get_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
                     if self._check_date_in_table(the_date, rows):
                         ui.notify(f"{the_date} is already in the table.", type='negative')
-                        return
+                        break
 
                     else:
                         rows.append(row)
@@ -3946,7 +3947,7 @@ class Report1GUI(GUIBase):
             ui.label(self.page_title).style('font-size: 32px; font-weight: bold;')
 
         with ui.row():
-            ui.label("The following parameters can be changed to alter the prediction.")
+            ui.label("The following parameters can be changed to alter the prediction. The tables below define all the money you will use to meeting your monthly requirements. You must add rows to these tables to define where and when you wish to take the money from.")
 
         with ui.row():
             with ui.column():
@@ -4314,6 +4315,8 @@ class Report1GUI(GUIBase):
             raise Exception("{self._withdrawal_edit_table} is an unknown table.")
 
         selected_dict_list = withdrawal_table.selected
+        # PJA DEBUG
+        print(f"PJA: selected_dict_list={selected_dict_list}")
         if len(selected_dict_list) == 0:
             self._show_negative_notify_msg("No row is selected.")
 
@@ -4353,7 +4356,7 @@ class Report1GUI(GUIBase):
     def _add_pension_withdrawal(self):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = Report1GUI.ADD_PENSION_WITHDRAWAL_BUTTON
-         #Pension income is taxable, don't allow user to deselect it
+        # Pension income is taxable, don't allow user to deselect it
         self._amount_taxable_field.value = True
         self._amount_taxable_field.visible = False
         self._repeat_until_end_field.value = False
@@ -4455,6 +4458,7 @@ class Report1GUI(GUIBase):
             self._config.save_multiple_report1_plot_attrs()
             # Clear the new name field
             self._new_settings_name_input.value = ""
+            ui.notify(f"Saved '{self._settings_name_select.value}'")
 
     def _init_add_row_dialog(self):
         """@brief Create a dialog presented to the user to add a withdrawal from the savings or pension tables."""
@@ -4589,7 +4593,7 @@ class Report1GUI(GUIBase):
                     rows = self._get_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE)
                     if self._check_date_in_table(the_date, rows):
                         self._show_negative_notify_msg(f"{the_date} is already in the table.")
-                        return
+                        break
 
                     else:
                         rows.append(row)
@@ -4601,7 +4605,7 @@ class Report1GUI(GUIBase):
                     rows = self._get_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE)
                     if self._check_date_in_table(the_date, rows):
                         self._show_negative_notify_msg(f"{the_date} is already in the table.")
-                        return
+                        break
 
                     else:
                         rows.append(row)
@@ -4613,7 +4617,7 @@ class Report1GUI(GUIBase):
                     rows = self._get_param_value(Report1GUI.OTHER_INCOME_TABLE)
                     if self._check_date_in_table(the_date, rows):
                         self._show_negative_notify_msg(f"{the_date} is already in the table.")
-                        return
+                        break
 
                     else:
                         rows.append(row)
@@ -4820,7 +4824,6 @@ class Report1GUI(GUIBase):
                                                     savings_table_df]
 
     def _get_income(self, table_df_list):
-
         taxable_df_list = []
         non_taxable_df_list = []
         for table_df in table_df_list:
@@ -4830,8 +4833,12 @@ class Report1GUI(GUIBase):
 
             taxable_df = table_df[table_df['Taxable']].copy()
             nontaxable_df = table_df[~table_df['Taxable']].copy()
-            taxable_df_list.append(taxable_df)
-            non_taxable_df_list.append(nontaxable_df)
+
+            if taxable_df is not None and len(taxable_df) > 0:
+                taxable_df_list.append(taxable_df)
+
+            if nontaxable_df is not None and len(nontaxable_df) > 0:
+                non_taxable_df_list.append(nontaxable_df)
 
         # Combine all into one dataframe
         taxable_df = pd.concat(taxable_df_list, ignore_index=True)
@@ -4888,18 +4895,26 @@ class Report1GUI(GUIBase):
 
     def _get_my_df_list(self, monthly_datetime_list, report_start_date):
         my_personal_pension_drawdrown_df = pd.DataFrame(self._pension_withdrawals_table.rows)
+        if len(my_personal_pension_drawdrown_df) == 0:
+            raise Exception("The Pension withdrawals table must have at least one entry. This can be of any, amount including 0.")
         # Convert Date str instance to datetime instance
         my_personal_pension_drawdrown_df['Date'] = pd.to_datetime(my_personal_pension_drawdrown_df['Date'], format='%d-%m-%Y')
 
         my_other_income_df = pd.DataFrame(self._other_income_table.rows)
+        if len(my_other_income_df) == 0:
+            raise Exception("The Other income table must have at least one entry. This can be of any amount, including 0.")
         # Convert Date str instance to datetime instance
         my_other_income_df['Date'] = pd.to_datetime(my_other_income_df['Date'], format='%d-%m-%Y')
 
         my_savings_withdrawal_df = pd.DataFrame(self._savings_withdrawals_table.rows)
+        if len(my_savings_withdrawal_df) == 0:
+            raise Exception("The savings withdrawals table must have at least one entry. This can be of any amount, including 0.")
         # Convert Date str instance to datetime instance
         my_savings_withdrawal_df['Date'] = pd.to_datetime(my_savings_withdrawal_df['Date'], format='%d-%m-%Y')
 
         my_state_pension_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, True), columns=['Date', 'Amount'])
+        if len(my_state_pension_df) == 0:
+            raise Exception("You must have your state pension defined in the Pensions tab.")
         # Convert Date str instance to datetime instance
         my_state_pension_df['Date'] = pd.to_datetime(my_state_pension_df['Date'], format='%d-%m-%Y')
         my_state_pension_df['Taxable'] = True
@@ -4908,28 +4923,6 @@ class Report1GUI(GUIBase):
                                       my_other_income_df,
                                       my_savings_withdrawal_df,
                                       my_state_pension_df])
-
-        my_state_pension_df = pd.DataFrame(self._get_predicted_state_pension(monthly_datetime_list, report_start_date, True), columns=['Date', 'Amount'])
-        # Convert Date str instance to datetime instance
-        my_state_pension_df['Date'] = pd.to_datetime(my_state_pension_df['Date'], format='%d-%m-%Y')
-        my_state_pension_df['Taxable'] = True
-
-        my_personal_pension_drawdrown_df = pd.DataFrame(self._pension_withdrawals_table.rows)
-        # Convert Date str instance to datetime instance
-        my_personal_pension_drawdrown_df['Date'] = pd.to_datetime(my_personal_pension_drawdrown_df['Date'], format='%d-%m-%Y')
-
-        my_other_income_df = pd.DataFrame(self._other_income_table.rows)
-        # Convert Date str instance to datetime instance
-        my_other_income_df['Date'] = pd.to_datetime(my_other_income_df['Date'], format='%d-%m-%Y')
-
-        my_savings_withdrawal_df = pd.DataFrame(self._savings_withdrawals_table.rows)
-        # Convert Date str instance to datetime instance
-        my_savings_withdrawal_df['Date'] = pd.to_datetime(my_savings_withdrawal_df['Date'], format='%d-%m-%Y')
-
-        my_tax_df = self._get_income([my_state_pension_df,
-                                      my_personal_pension_drawdrown_df,
-                                      my_other_income_df,
-                                      my_savings_withdrawal_df])
 
         # Add a tax year column
         my_tax_df[['TaxYearStart', 'TaxYearStop', 'TaxYear']] = pd.DataFrame(my_tax_df['Date'].apply(self._get_uk_tax_year).tolist(), index=my_tax_df.index)
@@ -4956,10 +4949,10 @@ class Report1GUI(GUIBase):
         partner_state_pension_df = self._get_partner_state_pension_df(monthly_datetime_list, report_start_date)
 
         my_state_pension_df, \
-        my_personal_pension_drawdrown_df, \
-        my_other_income_df, \
-        my_savings_withdrawal_df, \
-        my_tax_df = self._get_my_df_list(monthly_datetime_list, report_start_date)
+            my_personal_pension_drawdrown_df, \
+            my_other_income_df, \
+            my_savings_withdrawal_df, \
+            my_tax_df = self._get_my_df_list(monthly_datetime_list, report_start_date)
 
         # Merge tables. We have commong names for columns in both tables.
         # pd.merge adds _x to to my_tax_df columns and _y to partner_state_pension_df columns
@@ -5052,8 +5045,8 @@ class Report1GUI(GUIBase):
         pensions_withdrawal_table_df['Pension Withdrawals'] = pensions_withdrawal_table_df['Pension Withdrawals'].fillna(0)
         pensions_withdrawal_table_df = pensions_withdrawal_table_df.resample('ME', on='Date')['Pension Withdrawals'].sum().reset_index()
 
-        plot_columns = ('Savings Withdrawals',
-                        'Pension Withdrawals')
+        plot_columns = ('Pension Withdrawals',
+                        'Savings Withdrawals')
         line_types = ['dot', 'dot']
         line_widths = [2, 2]
         report_zero_value_list = [False, False]
@@ -5062,8 +5055,8 @@ class Report1GUI(GUIBase):
                                                     line_types,
                                                     line_widths,
                                                     report_zero_value_list,
-                                                    savings_withdrawal_table_df,
-                                                    pensions_withdrawal_table_df]
+                                                    pensions_withdrawal_table_df,
+                                                    savings_withdrawal_table_df]
 
     def _get_monthly_tax_to_pay(self, row, tax_year_df):
         """@brief given a row of taxable income, calc the tax to pay each month for the full 12 months of the year."""
@@ -5089,6 +5082,9 @@ class Report1GUI(GUIBase):
         result = HMRC.CalcNetPay(taxable_amount, receives_state_pension=receiving_state_pension)
         gross = result['gross_annual']
         net = result['net_annual']
+        # PJA DEBUG
+        # t2p = gross-net
+        # print(f"PJA: UK TAX: YEAR: {tax_year_str}, GROSS: £{round(gross,2)}, NET: £{round(net,2)} TAXTOPAY: £{round(t2p,2)}")
         yearly_tax_to_pay = 0
         if gross and net:
             yearly_tax_to_pay = gross - net
@@ -6253,7 +6249,7 @@ class Plot1GUI(GUIBase):
                       bar_chart=True,
                       final_year=self._final_year)
 
-        plot_names = ['Savings withdrawal', 'Pension withdrawal']
+        plot_names = ['Pension withdrawal', 'Savings withdrawal']
         plot_dict = {plot_names[0]: [],
                      plot_names[1]: []}
 
@@ -6262,8 +6258,8 @@ class Plot1GUI(GUIBase):
             savings_withdrawal = row[7]
             pensions_withdrawal = row[8]
 
-            plot_dict[plot_names[0]].append((_date, savings_withdrawal))
-            plot_dict[plot_names[1]].append((_date, pensions_withdrawal))
+            plot_dict[plot_names[0]].append((_date, pensions_withdrawal))
+            plot_dict[plot_names[1]].append((_date, savings_withdrawal))
 
         self._do_plot(plot_panel_4,
                       plot_dict,
