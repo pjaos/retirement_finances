@@ -1447,14 +1447,14 @@ sqlframe = ["sqlframe (>=3.22.0)"]
 
 [[package]]
 name = "nicegui"
-version = "2.21.1"
+version = "2.24.2"
 description = "Create web-based user interfaces with Python. The nice way."
 optional = false
 python-versions = "<4.0,>=3.8"
 groups = ["main"]
 files = [
-    {file = "nicegui-2.21.1-py3-none-any.whl", hash = "sha256:3c26b628b6384f859e2f6044fbc398b2b0c7fd0feb50a51ce72a233157f77d34"},
-    {file = "nicegui-2.21.1.tar.gz", hash = "sha256:1063ea5f6ba696a8240835ff635157a8af11470c7e12dd34bfb7620d0355a2bd"},
+    {file = "nicegui-2.24.2-py3-none-any.whl", hash = "sha256:9b810fe75f3dd1ff926e3d96d71e25031387fe5b7a21d32159a32611b8023423"},
+    {file = "nicegui-2.24.2.tar.gz", hash = "sha256:21e7620c99aeeb535665e81e45ef2f9eeda95f6a9e35cee542414a10bbe61b77"},
 ]
 
 [package.dependencies]
@@ -2355,14 +2355,14 @@ files = [
 
 [[package]]
 name = "python-socketio"
-version = "5.12.1"
+version = "5.14.2"
 description = "Socket.IO server and client for Python"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "python_socketio-5.12.1-py3-none-any.whl", hash = "sha256:24a0ea7cfff0e021eb28c68edbf7914ee4111bdf030b95e4d250c4dc9af7a386"},
-    {file = "python_socketio-5.12.1.tar.gz", hash = "sha256:0299ff1f470b676c09c1bfab1dead25405077d227b2c13cf217a34dadc68ba9c"},
+    {file = "python_socketio-5.14.2-py3-none-any.whl", hash = "sha256:d7133f040ac7ba540f9a907cb4c36d6c4d1d54eb35e482aad9d45c22fca10654"},
+    {file = "python_socketio-5.14.2.tar.gz", hash = "sha256:5da35caa04059048a4521b1378340a33a15439c6a748765046112fa0d145fb1b"},
 ]
 
 [package.dependencies]
@@ -2373,6 +2373,7 @@ python-engineio = ">=4.11.0"
 [package.extras]
 asyncio-client = ["aiohttp (>=3.4)"]
 client = ["requests (>=2.21.0)", "websocket-client (>=0.54.0)"]
+dev = ["tox"]
 docs = ["sphinx"]
 
 [[package]]
@@ -3002,4 +3003,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "34c5efcef73be632695e7a242b6708340b1d0bed84674dc4190971d29ff59ce8"
+content-hash = "f8264b49d333508322189444154f2a5d3ed622a7f2b9e65199cdf2e527ead79b"
