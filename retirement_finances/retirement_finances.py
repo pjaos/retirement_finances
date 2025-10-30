@@ -4097,7 +4097,7 @@ class Report1GUI(GUIBase):
     def _add_other_income(self):
         """@brief Called when the add to other income table button is selected."""
         self._button_selected = Report1GUI.ADD_OTHER_INCOME_BUTTON
-        self._amount_taxable_field.visible = True
+        self._amount_taxable_field.visible = True  # The user must be able to select this as only they will know if an amount is taxable.
         self._repeat_until_end_field.value = True
         self._add_row_dialog.open()
 
@@ -4275,7 +4275,7 @@ class Report1GUI(GUIBase):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = Report1GUI.ADD_SAVINGS_WITHDRAWAL_BUTTON
         self._amount_taxable_field.value = False
-        self._amount_taxable_field.visible = False
+        self._amount_taxable_field.visible = False  # As savings are never taxable, as far as I'm aware, don't give the user the ability to change it.
         self._repeat_until_end_field.value = False
         self._add_row_dialog.open()
 
@@ -4360,7 +4360,7 @@ class Report1GUI(GUIBase):
         self._button_selected = Report1GUI.ADD_PENSION_WITHDRAWAL_BUTTON
         # Pension income is taxable, don't allow user to deselect it
         self._amount_taxable_field.value = True
-        self._amount_taxable_field.visible = False
+        self._amount_taxable_field.visible = True  # We want this visible as it is possible to have a deduction from a personal pension that is not taxable when buying an annuity.
         self._repeat_until_end_field.value = False
         self._add_row_dialog.open()
 
