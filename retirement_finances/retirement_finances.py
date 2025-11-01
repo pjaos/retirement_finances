@@ -5511,8 +5511,12 @@ class Report1GUI(GUIBase):
             state_pension_start_date_str = pension_dict[PensionGUI.STATE_PENSION_START_DATE]
             state_pension_start_date = datetime.strptime(state_pension_start_date_str, '%d-%m-%Y')
             last_datetime = datetime_list[0]
-            # Get the initial state pension amount based on the start date for the calc
-            state_pension_amount = self._get_initial_value(date_value_table, initial_date=report_start_date)
+            # Get the initial state pension. We want the value as close (before) to the state pension state
+            # date as possible. The user may enter values after this date for their state pension as time passes
+            # but as we are predicting it's value we're interested in the value at the start date.
+            # If the user enters values after the pension start date these are ignored for predictive
+            # purposes.
+            state_pension_amount = self._get_initial_value(date_value_table, initial_date=state_pension_start_date)
             year_index = 0
             receiving_state_pension = False
             for this_datetime in datetime_list:
