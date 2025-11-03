@@ -4115,6 +4115,7 @@ class Report1GUI(GUIBase):
                         if date != del_date:
                             new_table.append(row)
                     self._set_param_value(Report1GUI.OTHER_INCOME_TABLE, new_table)
+        ui.notify(f"Deleted {len(selected_dict_list)} rows from the other income table.")
         self._update_gui_tables()
 
     def _edit_other_income(self):
@@ -4293,6 +4294,7 @@ class Report1GUI(GUIBase):
                         if date != del_date:
                             new_table.append(row)
                     self._set_param_value(Report1GUI.SAVINGS_WITHDRAWAL_TABLE, new_table)
+        ui.notify(f"Deleted {len(selected_dict_list)} rows from the savings withdrawal table.")
         self._update_gui_tables()
 
     def _edit_savings_withdrawal(self):
@@ -4378,6 +4380,7 @@ class Report1GUI(GUIBase):
                         if date != del_date:
                             new_table.append(row)
                     self._set_param_value(Report1GUI.PENSION_WITHDRAWAL_TABLE, new_table)
+        ui.notify(f"Deleted {len(selected_dict_list)} rows from the pension withdrawal table.")
         self._update_gui_tables()
 
     def _edit_pension_withdrawal(self):
@@ -4552,11 +4555,15 @@ class Report1GUI(GUIBase):
         return next_dt
 
     def _add_row_dialog_ok_button_press(self):
-        if Report1GUI.CheckZeroOrGreater(self._amount_field.value,
-                                         field_name=self._amount_field.props['label']) and \
-            Report1GUI.CheckZeroOrGreater(self._yearly_percentage_increase_field.value,
-                                          field_name=self._yearly_percentage_increase_field.props['label']) and \
-           Report1GUI.CheckValidDateString(self._date_input_field.value,
+        # We no longer check for zero of greater on these fields.
+        # self._amount_field
+        # We no longer check for zero or greater values because the user may wish to
+        # enter a negative withdrawal on savings which will add to savings.
+        # Somewhat convoluted but it may be useful in some circumstances.
+        #
+        # self._yearly_percentage_increase_field
+        # The user may want to enter -ve values for falls in the amount saved etc.
+        if Report1GUI.CheckValidDateString(self._date_input_field.value,
                                            field_name=self._date_input_field.props['label']) and \
            Report1GUI.CheckGreaterThanZero(self._repeat_count_field.value,
                                            field_name=self._repeat_count_field.props['label']):
