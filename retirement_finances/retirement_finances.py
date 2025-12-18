@@ -929,7 +929,7 @@ class Finances(GUIBase):
                                                rows=[],
                                                row_key=BankAccountGUI.ACCOUNT_NAME_LABEL,
                                                selection='single').style('text-align: left;')
-            # .classes('h-96').props('virtual-scroll')
+            self._bank_acount_table.on('row-dblclick', self._on_bank_acount_table_double_click)
 
         with ui.row():
             ui.button('Add', on_click=lambda: self._add_bank_account()
@@ -952,6 +952,18 @@ class Finances(GUIBase):
     def on_checkbox1_change(self, event):
         self._show_bank_account_list(show_only_active_accounts=self._show_only_active_accounts_checkbox.value,
                                      show_only_positive_balance_accounts=self._show_non_zero_balance_accounts_checkbox.value)
+
+    def _on_bank_acount_table_double_click(self, e):
+        """@brief called when the user double clicks on a bank account balance row."""
+        bank_account_dict = e.args[1]
+        _bank = bank_account_dict[BankAccountGUI.BANK]
+        _account_name = bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
+        selected_bank_account_index = self._get_bank_account_index_by_name(_bank, _account_name)
+        if selected_bank_account_index >= 0:
+            bank_account_dict_list = self._config.get_bank_accounts_dict_list()
+            bank_account_dict = bank_account_dict_list[selected_bank_account_index]
+            if bank_account_dict:
+                self._update_bank_account(False, bank_account_dict)
 
     def _init_dialog2(self):
         """@brief Create a dialog presented to the user to check that they wish to delete a bank account."""
@@ -1032,18 +1044,26 @@ class Finances(GUIBase):
             if selected_dict:
                 bank_name = selected_dict[BankAccountGUI.BANK]
                 account_name = selected_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
-                index = 0
-                found = False
-                for bank_account_dict in self._config.get_bank_accounts_dict_list():
-                    _bank = bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL]
-                    _account_name = bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
-                    if _bank == bank_name and \
-                            _account_name == account_name:
-                        found = True
-                        break
-                    index = index + 1
-                if found:
-                    selected_index = index
+                return self._get_bank_account_index_by_name(bank_name, account_name)
+
+    def _get_bank_account_index_by_name(self, bank_name, account_name):
+        """@brief Get a bank account index in the list of bank accounts.
+           @param _bank The name of the bank.
+           @param _account_name The name of the bank account.
+           @return The index (0,1,2 etc) if found or -1 if not found."""
+        selected_index = -1
+        index = 0
+        found = False
+        for bank_account_dict in self._config.get_bank_accounts_dict_list():
+            _bank = bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL]
+            _account_name = bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
+            if _bank == bank_name and \
+                    _account_name == account_name:
+                found = True
+                break
+            index = index + 1
+        if found:
+            selected_index = index
         return selected_index
 
     def _get_selected_bank_account_dict(self):
