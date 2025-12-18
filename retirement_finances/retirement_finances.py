@@ -1329,6 +1329,7 @@ class Finances(GUIBase):
         """@brief Add to the monthly spending table."""
         self._add_to_monthly_spending_table = True
         self._add_monthly_spend_row_dialog.open()
+        self._monthly_spending_date_input_field.run_method('focus')
 
     def _delete_monthly_spending(self):
         """@brief Delete from the monthly spending table."""
@@ -1778,6 +1779,7 @@ class BankAccountGUI(GUIBase):
     def _add_button_handler(self):
         """@brief Handle add button selection events."""
         self._add_row_dialog.open()
+        self._date_input_field.run_method('focus')
 
     def _delete_button_handler(self):
         """@brief Handle delete button selection events."""
@@ -1999,6 +2001,7 @@ class PensionGUI(GUIBase):
 
     def _add_button_handler(self):
         self._add_row_dialog.open()
+        self._date_input_field.run_method('focus')
 
     def _delete_button_handler(self):
         selected_dict = self._pension_table.selected
@@ -2565,6 +2568,7 @@ class FuturePlotGUI(GUIBase):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = FuturePlotGUI.ADD_SAVINGS_WITHDRAWAL_BUTTON
         self._add_row_dialog.open()
+        self._date_input_field.run_method('focus')
 
     def _del_savings_withdrawal(self):
         """@brief Called when the delete a savings withdrawal button is selected."""
@@ -2590,6 +2594,7 @@ class FuturePlotGUI(GUIBase):
         """@brief Called when the add a savings withdrawal button is selected."""
         self._button_selected = FuturePlotGUI.ADD_PENSION_WITHDRAWAL_BUTTON
         self._add_row_dialog.open()
+        self._date_input_field.run_method('focus')
 
     def _del_pension_withdrawal(self):
         """@brief Called when the delete a pension withdrawal button is selected."""
@@ -2645,6 +2650,7 @@ class FuturePlotGUI(GUIBase):
 
             if date_found:
                 self._edit_row_dialog.open()
+                self._edit_amount_field.run_method('focus')
 
     def _set_edit_withdrawal_table_dialog_params(self, date_str, amount, notes):
         self._edit_date_input_field.value = date_str
@@ -2657,12 +2663,14 @@ class FuturePlotGUI(GUIBase):
         self._withdrawal_edit_table = FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE
         self._set_edit_withdrawal_table_dialog_params(row_dict[FuturePlotGUI.DATE], row_dict[FuturePlotGUI.AMOUNT], row_dict[FuturePlotGUI.INFO])
         self._edit_row_dialog.open()
+        self._edit_amount_field.run_method('focus')
 
     def _on_pension_withdrawal_table_double_click(self, e):
         row_dict = e.args[1]
         self._withdrawal_edit_table = FuturePlotGUI.PENSION_WITHDRAWAL_TABLE
         self._set_edit_withdrawal_table_dialog_params(row_dict[FuturePlotGUI.DATE], row_dict[FuturePlotGUI.AMOUNT], row_dict[FuturePlotGUI.INFO])
         self._edit_row_dialog.open()
+        self._edit_amount_field.run_method('focus')
 
     def _add_row_dialog_ok_button_press(self):
         if FuturePlotGUI.CheckValidDateString(self._date_input_field.value,
@@ -4100,6 +4108,7 @@ class Report1GUI(GUIBase):
         self._amount_taxable_field.visible = True  # The user must be able to select this as only they will know if an amount is taxable.
         self._repeat_until_end_field.value = True
         self._add_row_dialog.open()
+        self._date_input_field.run_method('focus')
 
     def _del_other_income(self):
         """@brief Called when the delete a pension withdrawal button is selected."""
@@ -4136,6 +4145,7 @@ class Report1GUI(GUIBase):
 
         self._edit_amount_taxable_field.visible = True
         self._edit_row_dialog.open()
+        self._edit_amount_field.run_method('focus')
 
     def _init_edit_row_dialog(self):
         """@brief Create a dialog presented to the user to edit a withdrawal rows in the savings or pension tables."""
@@ -4264,6 +4274,7 @@ class Report1GUI(GUIBase):
         # Savings should not show the after tax field.
         self._edit_amount_taxable_field.visible = False
         self._edit_row_dialog.open()
+        self._edit_amount_field.run_method('focus')
 
     def _set_edit_withdrawal_table_dialog_params(self, date_str, amount, notes, amount_taxable=False):
         self._edit_date_input_field.value = date_str
@@ -4279,6 +4290,7 @@ class Report1GUI(GUIBase):
         self._amount_taxable_field.visible = False  # As savings are never taxable, as far as I'm aware, don't give the user the ability to change it.
         self._repeat_until_end_field.value = False
         self._add_row_dialog.open()
+        self._date_input_field.run_method('focus')
 
     def _del_savings_withdrawal(self):
         """@brief Called when the delete a savings withdrawal button is selected."""
@@ -4339,6 +4351,7 @@ class Report1GUI(GUIBase):
 
             if date_found:
                 self._edit_row_dialog.open()
+                self._edit_amount_field.run_method('focus')
 
     def _on_pension_withdrawal_table_double_click(self, e):
         row_dict = e.args[1]
@@ -4356,6 +4369,7 @@ class Report1GUI(GUIBase):
 
         self._edit_amount_taxable_field.visible = True
         self._edit_row_dialog.open()
+        self._edit_amount_field.run_method('focus')
 
     def _add_pension_withdrawal(self):
         """@brief Called when the add a savings withdrawal button is selected."""
@@ -4365,6 +4379,7 @@ class Report1GUI(GUIBase):
         self._amount_taxable_field.visible = True  # We want this visible as it is possible to have a deduction from a personal pension that is not taxable when buying an annuity.
         self._repeat_until_end_field.value = False
         self._add_row_dialog.open()
+        self._date_input_field.run_method('focus')
 
     def _del_pension_withdrawal(self):
         """@brief Called when the delete a pension withdrawal button is selected."""
