@@ -1358,6 +1358,7 @@ class Finances(GUIBase):
         """@brief called when the user double clicks on the monthly spending table."""
         row_dict = e.args[1]
         try:
+            self._add_to_monthly_spending_table = False
             _date = row_dict[Finances.DATE]
             _amount = row_dict[Finances.MONTHLY_SPEND_AMOUNT]
             self._monthly_spending_date_input_field.value = _date
@@ -1384,7 +1385,7 @@ class Finances(GUIBase):
         """@brief Add to the monthly spending table."""
         self._add_to_monthly_spending_table = True
         self._monthly_spending_date_input_field.value = ''
-        self._monthly_spending_amount_field.value = ''
+        self._monthly_spending_amount_field.value = 0.0
         self._monthly_spending_date_input_field.enable()
         self._add_monthly_spend_row_dialog.open()
         self._monthly_spending_date_input_field.run_method('focus')
@@ -1406,20 +1407,10 @@ class Finances(GUIBase):
         if len(selected_dict) > 0:
             selected_dict = selected_dict[0]
             monthly_spending_dict = self._get_monthly_spending_dict()
-            if Finances.MONTHLY_SPENDING_TABLE in monthly_spending_dict:
-                monthly_spending_table = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
-                if selected_dict:
-                    if Finances.MONTHLY_SPEND_DATE in selected_dict:
-                        _date = selected_dict[Finances.MONTHLY_SPEND_DATE]
-                        current_index = 0
-                        for row in monthly_spending_table:
-                            if len(row) == 2:
-                                __date = row[0]
-                                if _date == __date:
-                                    selected_index = current_index
-                                    break
-                            current_index += 1
-
+            monthly_spending_table = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
+            the_date_str = selected_dict[GUIBase.DATE]
+            the_date = datetime.strptime(the_date_str, '%d-%m-%Y')
+            selected_index = self._get_table_index(the_date, monthly_spending_table)
         return selected_index
 
     def _edit_monthly_spending(self):
@@ -1472,26 +1463,74 @@ class Finances(GUIBase):
                 ui.button("Ok", on_click=self._monthly_spending_ok_button_press)
                 ui.button("Cancel", on_click=self._monthly_spending_cancel_button_press)
 
+    def _update_month_spending(self, the_date, the_amount, add):
+        """@brief Update the monthly spending list.
+           @param the_date
+           @param the_amount
+           @param add If True add to the list. If False change an existing amount."""
+        monthly_spending_dict = self._config.get_monthly_spending_dict()
+        rows = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
+        month_year_found = self._month_year_exists(rows, the_date)
+        if add:
+            # Check that this months spending is not already in the list.
+            if month_year_found:
+                ui.notify(f"The month and year ({the_date.strftime('%B')} {the_date.year}) is already in the monthly spending list.", type='negative')
+
+            else:
+                date_str = the_date.strftime('%d-%m-%Y')
+                rows.append((date_str, the_amount))
+
+        # If changing an existing value in the table
+        else:
+            if month_year_found:
+                selected_index = self._get_table_index(the_date, rows)
+                the_date_str = the_date.strftime('%d-%m-%Y')
+                rows[selected_index] = (the_date_str, the_amount)
+
+            else:
+                ui.notify(f"Could not change the monthly spending for {the_date.strftime('%B')} {the_date.year} as it was not found in the monthly spending list.", type='negative')
+
+        # Ensure we store the table in ascending date order.
+        sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
+        monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE] = sorted_rows
+        self._config._save_monthly_spending_dict()
+        self._show_monthly_spending_list()
+
+    def _get_table_index(self, the_date, rows):
+        """@brief Get the index of the row (column 0) in the table that matches the date.
+           @param the_date The date to match (a datetime instance).
+           @param rows The table (column 0 = date string).
+           @return The index of the row or -1 if not found."""
+        found = False
+        index = 0
+        for row in rows:
+            this_date = datetime.strptime(row[0], "%d-%m-%Y")
+            if this_date == the_date:
+                found = True
+                break
+            index += 1
+        if found:
+            return index
+        return -1
+
+    def _month_year_exists(self, rows, dt):
+        return any(
+            datetime.strptime(date, '%d-%m-%Y').month == dt.month
+            and datetime.strptime(date, '%d-%m-%Y').year == dt.year
+            for date, _ in rows
+        )
+
     def _monthly_spending_ok_button_press(self):
         """@brief Add the monthly spending amount to the table."""
-        if Finances.CheckValidDateString(self._monthly_spending_date_input_field.value) and \
-           self._monthly_spending_amount_field.value >= 0:
-            monthly_spending_dict = self._config.get_monthly_spending_dict()
-            if Finances.MONTHLY_SPENDING_TABLE in monthly_spending_dict:
-                rows = monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE]
-                if self._add_to_monthly_spending_table:
-                    rows.append((self._monthly_spending_date_input_field.value, self._monthly_spending_amount_field.value))
-                else:
-                    selected_index = self._get_monthly_spending_index()
-                    rows[selected_index] = (self._monthly_spending_date_input_field.value, self._monthly_spending_amount_field.value)
-
-                # Ensure we store the table in ascending date order.
-                sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
-                monthly_spending_dict[Finances.MONTHLY_SPENDING_TABLE] = sorted_rows
-                self._config._save_monthly_spending_dict()
-
-            self._show_monthly_spending_list()
         self._add_monthly_spend_row_dialog.close()
+
+        if Finances.CheckValidDateString(self._monthly_spending_date_input_field.value):
+            if self._monthly_spending_amount_field.value >= 0:
+                date_instance = datetime.strptime(self._monthly_spending_date_input_field.value, "%d-%m-%Y")
+                self._update_month_spending(date_instance, self._monthly_spending_amount_field.value, self._add_to_monthly_spending_table)
+
+            else:
+                ui.notify(f"The amount must be greater than or equal to 0.", type='negative')
 
     def _monthly_spending_cancel_button_press(self):
         self._add_monthly_spend_row_dialog.close()
@@ -6397,6 +6436,23 @@ class Plot1GUI(GUIBase):
             raise Exception(f"{obj} is not a datetime or an int object")
         return year
 
+    def _get_yearly_average_dict(self, date_amount_dict):
+        grouped_by_year = defaultdict(list)
+
+        for date, amount in date_amount_dict:
+            year = date.split('-')[-1]
+            grouped_by_year[year].append(amount)
+
+        grouped_by_year = dict(grouped_by_year)
+        yearly_average_dict = {}
+        for year in grouped_by_year:
+            amounts_this_year = grouped_by_year[year]
+            average = 0
+            if amounts_this_year:
+                average = sum(amounts_this_year) / len(amounts_this_year)
+                yearly_average_dict[int(year)] = average
+        return yearly_average_dict
+
     def _do_plot(self,
                  plot_pane,
                  plot_dict,
@@ -6485,6 +6541,7 @@ class Plot1GUI(GUIBase):
                 average_monthly_spending_table = sum(y) / len(y)
             else:
                 average_monthly_spending_table = 0
+
             if self._plot_by_year:
                 # When plotting yearly results we sum the monthly spending per year
                 # and display this and we don't display the average.
@@ -6498,10 +6555,21 @@ class Plot1GUI(GUIBase):
                                          y=y,
                                          mode='lines',
                                          line=dict(dash='solid')))
-                avgList = [average_monthly_spending_table,]*len(datetimes)
+
+                yearly_average_dict = self._get_yearly_average_dict(monthly_spending_table)
+                print(f"PJA: yearly_average_dict={yearly_average_dict}")
+                y_values = []
+                for _date_str in x:
+                    _date = datetime.strptime(_date_str, '%d-%m-%Y')
+                    if _date.year in yearly_average_dict:
+                        y_values.append(yearly_average_dict[_date.year])
+                    else:
+                        # We should never see this, leave as a marker for a bug.
+                        y_values.append(-100)
+
                 fig.add_trace(go.Scatter(name='Average monthly Spending (reality)',
                                          x=datetimes,
-                                         y=avgList,
+                                         y=y_values,
                                          mode='lines',
                                          line=dict(dash='solid', width=5)))
 
