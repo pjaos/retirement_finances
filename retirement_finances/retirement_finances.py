@@ -1950,6 +1950,7 @@ class PensionGUI(GUIBase):
                                                row_key=PensionGUI.DATE,
                                                selection='single')
                 self._pension_table.on('rowClick', self._pension_table_rowclick)
+            self._pension_table.on('row-dblclick', self._on_pension_table_double_click)
 
         self._update_gui_from_pension()
 
@@ -1965,6 +1966,19 @@ class PensionGUI(GUIBase):
 
     def _pension_table_rowclick(self, event):
         self._table_rowclick(self._pension_table, event)
+
+    def _on_pension_table_double_click(self, e):
+        """@brief called when the user double clicks on a bank account balance row."""
+        row_dict = e.args[1]
+        try:
+            self._date_input_field.value = row_dict[PensionGUI.DATE]
+            self._amount_field.value = row_dict[PensionGUI.AMOUNT]
+            # Can't edit the date when editing
+            self._date_input_field.disable()
+            self._add_row_dialog.open()
+            self._amount_field.run_method('focus')
+        except Exception:
+            pass
 
     def _save_button_selected(self):
         """@brief Called when the back button is selected."""
@@ -2017,6 +2031,7 @@ class PensionGUI(GUIBase):
                     "Cancel", on_click=self._add_row_dialog_cancel_button_press)
 
     def _add_button_handler(self):
+        self._date_input_field.enable()
         self._add_row_dialog.open()
         self._date_input_field.run_method('focus')
 
