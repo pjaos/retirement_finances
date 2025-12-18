@@ -1694,6 +1694,7 @@ class BankAccountGUI(GUIBase):
                 self._bank_acount_table.on('rowClick', self._bank_acount_table_rowclick)
 
                 self._display_table_rows()
+            self._bank_acount_table.on('row-dblclick', self._on_bank_acount_table_double_click)
 
         with ui.row():
             ui.button("Add", on_click=self._add_button_handler).tooltip(
@@ -1718,6 +1719,19 @@ class BankAccountGUI(GUIBase):
 
     def _bank_acount_table_rowclick(self, event):
         self._table_rowclick(self._bank_acount_table, event)
+
+    def _on_bank_acount_table_double_click(self, e):
+        """@brief called when the user double clicks on a bank account balance row."""
+        row_dict = e.args[1]
+        try:
+            self._date_input_field.value = row_dict[BankAccountGUI.DATE]
+            self._amount_field.value = row_dict[BankAccountGUI.BALANCE]
+            # Can't edit the date when editing
+            self._date_input_field.disable()
+            self._add_row_dialog.open()
+            self._amount_field.run_method('focus')
+        except Exception:
+            pass
 
     def _save_button_selected(self):
         """@brief Called when the back button is selected."""
@@ -1747,7 +1761,7 @@ class BankAccountGUI(GUIBase):
         with ui.dialog() as self._add_row_dialog, ui.card().style('width: 400px;'):
             self._date_input_field = GUIBase.GetInputDateField(
                 BankAccountGUI.DATE)
-            self._amount_field = ui.number(label="Balance (£)")
+            self._amount_field = ui.input(label="Balance (£)", value='0.00').props('inputmode=decimal pattern=[0-9]*[.,]?[0-9]+')
             with ui.row():
                 ui.button("Ok", on_click=self._add_row_dialog_ok_button_press)
                 ui.button(
@@ -1778,6 +1792,9 @@ class BankAccountGUI(GUIBase):
 
     def _add_button_handler(self):
         """@brief Handle add button selection events."""
+        self._date_input_field.enable()
+        self._date_input_field.value = ""
+        self._amount_field.value = ""
         self._add_row_dialog.open()
         self._date_input_field.run_method('focus')
 
