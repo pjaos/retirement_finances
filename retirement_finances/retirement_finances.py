@@ -1530,7 +1530,7 @@ class Finances(GUIBase):
                 self._update_month_spending(date_instance, self._monthly_spending_amount_field.value, self._add_to_monthly_spending_table)
 
             else:
-                ui.notify(f"The amount must be greater than or equal to 0.", type='negative')
+                ui.notify("The amount must be greater than or equal to 0.", type='negative')
 
     def _monthly_spending_cancel_button_press(self):
         self._add_monthly_spend_row_dialog.close()
@@ -6535,12 +6535,6 @@ class Plot1GUI(GUIBase):
                 if value_count < len(datetimes):
                     datetimes = datetimes[:value_count]
                     y = y[:value_count]
-
-            # Calculate the average
-            if y and len(y) > 0:
-                average_monthly_spending_table = sum(y) / len(y)
-            else:
-                average_monthly_spending_table = 0
 
             if self._plot_by_year:
                 # When plotting yearly results we sum the monthly spending per year
