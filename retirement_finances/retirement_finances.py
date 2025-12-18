@@ -1037,7 +1037,6 @@ class Finances(GUIBase):
             self._show_dialog2()
 
     def _get_selected_bank_account_index(self):
-        selected_index = -1
         selected_dict = self._bank_acount_table.selected
         if len(selected_dict) > 0:
             selected_dict = selected_dict[0]
@@ -1134,6 +1133,7 @@ class Finances(GUIBase):
                                            rows=[],
                                            row_key='Description',
                                            selection='single').classes('h-96').props('virtual-scroll')
+            self._pension_table.on('row-dblclick', self._on_pensions_table_double_click)
             self._show_pension_list()
 
         with ui.row():
@@ -1143,6 +1143,18 @@ class Finances(GUIBase):
                 'Delete a pension')
             ui.button('Edit', on_click=lambda: self._edit_pension()
                       ).tooltip('Edit a pension')
+
+    def _on_pensions_table_double_click(self, e):
+        """@brief called when the user double clicks on a bank account balance row."""
+        pensions_dict = e.args[1]
+        provider = pensions_dict[PensionGUI.PENSION_PROVIDER_LABEL]
+        description = pensions_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
+        pension_index = self._get_selected_pension_index_by_provider_and_description(provider, description)
+        if pension_index >= 0:
+            pension_dict_list = self._config.get_pension_dict_list()
+            pension_dict = pension_dict_list[pension_index]
+            if pension_dict:
+                self._update_pension(False, pension_dict)
 
     def _init_dialog3(self):
         """@brief Create a dialog presented to the user to check that they wish to delete a pension."""
@@ -1212,25 +1224,32 @@ class Finances(GUIBase):
             self._show_dialog3()
 
     def _get_selected_pension_index(self):
-        selected_index = -1
         selected_dict = self._pension_table.selected
         if len(selected_dict) > 0:
             selected_dict = selected_dict[0]
             if selected_dict:
                 provider = selected_dict['Provider']
                 description = selected_dict['Description']
-                index = 0
-                found = False
-                for pension_dict in self._config.get_pension_dict_list():
-                    _provider = pension_dict[PensionGUI.PENSION_PROVIDER_LABEL]
-                    _description = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
-                    if _provider == provider and \
-                            _description == description:
-                        found = True
-                        break
-                    index = index + 1
-                if found:
-                    selected_index = index
+                return self._get_selected_pension_index_by_provider_and_description(provider, description)
+
+    def _get_selected_pension_index_by_provider_and_description(self, provider, description):
+        """@brief Get a pension index in the list of pensions.
+           @param provider The name of the pension provider.
+           @param description The description of the pension.
+           @return The index (0,1,2 etc) if found or -1 if not found."""
+        selected_index = -1
+        index = 0
+        found = False
+        for pension_dict in self._config.get_pension_dict_list():
+            _provider = pension_dict[PensionGUI.PENSION_PROVIDER_LABEL]
+            _description = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
+            if _provider == provider and \
+                    _description == description:
+                found = True
+                break
+            index = index + 1
+        if found:
+            selected_index = index
         return selected_index
 
     def _get_selected_pension_dict(self):
