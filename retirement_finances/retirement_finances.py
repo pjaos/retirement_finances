@@ -1336,6 +1336,7 @@ class Finances(GUIBase):
                                                      selection='single').classes('h-96').props('virtual-scroll')
                 self._monthly_spend_table.on('rowClick', self._monthly_spend_table_rowclick)
                 self._show_monthly_spending_list()
+            self._monthly_spend_table.on('row-dblclick', self._on_monthly_spending_table_double_click)
 
             monthly_spending_dict = self._get_monthly_spending_dict()
 
@@ -1353,6 +1354,21 @@ class Finances(GUIBase):
             ui.button('Edit', on_click=lambda: self._edit_monthly_spending()
                       ).tooltip('Edit monthly spending table')
 
+    def _on_monthly_spending_table_double_click(self, e):
+        """@brief called when the user double clicks on the monthly spending table."""
+        row_dict = e.args[1]
+        try:
+            _date = row_dict[Finances.DATE]
+            _amount = row_dict[Finances.MONTHLY_SPEND_AMOUNT]
+            self._monthly_spending_date_input_field.value = _date
+            self._monthly_spending_amount_field.value = _amount
+            # Can't edit the date when editing
+            self._monthly_spending_date_input_field.disable()
+            self._add_monthly_spend_row_dialog.open()
+            self._monthly_spending_amount_field.run_method('focus')
+        except Exception:
+            pass
+
     def _monthly_spend_table_rowclick(self, event):
         self._table_rowclick(self._monthly_spend_table, event)
 
@@ -1367,6 +1383,9 @@ class Finances(GUIBase):
     def _add_monthly_spending(self):
         """@brief Add to the monthly spending table."""
         self._add_to_monthly_spending_table = True
+        self._monthly_spending_date_input_field.value = ''
+        self._monthly_spending_amount_field.value = ''
+        self._monthly_spending_date_input_field.enable()
         self._add_monthly_spend_row_dialog.open()
         self._monthly_spending_date_input_field.run_method('focus')
 
@@ -1414,6 +1433,7 @@ class Finances(GUIBase):
                 row = monthly_spending_table[selected_index]
                 self._monthly_spending_date_input_field.value = row[0]
                 self._monthly_spending_amount_field.value = row[1]
+                self._monthly_spending_date_input_field.disable()
                 self._add_monthly_spend_row_dialog.open()
 
     def _show_monthly_spending_list(self):
