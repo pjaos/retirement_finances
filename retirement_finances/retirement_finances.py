@@ -472,6 +472,9 @@ class GUIBase(object):
            @return True if number is greater than 0."""
         if number is None:
             number = 0
+        # Handle strings
+        if isinstance(number, str):
+            number = float(number)
         valid = False
         if number > 0.0:
             valid = True
@@ -489,6 +492,9 @@ class GUIBase(object):
            @return True if number is 0 or greater."""
         if number is None:
             number = 0
+        # Handle strings
+        if isinstance(number, str):
+            number = float(number)
         valid = False
         if number >= 0.0:
             valid = True
