@@ -2720,7 +2720,7 @@ class FuturePlotGUI(GUIBase):
                             new_table.append(row)
                     self._set_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE, new_table)
         self._update_gui_tables()
-        self._config.get_future_plot_attrs_dict()[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = new_table
+        self._config.get_multiple_future_plot_attrs_dict()[FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE] = new_table
 
     def _edit_savings_withdrawal(self):
         self._edit_withdrawal_table(self._savings_withdrawals_table, FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE)
@@ -2746,7 +2746,7 @@ class FuturePlotGUI(GUIBase):
                             new_table.append(row)
                     self._set_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE, new_table)
         self._update_gui_tables()
-        self._config.get_future_plot_attrs_dict()[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = new_table
+        self._config.get_multiple_future_plot_attrs_dict()[FuturePlotGUI.PENSION_WITHDRAWAL_TABLE] = new_table
 
     def _edit_pension_withdrawal(self):
         self._edit_withdrawal_table(self._pension_withdrawals_table, FuturePlotGUI.PENSION_WITHDRAWAL_TABLE)
