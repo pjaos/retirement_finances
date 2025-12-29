@@ -647,6 +647,7 @@ class Finances(GUIBase):
         self._monthly_spend_table = None
         self._first_password = None
         self._authenticated_password = None
+        self._entered_password = None
         if example_data:
             self._folder = Finances.GetExampleFolder()
 
@@ -696,7 +697,7 @@ class Finances(GUIBase):
         """@brief Called if we have not saved a password hash in order to set one up."""
         # If the user has entered the password once.
         if self._first_password:
-            second_password = self._password_input.value
+            second_password = self._entered_password
             # If the first and second passwords match
             if self._first_password == second_password:
                 self._config.store_password_hash(second_password)
@@ -710,9 +711,9 @@ class Finances(GUIBase):
                 ui.notify('First and second passwords do not match. Try again.', type='negative')
 
         else:
-            error_message = self._valid_password(self._password_input.value)
+            error_message = self._valid_password(self._entered_password)
             if error_message is None:
-                self._first_password = self._password_input.value
+                self._first_password = self._entered_password
                 # Remove entered password
                 self._password_input.value = ""
                 ui.notify('Initialising valid password. Re-enter password to initialise all data.', type='positive')
@@ -723,7 +724,7 @@ class Finances(GUIBase):
 
     def _authenticate_password(self):
         """@brief Called when a password has been setup in order to authenticate it."""
-        password_entered = self._password_input.value
+        password_entered = self._entered_password
         stored_password_hash = self._config.get_stored_password_hash()
         valid_password = bcrypt.checkpw(password_entered.encode(), stored_password_hash.encode())
         if valid_password:
@@ -760,7 +761,11 @@ class Finances(GUIBase):
         with ui.row():
             ui.label('Password:')
         with ui.row():
-            self._password_input = ui.input(password=True).props("autofocus").on("keydown.enter", lambda e: self._open_main_window())
+            # self._entered_password is set and used rather than self._password_input.value as
+            # the timing update of self._password_input.value is not predictable. I.E It may not contain the text the user entered.
+            self._password_input = ui.input(password=True,
+                                            password_toggle_button=True,
+                                            on_change=lambda e: setattr(self, '_entered_password', e.value)).props("autofocus").on("keydown.enter", lambda e: self._open_main_window())
             self._password_input.tooltip("The password must be at least 8 characters long. It must contain upper and lowercase characters with at least one number.")
             self._password_input.value = self._password
         with ui.row():
