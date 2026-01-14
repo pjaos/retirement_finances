@@ -678,7 +678,7 @@ class Finances(GUIBase):
             self._uio.info(f"Extracted example data to {cfg_folder}")
 
         else:
-            raise f"{examples_zip_file} files not found."
+            raise Exception(f"{examples_zip_file} files not found.")
 
     def _open_main_window(self):
         """@brief Called to allow the user to enter the password in order to access
