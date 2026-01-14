@@ -70,48 +70,71 @@ class Config(object):
             os.makedirs(cfg_folder)
         return cfg_folder
 
+    def set_config_files(self):
+        self._global_configuration_name_file = self._getGlobalConfigurationFile()
+        self._bank_accounts_file = self._getBankAccountListFile()
+        self._pensions_file = self._getPensionsListFile()
+        self._multiple_future_plot_file = self._getMultipleFuturePlotAttrFile()
+        self._selected_retirement_parameters_name_file = self._getSelectedRequirementParametersNameFile()
+        self._multiple_report1_plot_file = self._getMultipleReport1PlotAttrFile()
+        self._selected_report1_parameters_name_file = self._getSelectedReport1ParametersNameFile()
+        self._monthly_spending_file = self._getMonthlySpendingFile()
+
+    def set_crypt_files(self):
+        self.set_config_files()
+
+        self._global_configuration_name_crypt_file = CryptFile(filename=self._global_configuration_name_file, password=self._password)
+        self._bank_account_crypt_file = CryptFile(filename=self._bank_accounts_file, password=self._password)
+        self._pensions_crypt_file = CryptFile(filename=self._pensions_file, password=self._password)
+        self._multiple_future_plot_crypt_file = CryptFile(filename=self._multiple_future_plot_file, password=self._password)
+        self._selected_retirement_parameters_name_crypt_file = CryptFile(filename=self._selected_retirement_parameters_name_file, password=self._password)
+        self._multiple_report1_plot_crypt_file = CryptFile(filename=self._multiple_report1_plot_file, password=self._password)
+        self._selected_report1_parameters_name_crypt_file = CryptFile(filename=self._selected_report1_parameters_name_file, password=self._password)
+        self._monthly_spending_crypt_file = CryptFile(filename=self._monthly_spending_file, password=self._password)
+
     def load_config(self, password):
         """@brief Load the encrypted config.
            @param password The password used to encrypt and decrypt the config files."""
         self._password = password
-        self._global_configuration_name_crypt_file = CryptFile(filename=self._global_configuration_name_file, password=self._password)
+        self.set_crypt_files()
         self.load_global_configuration()
-
-        self._bank_account_crypt_file = CryptFile(filename=self._bank_accounts_file, password=self._password)
         self._load_bank_accounts()
-
-        self._pensions_crypt_file = CryptFile(filename=self._pensions_file, password=self._password)
         self._load_pensions()
-
-        self._multiple_future_plot_crypt_file = CryptFile(filename=self._multiple_future_plot_file, password=self._password)
         self._load_multiple_future_plot_attrs()
-
-        self._selected_retirement_parameters_name_crypt_file = CryptFile(filename=self._selected_retirement_parameters_name_file, password=self._password)
         self._load_selected_retirement_parameters_name_attrs()
-
-        self._multiple_report1_plot_crypt_file = CryptFile(filename=self._multiple_report1_plot_file, password=self._password)
         self._load_multiple_report1_plot_attrs()
-
-        self._selected_report1_parameters_name_crypt_file = CryptFile(filename=self._selected_report1_parameters_name_file, password=self._password)
         self._load_selected_report1_parameters_name_attrs()
-
-        self._monthly_spending_crypt_file = CryptFile(filename=self._monthly_spending_file, password=self._password)
         self._load_monthly_spending_dict()
+
+    def update_password(self, new_password):
+        self._password = new_password
+        saved_config_folder = self._config_folder
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                self._config_folder = temp_dir
+                self.set_crypt_files()
+                self.save_global_configuration()
+                self.save_bank_accounts()
+                self.save_pensions()
+                self.save_multiple_future_plot_attrs()
+                self._save_selected_retirement_parameters_name_attrs()
+                self.save_multiple_report1_plot_attrs()
+                self._save_selected_report1_parameters_name_attrs()
+                self._save_monthly_spending_dict()
+                self.store_password_hash(self._password)
+
+                # We have successfully saved all the config files using the new password to a temp dir.
+                # Now we need to copy them to the config dir.
+                shutil.copytree(self._config_folder, saved_config_folder, dirs_exist_ok=True)
+                ui.notify("Successfully updated password.", type='positive', position='top', duration=4)
+
+        finally:
+            self._config_folder = saved_config_folder
 
     def __init__(self, folder, show_load_save_notifications=True, example_data=False):
         self._config_folder = Config.GetConfigFolder(folder, example_data=example_data)
         self._show_load_save_notifications = show_load_save_notifications
-
-        self._global_configuration_name_file = self._getGlobalConfigurationFile()
-        self._bank_accounts_file = self._getBankAccountListFile()
-        self._pensions_file = self._getPensionsListFile()
-
-        self._multiple_future_plot_file = self._getMultipleFuturePlotAttrFile()
-        self._selected_retirement_parameters_name_file = self._getSelectedRequirementParametersNameFile()
-
-        self._multiple_report1_plot_file = self._getMultipleReport1PlotAttrFile()
-        self._selected_report1_parameters_name_file = self._getSelectedReport1ParametersNameFile()
-        self._monthly_spending_file = self._getMonthlySpendingFile()
+        self.set_config_files()
 
     def _getPasswordHashFile(self):
         """@return The file used to store the password hash."""
@@ -634,6 +657,7 @@ class Finances(GUIBase):
 
     MY_NAME_FIELD = "My Name"
     PARTNER_NAME_FIELD = "Partner Name"
+    NEW_PASSWORD_FIELD = "New Password"
 
     EXAMPLE_DATA_COPY_FOLDER = 'example_data_copy_folder'
 
@@ -740,6 +764,7 @@ class Finances(GUIBase):
             # Use the password entered from the GUI
             self._authenticated_password = password_entered
             self._config.load_config(self._authenticated_password)
+            self._password = password_entered
             # Got to the
             ui.run_javascript("window.open('/authenticated', '_blank')")
 
@@ -930,6 +955,7 @@ class Finances(GUIBase):
         """@brief Create the dialogs used by the app."""
         self._init_dialog2()
         self._init_dialog3()
+        self._init_update_password_dialog()
 
     # methods associated with bank/building society accounts
 
@@ -1180,6 +1206,27 @@ class Finances(GUIBase):
             with ui.row():
                 ui.button("Yes", on_click=self._dialog3_yes_button_press)
                 ui.button("No", on_click=self._dialog3_no_button_press)
+
+    def _init_update_password_dialog(self):
+        """@brief A password to allow the user to re enter the password when updating the password."""
+        with ui.dialog() as self._update_password_dialog, ui.card().style('width: 400px;'):
+            ui.label("Please re-enter the password.")
+            self._new_password_confirmation_field = ui.input(label=Finances.NEW_PASSWORD_FIELD).style('width: 300px;').tooltip('If you wish to change the password used to encrypt and decrypt data enter it here.')
+            with ui.row():
+                ui.button("Cancel", on_click=self._update_password_dialog.close)
+                ui.button("OK", on_click=self._update_password)
+
+    def _update_password(self):
+        self._update_password_dialog.close()
+        new_password = self._new_password_field.value
+        if new_password != self._new_password_confirmation_field.value:
+            ui.notify("The passwords do not match.", type='negative', position='top', duration=5)
+
+        else:
+            # Backup the data files accessed via the old password before we start
+            self._backup_data_files(self._config.get_config_folder())
+            self._config.update_password(new_password)
+            self._password = new_password
 
     def _show_dialog3(self):
         """@brief Show dialog presented to the user to check that they wish to delete a pension."""
@@ -1570,10 +1617,29 @@ class Finances(GUIBase):
     def _init_config_tab(self):
         self._my_name_field = ui.input(label=Finances.MY_NAME_FIELD).style('width: 300px;').tooltip('Enter your name here.')
         self._partner_name_field = ui.input(label=Finances.PARTNER_NAME_FIELD).style('width: 300px;').tooltip('If you have a partner you may enter their name here if you wish to combine your finances.')
+        self._new_password_field = ui.input(label=Finances.NEW_PASSWORD_FIELD).style('width: 300px;').tooltip('If you wish to change the password used to encrypt and decrypt data enter it here.')
         with ui.row():
             ui.button('Save', on_click=self._save_config_button_selected)
 
     def _save_config_button_selected(self):
+        # If the user has entered an updated password.
+        if self._new_password_field.value:
+
+            error_msg = self._valid_password(self._new_password_field.value)
+            if error_msg:
+                ui.notify(error_msg, type='negative', position='top', duration=5)
+
+            elif self._password == self._new_password_field.value:
+                ui.notify("The new password cannot be the same as the old password.", type='warning', position='top', duration=5)
+
+            else:
+                self._new_password_confirmation_field.run_method('focus')
+                self._update_password_dialog.open()
+
+        else:
+            self._save_config_tab_data()
+
+    def _save_config_tab_data(self):
         """@brief Save configuration."""
         self._update_config_from_gui()
         self._config.save_global_configuration()
@@ -6568,7 +6634,6 @@ class Plot1GUI(GUIBase):
                                          line=dict(dash='solid')))
 
                 yearly_average_dict = self._get_yearly_average_dict(monthly_spending_table)
-                print(f"PJA: yearly_average_dict={yearly_average_dict}")
                 y_values = []
                 for _date_str in x:
                     _date = datetime.strptime(_date_str, '%d-%m-%Y')
