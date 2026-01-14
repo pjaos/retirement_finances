@@ -839,9 +839,9 @@ class Finances(GUIBase):
         with ui.footer().style(footer_style):
             # Put label on left and button on the right.
             with ui.row().classes('w-full justify-between items-center'):
-                l = ui.label(msg)
+                lbl = ui.label(msg)
                 if Finances.EXAMPLE_DATA_COPY_FOLDER in self._config.get_config_folder():
-                    l.tooltip('Delete this folder if you wish a fresh copy of the example data.').props('tooltip-font-size=18px tooltip-color=blue tooltip-background=lightgray')
+                    lbl.tooltip('Delete this folder if you wish a fresh copy of the example data.')
 
                 with ui.row():
                     if self._example_data:
