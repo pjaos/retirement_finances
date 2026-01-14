@@ -1211,7 +1211,9 @@ class Finances(GUIBase):
         """@brief A password to allow the user to re enter the password when updating the password."""
         with ui.dialog() as self._update_password_dialog, ui.card().style('width: 400px;'):
             ui.label("Please re-enter the password.")
-            self._new_password_confirmation_field = ui.input(label=Finances.NEW_PASSWORD_FIELD).style('width: 300px;').tooltip('If you wish to change the password used to encrypt and decrypt data enter it here.')
+            self._new_password_confirmation_field = ui.input(label=Finances.NEW_PASSWORD_FIELD,
+                                                             password=True,
+                                                             password_toggle_button=True).style('width: 300px;').tooltip('If you wish to change the password used to encrypt and decrypt data enter it here.')
             with ui.row():
                 ui.button("Cancel", on_click=self._update_password_dialog.close)
                 ui.button("OK", on_click=self._update_password)
@@ -1617,7 +1619,9 @@ class Finances(GUIBase):
     def _init_config_tab(self):
         self._my_name_field = ui.input(label=Finances.MY_NAME_FIELD).style('width: 300px;').tooltip('Enter your name here.')
         self._partner_name_field = ui.input(label=Finances.PARTNER_NAME_FIELD).style('width: 300px;').tooltip('If you have a partner you may enter their name here if you wish to combine your finances.')
-        self._new_password_field = ui.input(label=Finances.NEW_PASSWORD_FIELD).style('width: 300px;').tooltip('If you wish to change the password used to encrypt and decrypt data enter it here.')
+        self._new_password_field = ui.input(label=Finances.NEW_PASSWORD_FIELD,
+                                            password=True,
+                                            password_toggle_button=True).style('width: 300px;').tooltip('If you wish to change the password used to encrypt and decrypt data enter it here.')
         with ui.row():
             ui.button('Save', on_click=self._save_config_button_selected)
 
