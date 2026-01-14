@@ -635,13 +635,12 @@ class Finances(GUIBase):
     MY_NAME_FIELD = "My Name"
     PARTNER_NAME_FIELD = "Partner Name"
 
+    EXAMPLE_DATA_COPY_FOLDER = 'example_data_copy_folder'
+
     @staticmethod
-    def GetExampleFolder():
+    def GetExampleFolder(folder):
         """@brief Get the folder to be used for example data."""
-        temp_dir = os.path.join(tempfile.gettempdir(), "retirement_finances_example_data")
-        if not os.path.isdir(temp_dir):
-            os.makedirs(temp_dir)
-        return temp_dir
+        return os.path.join(Config.GetConfigFolder(folder, example_data=False), Finances.EXAMPLE_DATA_COPY_FOLDER)
 
     def __init__(self, uio, password, folder, example_data=False):
         super().__init__()
@@ -655,15 +654,15 @@ class Finances(GUIBase):
         self._authenticated_password = None
         self._entered_password = None
         if example_data:
-            self._folder = Finances.GetExampleFolder()
+            self._folder = Finances.GetExampleFolder(folder)
+            # This is the password for the example data.
+            self._password = "Finance1"
+            self._populate_example_data()
 
         self._config = Config(self._folder,
                               show_load_save_notifications=self._uio.isDebugEnabled(),
                               example_data=example_data)
         self._program_version = getProgramVersion()
-        if example_data:
-            self._password = "Finance1"
-            self._populate_example_data()
         self._example_data = example_data
 
     def _populate_example_data(self):
@@ -671,11 +670,15 @@ class Finances(GUIBase):
         assets_folder = get_assets_folders(uio=self._uio)[0]
         examples_zip_file = os.path.join(assets_folder, "example_retirement_finances.zip")
         if os.path.isfile(examples_zip_file):
-            cfg_folder = self._config.get_config_folder()
-            # Extract the ZIP to the specific folder
-            with zipfile.ZipFile(examples_zip_file, 'r') as zip_ref:
-                zip_ref.extractall(cfg_folder)
-            self._uio.info(f"Extracted example data to {cfg_folder}")
+            cfg_folder = self._folder
+            if not os.path.isdir(cfg_folder):
+                # Extract the ZIP to the specific folder
+                with zipfile.ZipFile(examples_zip_file, 'r') as zip_ref:
+                    zip_ref.extractall(cfg_folder)
+                self._uio.info(f"Extracted example data to {cfg_folder}")
+
+            else:
+                self._uio.info(f"Using existing data in {cfg_folder} as it already exists.")
 
         else:
             raise Exception(f"{examples_zip_file} files not found.")
@@ -811,7 +814,10 @@ class Finances(GUIBase):
         with ui.footer().style(footer_style):
             # Put label on left and button on the right.
             with ui.row().classes('w-full justify-between items-center'):
-                ui.label(msg)
+                l = ui.label(msg)
+                if Finances.EXAMPLE_DATA_COPY_FOLDER in self._config.get_config_folder():
+                    l.tooltip('Delete this folder if you wish a fresh copy of the example data.').props('tooltip-font-size=18px tooltip-color=blue tooltip-background=lightgray')
+
                 with ui.row():
                     if self._example_data:
                         ui.label(">>> EXAMPLE DATA <<<").style('font-size: 24px')
