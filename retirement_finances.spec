@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 import bcrypt
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 block_cipher = None
 
@@ -10,21 +10,24 @@ bcrypt_dir = os.path.dirname(bcrypt.__file__)
 pyd_file = [f for f in os.listdir(bcrypt_dir) if f.startswith('_bcrypt') and f.endswith('.pyd')][0]
 binaries = [(os.path.join(bcrypt_dir, pyd_file), "bcrypt")]
 
-# Your assets folder (adjust if needed)
-datas = [("assets", "assets"),
-         ("pyproject.toml", "."),  # include pyproject.toml at the root of the bundled app
+# Put the assets folder at the top level so that it can be found by p3lib/helper.py:get_assets_dir()
+datas = [("src/retirement_finances", "retirement_finances"),
+          ("src/retirement_finances/assets", "assets"),
+          ("pyproject.toml", "assets"),
         ]
 
 # Collect hidden imports for your dependencies
 hidden_imports = []
+hidden_imports += collect_submodules("numpy")
 hidden_imports += collect_submodules("p3lib")
 hidden_imports += collect_submodules("nicegui")
 hidden_imports += collect_submodules("plotly")
 hidden_imports += collect_submodules("bcrypt")
+hidden_imports += collect_submodules("dateutil")
 
 a = Analysis(
     ['src/retirement_finances/retirement_finances.py'],
-    pathex=[],
+    pathex=['src'],
     binaries=binaries,
     datas=datas,
     hiddenimports=hidden_imports,
