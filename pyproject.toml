@@ -1,13 +1,11 @@
 [tool.poetry]
 name = "retirement-finances"
-version = "6.18"
+version = "6.19"
 description = ""
 authors = ["Paul Austen <pjaos@gmail.com>"]
 readme = "README.md"
-
-include = [
-    { path = "assets", format = ["sdist", "wheel"] },
-    { path = "pyproject.toml", format = ["sdist", "wheel"] },
+packages = [
+    { include = "retirement_finances", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -15,7 +13,7 @@ bcrypt = "*"
 python = "^3.10"
 cryptography = "*"
 click = "*"
-p3lib = "^1.1.135"
+p3lib = "^1.1.144"
 requests = "*"
 # nicegui = "^2.21.1" # Does not allow table selection with shift key
 nicegui = "2.24.2"
