@@ -27,7 +27,7 @@ from p3lib.helper import logTraceBack
 from p3lib.pconfig import DotConfigManager
 from p3lib.file_io import CryptFile
 from p3lib.launcher import Launcher
-from p3lib.helper import getProgramVersion, get_assets_folders
+from p3lib.helper import get_program_version, get_assets_folders
 
 from nicegui import ui, app
 
@@ -686,7 +686,7 @@ class Finances(GUIBase):
         self._config = Config(self._folder,
                               show_load_save_notifications=self._uio.isDebugEnabled(),
                               example_data=example_data)
-        self._program_version = getProgramVersion()
+        self._program_version = get_program_version(module_name="retirement_finances")
         self._example_data = example_data
 
     def _populate_example_data(self):
