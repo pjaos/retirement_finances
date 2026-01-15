@@ -23,7 +23,7 @@ hidden_imports += collect_submodules("plotly")
 hidden_imports += collect_submodules("bcrypt")
 
 a = Analysis(
-    ['retirement_finances/retirement_finances.py'],
+    ['src/retirement_finances/retirement_finances.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,
