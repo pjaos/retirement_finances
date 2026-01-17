@@ -27,7 +27,7 @@ from p3lib.helper import logTraceBack
 from p3lib.pconfig import DotConfigManager
 from p3lib.file_io import CryptFile
 from p3lib.launcher import Launcher
-from p3lib.helper import get_program_version, get_assets_folders
+from p3lib.helper import get_program_version, get_assets_folder
 
 from nicegui import ui, app
 
@@ -661,6 +661,8 @@ class Finances(GUIBase):
 
     EXAMPLE_DATA_COPY_FOLDER = 'example_data_copy_folder'
 
+    TOP_LEVEL_MODULE_NAME = "retirement_finances"
+
     @staticmethod
     def GetExampleFolder(folder):
         """@brief Get the folder to be used for example data."""
@@ -686,12 +688,12 @@ class Finances(GUIBase):
         self._config = Config(self._folder,
                               show_load_save_notifications=self._uio.isDebugEnabled(),
                               example_data=example_data)
-        self._program_version = get_program_version(module_name="retirement_finances")
+        self._program_version = get_program_version(module_name=Finances.TOP_LEVEL_MODULE_NAME)
         self._example_data = example_data
 
     def _populate_example_data(self):
         """@brief Populate the example data folder from the assets folder zip file."""
-        assets_folder = get_assets_folders(uio=self._uio)[0]
+        assets_folder = get_assets_folder(module_name=Finances.TOP_LEVEL_MODULE_NAME)
         examples_zip_file = os.path.join(assets_folder, "example_retirement_finances.zip")
         if os.path.isfile(examples_zip_file):
             cfg_folder = self._folder
@@ -6899,7 +6901,7 @@ def main():
         parser.add_argument("--reload",  action='store_true', help="Set nicegui reload = True.")
         parser.add_argument("--example",  action='store_true', help="Launch retirement finances app using example data.")
 
-        launcher = Launcher("savings.png", app_name="Retirement_Finances")
+        launcher = Launcher("savings.png", app_name="Retirement_Finances", module_name=Finances.TOP_LEVEL_MODULE_NAME)
         launcher.addLauncherArgs(parser)
 
         options = parser.parse_args()
