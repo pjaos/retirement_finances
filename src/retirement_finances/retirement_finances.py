@@ -736,7 +736,7 @@ class Finances(GUIBase):
         # This method maybe called mutiple times via nicegui re-entry.
         # Therefore we only backup if we detect a new PID.
         pid_str = FinancesPIDEnvArgs().get()
-        if pid_str == None:
+        if pid_str is None:
             pid = os.getpid()
             FinancesPIDEnvArgs().set(f"{pid}")
             self._backup_data_files(self._config.get_config_folder())
@@ -1881,11 +1881,13 @@ class FinancesPIDEnvArgs(EnvArgs):
 
     ENV_REF = "PID-" + Finances.__name__
 
+
 class FinancesEnvArgs(EnvArgs):
     """@brief Provide the ability to pass args through the env. This only works for
               args that can be converted to json. I.E not class instances."""
 
     ENV_REF = Finances.__name__
+
 
 class BankAccountGUI(GUIBase):
     """@brief Responsible for allowing the user to add details of a bank/building society account or any other institution holding savings accounts"""
