@@ -12,6 +12,9 @@ import sys
 import subprocess
 import threading
 import tempfile
+import secrets
+import json
+import pickle
 
 from queue import Queue
 
@@ -27,7 +30,7 @@ from p3lib.helper import logTraceBack
 from p3lib.pconfig import DotConfigManager
 from p3lib.file_io import CryptFile
 from p3lib.launcher import Launcher
-from p3lib.helper import get_program_version, get_assets_folder
+from p3lib.helper import get_program_version, get_assets_dir
 
 from nicegui import ui, app
 
@@ -57,7 +60,7 @@ class Config(object):
             if os.path.isdir(folder):
                 cfg_folder = folder
             else:
-                raise Exception("{folder} folder not found.")
+                raise Exception(f"{folder} folder not found.")
         else:
             default_cfg_folder = DotConfigManager.GetDefaultConfigFolder()
             if example_data:
@@ -650,6 +653,34 @@ class GUIBase(object):
             table.selected = selected_row_list
 
 
+class EnvArgs():
+    """@brief Provide the ability to pass args through the env. This only works for
+              args that can be converted to json. I.E not class instances."""
+
+    ENV_REF = None  # The ENV_REF must be set in a subclass
+
+    def __init__(self):
+        pass
+
+    def _check_env_ref_set(self):
+        if self.ENV_REF is None:
+            raise Exception("EnvArgs.ENV_REF must be set in subclass of EnvArgs")
+
+    def set(self, arg_list):
+        self._check_env_ref_set()
+        json_str = json.dumps(arg_list)
+        os.environ[self.ENV_REF] = json_str
+
+    def get(self):
+        json_obj = None
+        self._check_env_ref_set()
+        try:
+            json_obj = json.loads(os.environ[self.ENV_REF])
+        except KeyError:
+            pass
+        return json_obj
+
+
 class Finances(GUIBase):
 
     YES = "Yes"
@@ -679,6 +710,9 @@ class Finances(GUIBase):
         self._first_password = None
         self._authenticated_password = None
         self._entered_password = None
+        self._selected_bank_account_index = None
+        self._selected_pension_index = None
+
         if example_data:
             self._folder = Finances.GetExampleFolder(folder)
             # This is the password for the example data.
@@ -691,9 +725,47 @@ class Finances(GUIBase):
         self._program_version = get_program_version(module_name=Finances.TOP_LEVEL_MODULE_NAME)
         self._example_data = example_data
 
+        self._bankAccountGUI = BankAccountGUI()
+        self._pensionsGUI = PensionGUI()
+        self._report1GUI = Report1GUI()
+        self._futurePlotGUI = FuturePlotGUI()
+        self._check_backup()
+
+    def _check_backup(self):
+        """@brief Check to see if we need to perform a backup and perform a backup if required."""
+        # This method maybe called mutiple times via nicegui re-entry.
+        # Therefore we only backup if we detect a new PID.
+        pid_str = FinancesPIDEnvArgs().get()
+        if pid_str == None:
+            pid = os.getpid()
+            FinancesPIDEnvArgs().set(f"{pid}")
+            self._backup_data_files(self._config.get_config_folder())
+
+        else:
+            stored_pid = int(pid_str)
+            current_pid = os.getpid()
+            if stored_pid != current_pid:
+                FinancesPIDEnvArgs().set(f"{current_pid}")
+                self._backup_data_files(self._config.get_config_folder())
+
+    def getBankAccountGUI(self):
+        return self._bankAccountGUI
+
+    def getPensionsGUI(self):
+        return self._pensionsGUI
+
+    def getReport1GUI(self):
+        return self._report1GUI
+
+    def getFuturePlotGUI(self):
+        return self._futurePlotGUI
+
+    def getPlot1GUI(self):
+        return self._futurePlotGUI.getPlot1GUI()
+
     def _populate_example_data(self):
         """@brief Populate the example data folder from the assets folder zip file."""
-        assets_folder = get_assets_folder(module_name=Finances.TOP_LEVEL_MODULE_NAME)
+        assets_folder = get_assets_dir(module_name=Finances.TOP_LEVEL_MODULE_NAME)
         examples_zip_file = os.path.join(assets_folder, "example_retirement_finances.zip")
         if os.path.isfile(examples_zip_file):
             cfg_folder = self._folder
@@ -763,34 +835,37 @@ class Finances(GUIBase):
         stored_password_hash = self._config.get_stored_password_hash()
         valid_password = bcrypt.checkpw(password_entered.encode(), stored_password_hash.encode())
         if valid_password:
-            # Use the password entered from the GUI
-            self._authenticated_password = password_entered
-            self._config.load_config(self._authenticated_password)
-            self._password = password_entered
-            # Got to the
-            ui.run_javascript("window.open('/authenticated', '_blank')")
+            # Store logged in state in the session data
+            app.storage.user['authenticated'] = True
+            app.storage.user['password'] = password_entered
+            # Got to the main page
+            ui.run_javascript("window.open('/main_page', '_blank')")
 
         else:
             ui.notify('Incorrect password.', type='negative')
             # Remove entered password
             self._password_input.value = ""
 
-    def initGUI(self, debugEnabled):
+    def ensure_authenticated(self):
+        """@brief Called to init the page after password authentication."""
+        authenticated = app.storage.user.get('authenticated')
+        if not authenticated:
+            ui.navigate.to('/login')
+        else:
+            self._password = app.storage.user.get('password')
 
-        # If not allow the user to enter the app password.
-        # main page (password must be entered to decrypt data/config files)
-        @ui.page('/authenticated')
-        def password_entered_page():
-            if self._authenticated_password:
-                self._init_top_level()
-                # Called every time this page is displayed
-                # i.e when the back button is selected
-                self._show_bank_account_list()
-                self._show_pension_list()
-                self._show_monthly_spending_list()
-            else:
-                ui.notify('Password required to access this page.', type='negative')
+    def main_page(self):
+        self.ensure_authenticated()
+        if self._password:
+            self._config.load_config(self._password)
+            self._load_global_config()
+            self._init_top_level()
+            self._show_bank_account_list()
+            self._show_pension_list()
+            self._show_monthly_spending_list()
+            self._update_gui_from_config()
 
+    def login_page(self):
         # We open the password entry page first
         with ui.row():
             ui.label("Retirement Finances").style('font-size: 32px; font-weight: bold;')
@@ -806,8 +881,6 @@ class Finances(GUIBase):
             self._password_input.value = self._password
         with ui.row():
             ui.button('OK', on_click=self._open_main_window)
-
-        self._show_config_location()
 
     def _valid_password(self, password):
         """@brief Check if the password is valid. I.E meets the complexity criteria.
@@ -830,8 +903,8 @@ class Finances(GUIBase):
 
         return None
 
-    def _show_config_location(self, location='top'):
-        """@brief Display a message for the user to show where the files are held."""
+    def init_footer(self):
+        """@brief Init the page footer section."""
         msg = f'All files are stored in {self._config.get_config_folder()} folder.'
         if self._example_data:
             footer_style = 'background-color: #333; color: white; padding: 1em'
@@ -879,12 +952,9 @@ class Finances(GUIBase):
         subprocess.run(sys_args_copy)
 
     def _init_top_level(self):
-        self._load_global_config()
 
         self._last_selected_bank_account_index = None
         self._last_selected_pension_index = None
-
-        self._backup_data_files(self._config.get_config_folder())
 
         self._init_dialogs()
 
@@ -902,22 +972,20 @@ class Finances(GUIBase):
 
         tabObjList = []
         with ui.row():
-            with ui.tabs().classes('w-full') as tabs:
+            with ui.tabs().classes('w-full') as self._tabs:
                 for tabName in tabNameList:
                     tabObj = ui.tab(tabName)
                     tabObjList.append(tabObj)
 
-            with ui.tab_panels(tabs, value=tabObjList[0]).classes('w-full'):
+            with ui.tab_panels(self._tabs, value=tabObjList[0]).classes('w-full') as self._tab_panels:
                 for tabObj in tabObjList:
                     with ui.tab_panel(tabObj):
                         tabIndex = tabObjList.index(tabObj)
                         tabMethodInitList[tabIndex]()
 
-        self._update_gui_from_config()
-
-        self._init_monthly_spending_dialog()
-
-        self._show_config_location(location='bottom')
+            selected_tab = FinancesEnvArgs().get()
+            if selected_tab:
+                self._tab_panels.set_value(selected_tab)
 
     def _load_global_config(self):
         self._global_configuration_dict = self._ensure_default_global_config_keys()
@@ -949,6 +1017,7 @@ class Finances(GUIBase):
                 src_file = os.path.join(data_folder, _file)
                 dest_file = os.path.join(this_backup_folder, _file)
                 shutil.copy(src_file, dest_file)
+            self._uio.info(f"Backed up {data_folder} to {this_backup_folder}")
 
         else:
             raise Exception(f"{data_folder} data folder not found.")
@@ -958,6 +1027,7 @@ class Finances(GUIBase):
         self._init_dialog2()
         self._init_dialog3()
         self._init_update_password_dialog()
+        self._init_monthly_spending_dialog()
 
     # methods associated with bank/building society accounts
 
@@ -1000,15 +1070,27 @@ class Finances(GUIBase):
 
     def _on_bank_acount_table_double_click(self, e):
         """@brief called when the user double clicks on a bank account balance row."""
-        bank_account_dict = e.args[1]
-        _bank = bank_account_dict[BankAccountGUI.BANK]
-        _account_name = bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
-        selected_bank_account_index = self._get_bank_account_index_by_name(_bank, _account_name)
-        if selected_bank_account_index >= 0:
-            bank_account_dict_list = self._config.get_bank_accounts_dict_list()
-            bank_account_dict = bank_account_dict_list[selected_bank_account_index]
-            if bank_account_dict:
-                self._update_bank_account(False, bank_account_dict)
+        # We can't use the selected table row index to determine the bank account because some
+        # rows are not displayed and so the index of the displayed table would not match the index of
+        # the configured accounts.
+        # Therefore we match all the selected table row columns to a bank account.
+        row_data = e.args[1]
+        bank_account_dict_list = self._config.get_bank_accounts_dict_list()
+        owner = row_data[BankAccountGUI.ACCOUNT_OWNER]
+        bank_name = row_data[BankAccountGUI.BANK]
+        account_name = row_data[BankAccountGUI.ACCOUNT_NAME_LABEL]
+        balance = row_data[BankAccountGUI.BALANCE]
+        for bank_account_dict in bank_account_dict_list:
+            if owner == bank_account_dict[BankAccountGUI.ACCOUNT_OWNER] and \
+               bank_name == bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL] and \
+               account_name == bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]:
+                balance_table = bank_account_dict[BankAccountGUI.TABLE]
+                if balance_table and len(balance_table) > 0:
+                    _balance = balance_table[-1][1]
+                else:
+                    _balance = 0
+                if float(balance) == float(_balance):
+                    self._update_bank_account(False, bank_account_dict)
 
     def _init_dialog2(self):
         """@brief Create a dialog presented to the user to check that they wish to delete a bank account."""
@@ -1082,13 +1164,21 @@ class Finances(GUIBase):
             self._show_dialog2()
 
     def _get_selected_bank_account_index(self):
+        selected_index = None
         selected_dict = self._bank_acount_table.selected
         if len(selected_dict) > 0:
             selected_dict = selected_dict[0]
             if selected_dict:
                 bank_name = selected_dict[BankAccountGUI.BANK]
                 account_name = selected_dict[BankAccountGUI.ACCOUNT_NAME_LABEL]
-                return self._get_bank_account_index_by_name(bank_name, account_name)
+                selected_index = self._get_bank_account_index_by_name(bank_name, account_name)
+
+        if selected_index is None and \
+           self._selected_bank_account_index is not None and \
+           self._selected_bank_account_index >= 0:
+            selected_index = self._selected_bank_account_index
+
+        return selected_index
 
     def _get_bank_account_index_by_name(self, bank_name, account_name):
         """@brief Get a bank account index in the list of bank accounts.
@@ -1115,7 +1205,8 @@ class Finances(GUIBase):
            @return The selected bank account dict or None if no bank account is selected."""
         bank_account_dict = None
         self._last_selected_bank_account_index = self._get_selected_bank_account_index()
-        if self._last_selected_bank_account_index >= 0:
+        if self._last_selected_bank_account_index is not None and \
+           self._last_selected_bank_account_index >= 0:
             bank_account_dict_list = self._config.get_bank_accounts_dict_list()
             bank_account_dict = bank_account_dict_list[self._last_selected_bank_account_index]
         return bank_account_dict
@@ -1153,10 +1244,14 @@ class Finances(GUIBase):
            @param add If True then add to the list of available bank accounts.
            @param bank_account_dict A dict holding the bank account details."""
         if isinstance(bank_account_dict, dict):
-            # Define a secondary page
-            @ui.page('/bank_accounts_page')
-            def bank_accounts_page():
-                BankAccountGUI(add, bank_account_dict, self._config, self._savings_owner_list)
+            # Save tab int env so that it can be restored on return to the page
+            FinancesEnvArgs().set(self._tabs.value)
+            self._bankAccountGUI.set_args(add,
+                                          bank_account_dict,
+                                          self._savings_owner_list,
+                                          self._password,
+                                          self._folder,
+                                          self._get_selected_bank_account_index())
             # This will open the new page in the same browser window
             ui.run_javascript("window.open('/bank_accounts_page', '_parent')")
 
@@ -1191,11 +1286,16 @@ class Finances(GUIBase):
 
     def _on_pensions_table_double_click(self, e):
         """@brief called when the user double clicks on a bank account balance row."""
-        pensions_dict = e.args[1]
-        provider = pensions_dict[PensionGUI.PENSION_PROVIDER_LABEL]
-        description = pensions_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
-        pension_index = self._get_selected_pension_index_by_provider_and_description(provider, description)
+        pension_index = -1
+        row_data = e.args[1]
+        rows = self._pension_table.rows
+        try:
+            pension_index = next(i for i, row in enumerate(rows) if row == row_data)
+        except StopIteration:
+            pass
+
         if pension_index >= 0:
+            self._selected_pension_index = pension_index
             pension_dict_list = self._config.get_pension_dict_list()
             pension_dict = pension_dict_list[pension_index]
             if pension_dict:
@@ -1292,13 +1392,21 @@ class Finances(GUIBase):
             self._show_dialog3()
 
     def _get_selected_pension_index(self):
+        selected_index = None
         selected_dict = self._pension_table.selected
         if len(selected_dict) > 0:
             selected_dict = selected_dict[0]
             if selected_dict:
                 provider = selected_dict['Provider']
                 description = selected_dict['Description']
-                return self._get_selected_pension_index_by_provider_and_description(provider, description)
+                selected_index = self._get_selected_pension_index_by_provider_and_description(provider, description)
+
+        if selected_index is None and \
+           self._selected_pension_index is not None and \
+           self._selected_pension_index >= 0:
+            selected_index = self._selected_pension_index
+
+        return selected_index
 
     def _get_selected_pension_index_by_provider_and_description(self, provider, description):
         """@brief Get a pension index in the list of pensions.
@@ -1311,10 +1419,10 @@ class Finances(GUIBase):
         for pension_dict in self._config.get_pension_dict_list():
             _provider = pension_dict[PensionGUI.PENSION_PROVIDER_LABEL]
             _description = pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
-            if _provider == provider and \
-                    _description == description:
+            if _provider == provider and _description == description:
                 found = True
                 break
+
             index = index + 1
         if found:
             selected_index = index
@@ -1325,7 +1433,8 @@ class Finances(GUIBase):
            @return The selected pension dict or None if no pension is selected."""
         pension_dict = None
         self._last_selected_pension_index = self._get_selected_pension_index()
-        if self._last_selected_pension_index >= 0:
+        if self._last_selected_pension_index is not None and \
+           self._last_selected_pension_index >= 0:
             pension_dict_list = self._config.get_pension_dict_list()
             pension_dict = pension_dict_list[self._last_selected_pension_index]
         return pension_dict
@@ -1351,10 +1460,14 @@ class Finances(GUIBase):
            @param add If True then add to the list of available pensions.
            @param pension_dict A dict holding the pension details."""
         if isinstance(pension_dict, dict):
-            # Define a secondary page
-            @ui.page('/pensions_page')
-            def pensions_page():
-                PensionGUI(add, pension_dict, self._config, self._pension_owner_list)
+            # Save tab int env so that it can be restored on return to the page
+            FinancesEnvArgs().set(self._tabs.value)
+            self._pensionsGUI.set_args(add,
+                                       pension_dict,
+                                       self._pension_owner_list,
+                                       self._password,
+                                       self._folder,
+                                       self._get_selected_pension_index())
             # This will open the new page in the same browser window
             ui.run_javascript("window.open('/pensions_page', '_parent')")
 
@@ -1739,31 +1852,44 @@ class Finances(GUIBase):
         self._init_table_dialog(table_rows)
         self._table_dialog.open()
 
-    def _report1(self):
-        """@brief Plot our financial future based on given parameters."""
-        # Define a secondary page
-        @ui.page('/report1_page')
-        def report1_page():
-            page_title = 'Retirement Prediction Including Tax'
-            ui.page_title(page_title)
-            Report1GUI(self._config, self._pension_owner_list, page_title)
-        # This will open in a separate browser window
-        ui.run_javascript("window.open('/report1_page', '_blank')")
-
     def _report2(self):
-        """@brief Plot our financial future based on given parameters."""
-        # Define a secondary page
-        @ui.page('/future_plot_page2')
-        def future_plot_page2():
-            page_title = 'Drawdown Retirement Prediction Not Including Tax'
-            ui.page_title(page_title)
-            FuturePlotGUI(self._config, self._pension_owner_list, page_title)
+        """@brief Plot the financial future based on given parameters."""
+        # Save tab int env so that it can be restored on return to the page
+        FinancesEnvArgs().set(self._tabs.value)
+        self._futurePlotGUI.set_args(self._password,
+                                     self._folder,
+                                     self._pension_owner_list,
+                                     'Drawdown Retirement Prediction Not Including Tax')
         # This will open in a separate browser window
         ui.run_javascript("window.open('/future_plot_page2', '_blank')")
 
+    def _report1(self):
+        """@brief Plot the financial future based on given parameters."""
+        # Save tab int env so that it can be restored on return to the page
+        FinancesEnvArgs().set(self._tabs.value)
+        self._report1GUI.set_args(self._password,
+                                  self._folder,
+                                  self._pension_owner_list,
+                                  'Retirement Prediction Including Tax')
+        # This will open in a separate browser window
+        ui.run_javascript("window.open('/report1_page', '_blank')")
+
+
+class FinancesPIDEnvArgs(EnvArgs):
+    """@brief Provide the ability to pass args through the env. This only works for
+              args that can be converted to json. I.E not class instances."""
+
+    ENV_REF = "PID-" + Finances.__name__
+
+class FinancesEnvArgs(EnvArgs):
+    """@brief Provide the ability to pass args through the env. This only works for
+              args that can be converted to json. I.E not class instances."""
+
+    ENV_REF = Finances.__name__
 
 class BankAccountGUI(GUIBase):
     """@brief Responsible for allowing the user to add details of a bank/building society account or any other institution holding savings accounts"""
+    ARGS_FILENAME = 'BankAccountGUI.json'
 
     ACCOUNT_ACTIVE = "Active"
     ACCOUNT_BANK_NAME_LABEL = "Bank/Building Society Name"
@@ -1779,21 +1905,34 @@ class BankAccountGUI(GUIBase):
     BALANCE = 'Balance (£)'
     BANK = 'Bank'
 
-    def __init__(self, add, bank_account_dict, config, owner_list):
-        """@brief Constructor.
+    def __init__(self):
+        """@brief Parameterless constructor."""
+        self._add = None
+        self._bank_account_dict = None
+        self._config = None
+        self._owner_list = None
+        self._selected_row_index = -1
+        self._bank_account_field_list = []
+
+    def set_args(self, add, bank_account_dict, owner_list, config_password, config_folder, selected_bank_account_index):
+        """
            @param add If True then add to the list of available bank accounts.
            @param bank_account_dict A dict holding the bank account details.
            @param config A Config instance.
-           @param owner_list A list of savings account owners."""
-        self._add = add
-
-        self._bank_account_dict = self._ensure_default_bank_account_keys(bank_account_dict)
-        self._config = config
-        self._owner_list = owner_list
-        self._selected_row_index = -1
-        self._init_page()
-        self._init_add_row_dialog()
-        self._update_gui_from_bank_account()
+           @param owner_list A list of savings account owners.
+           @param config_password The config password.
+           @param config_folder The folder containing the config.
+           @param The index of the selected bank account in the list (-1 if not selected)"""
+        # We pass args to the BankAccountGUI instance using the env because we have no way of
+        # knowing which instance of BankAccountGUI nicegui will use to display the GUI
+        arg_list = [add,
+                    bank_account_dict,
+                    owner_list,
+                    config_password,
+                    config_folder,
+                    selected_bank_account_index]
+        # Pass the args to BankAccountGUI instance using the env
+        BankAccountGUIEnvArgs().set(arg_list)
 
     def _ensure_default_bank_account_keys(self, bank_account_dict):
         """@brief Ensure the bank account dict has the required keys."""
@@ -1832,9 +1971,26 @@ class BankAccountGUI(GUIBase):
 
         return bank_account_dict
 
-    def _init_page(self):
-        ui.label("Savings Account").style(
-            'font-size: 32px; font-weight: bold;')
+    def init_page(self):
+        # Get the args from Finances passed through the env
+
+        env_args = BankAccountGUIEnvArgs().get()
+        # This may get called by nicegui before the page is accessed by user
+        # in which case not env data will be available.
+        if env_args is None:
+            return
+        self._add = env_args[0]
+        self._bank_account_dict = self._ensure_default_bank_account_keys(env_args[1])
+        self._owner_list = env_args[2]
+        self._config_password = env_args[3]
+        self._config_folder = env_args[4]
+        self._selected_bank_account_index = env_args[5]
+        self._config = Config(self._config_folder,
+                              show_load_save_notifications=False)
+        self._config.load_config(self._config_password)
+
+        self._init_add_row_dialog()
+        ui.label("Savings Account").style('font-size: 32px; font-weight: bold;')
         with ui.row():
             bank_active_checkbox = ui.checkbox(
                 BankAccountGUI.ACCOUNT_ACTIVE, value=True).tooltip("Deselect this if this account should not be included in retirement planning finances.")
@@ -1856,10 +2012,8 @@ class BankAccountGUI(GUIBase):
 
             bank_account_interest_rate_field = ui.number(
                 label=BankAccountGUI.ACCOUNT_INTEREST_RATE, min=0, max=100).style('width: 150px;').tooltip("The rate of interest for this savings account when the account was opened. This is for your reference only and is not used in calculations.")
-            bank_account_interest_type_field = ui.select(
-                ['Fixed', 'Variable'], value='Fixed')
-            bank_account_interest_type_field.tooltip(
-                BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE)
+            bank_account_interest_type_field = ui.select(['Fixed', 'Variable'])
+            bank_account_interest_type_field.tooltip(BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE)
             bank_account_open_date_field = Finances.GetInputDateField(
                 BankAccountGUI.ACCOUNT_OPEN_DATE).tooltip("The date that the savings account was opened.")
 
@@ -1868,7 +2022,6 @@ class BankAccountGUI(GUIBase):
                 label=BankAccountGUI.ACCOUNT_NOTES).style('width: 800px;').tooltip("Any notes you may wish to record regarding this savings acount.")
 
         with ui.card().style("height: 300px; overflow-y: auto;"):
-            self._table = self._get_table_copy()
             with ui.row():
                 columns = [{'name': BankAccountGUI.DATE, 'label': BankAccountGUI.DATE, 'field': BankAccountGUI.DATE},
                            {'name': BankAccountGUI.BALANCE, 'label': BankAccountGUI.BALANCE,
@@ -1880,7 +2033,6 @@ class BankAccountGUI(GUIBase):
                                                    selection='single')
                 self._bank_acount_table.on('rowClick', self._bank_acount_table_rowclick)
 
-                self._display_table_rows()
             self._bank_acount_table.on('row-dblclick', self._on_bank_acount_table_double_click)
 
         with ui.row():
@@ -1893,19 +2045,23 @@ class BankAccountGUI(GUIBase):
             ui.button("Save", on_click=self._save_button_selected).tooltip("Save the account details.")
             ui.button("Back", on_click=lambda: ui.navigate.back()).tooltip("Go back to previous window.")
 
-        self._bank_account_field_list = [bank_account_bank_name_field,
-                                         bank_account_name_field,
-                                         bank_account_sort_code_field,
-                                         bank_account_number_field,
-                                         bank_account_owner_select,
-                                         bank_account_open_date_field,
-                                         bank_account_interest_rate_field,
-                                         bank_account_interest_type_field,
-                                         bank_active_checkbox,
-                                         bank_notes_field]
+        # Keep a list of fields so that their values can be updated later.
+        self._bank_account_field_list.append(bank_account_bank_name_field)
+        self._bank_account_field_list.append(bank_account_name_field)
+        self._bank_account_field_list.append(bank_account_sort_code_field)
+        self._bank_account_field_list.append(bank_account_number_field)
+        self._bank_account_field_list.append(bank_account_owner_select)
+        self._bank_account_field_list.append(bank_account_open_date_field)
+        self._bank_account_field_list.append(bank_account_interest_rate_field)
+        self._bank_account_field_list.append(bank_account_interest_type_field)
+        self._bank_account_field_list.append(bank_active_checkbox)
+        self._bank_account_field_list.append(bank_notes_field)
+        self._bank_account_field_list.append(self._bank_acount_table)
+
+        self._update_gui_from_bank_account()
 
     def _bank_acount_table_rowclick(self, event):
-        self._table_rowclick(self._bank_acount_table, event)
+        self._table_rowclick(self._bank_account_field_list[-1], event)
 
     def _on_bank_acount_table_double_click(self, e):
         """@brief called when the user double clicks on a bank account balance row."""
@@ -1925,29 +2081,18 @@ class BankAccountGUI(GUIBase):
         if self._update_bank_account_from_gui():
             ui.notify('Saved savings account details.', type='positive', position='bottom')
 
-    def _get_table_copy(self):
-        """@brief Get a copy of the table from the dict that holds the balance table."""
-        table = []
-        if BankAccountGUI.TABLE in self._bank_account_dict:
-            table = self._bank_account_dict[BankAccountGUI.TABLE]
-        else:
-            # If not present add an empty table to the dict
-            self._bank_account_dict[BankAccountGUI.TABLE] = table
-        # Return a copy of the table
-        return copy.deepcopy(table)
-
     def _add_table_row(self, row):
         rows = self._bank_account_dict[BankAccountGUI.TABLE]
         rows.append(row)
         # Sort table in ascending date order
         sorted_rows = sorted(rows, key=lambda row: datetime.strptime(row[0], "%d-%m-%Y"))
         self._bank_account_dict[BankAccountGUI.TABLE] = sorted_rows
+        self._display_table_rows(self._bank_acount_table)
 
     def _init_add_row_dialog(self):
         """@brief Create a dialog presented to the user to check that they wish to add a bank account."""
         with ui.dialog() as self._add_row_dialog, ui.card().style('width: 400px;'):
-            self._date_input_field = GUIBase.GetInputDateField(
-                BankAccountGUI.DATE)
+            self._date_input_field = GUIBase.GetInputDateField(BankAccountGUI.DATE)
             self._amount_field = ui.input(label="Balance (£)", value='0.00').props('inputmode=decimal pattern=[0-9]*[.,]?[0-9]+')
             with ui.row():
                 ui.button("Ok", on_click=self._add_row_dialog_ok_button_press)
@@ -1963,16 +2108,17 @@ class BankAccountGUI(GUIBase):
            BankAccountGUI.CheckDuplicateDate(self._bank_account_dict[BankAccountGUI.TABLE], self._date_input_field.value):
             row = (self._date_input_field.value, self._amount_field.value)
             self._add_table_row(row)
-            self._display_table_rows()
+            self._display_table_rows(self._bank_acount_table)
 
-    def _display_table_rows(self):
+    def _display_table_rows(self, bank_acount_table):
         """@brief Show a table of the configured bank accounts."""
-        self._bank_acount_table.rows.clear()
-        self._bank_acount_table.update()
+        bank_acount_table.rows.clear()
+        bank_acount_table.update()
         table = self._bank_account_dict[BankAccountGUI.TABLE]
         for row in table:
-            self._bank_acount_table.add_row({BankAccountGUI.DATE: row[0], BankAccountGUI.BALANCE: row[1]})
-        self._bank_acount_table.run_method('scrollTo', len(self._bank_acount_table.rows)-1)
+            bank_acount_table.add_row({BankAccountGUI.DATE: row[0], BankAccountGUI.BALANCE: row[1]})
+        bank_acount_table.update()
+        bank_acount_table.run_method('scrollTo', len(table)-1)
 
     def _add_row_dialog_cancel_button_press(self):
         self._add_row_dialog.close()
@@ -1997,14 +2143,15 @@ class BankAccountGUI(GUIBase):
                 if date != del_date:
                     new_table.append(row)
             self._bank_account_dict[BankAccountGUI.TABLE] = new_table
-        self._display_table_rows()
+
+        self._display_table_rows(self._bank_acount_table)
         self._config.save_bank_accounts()
 
     def _update_gui_from_bank_account(self):
         """@brief Update the contents of fields from the bank account entered."""
         for input_field in self._bank_account_field_list:
             if isinstance(input_field, ui.number):
-                input_field.value = self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE]
+                input_field.set_value(self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE])
 
             elif isinstance(input_field, ui.select):
                 found_field = False
@@ -2012,21 +2159,24 @@ class BankAccountGUI(GUIBase):
                 if 'label' in properties:
                     label = input_field.props['label']
                     if label == BankAccountGUI.ACCOUNT_OWNER:
-                        input_field.value = self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER]
+                        input_field.set_value(self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER])
                         found_field = True
 
                 # If not found we assume this is the interest rate type field as this is the only other ui.select
                 # field in the bank account GUI.
                 if not found_field:
-                    input_field.value = self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE]
+                    input_field.set_value(self._bank_account_dict[BankAccountGUI.ACCOUNT_INTEREST_RATE_TYPE])
 
             elif isinstance(input_field, ui.checkbox):
                 input_field.value = self._bank_account_dict[BankAccountGUI.ACCOUNT_ACTIVE]
 
+            elif isinstance(input_field, ui.table):
+                self._display_table_rows(input_field)
+
             else:
                 props = input_field._props
                 key = props['label']
-                input_field.value = self._bank_account_dict[key]
+                input_field.set_value(self._bank_account_dict[key])
 
     def _update_bank_account_from_gui(self):
         """@brief Update the bank account dict. from the GUI fields.
@@ -2056,11 +2206,24 @@ class BankAccountGUI(GUIBase):
             if self._add:
                 self._config.add_bank_account(self._bank_account_dict)
 
+            else:
+                # We're editing a bank account so update the bank account
+                bank_account_list = self._config.get_bank_accounts_dict_list()
+                if self._selected_bank_account_index >= 0:
+                    bank_account_list[self._selected_bank_account_index] = self._bank_account_dict
+
             # If editing an account then the bank_account_dict has been modified and we just need to save it.
             self._config.save_bank_accounts()
             valid = True
 
         return valid
+
+
+class BankAccountGUIEnvArgs(EnvArgs):
+    """@brief Provide the ability to pass args through the env. This only works for
+              args that can be converted to json. I.E not class instances."""
+
+    ENV_REF = BankAccountGUI.__name__
 
 
 class PensionGUI(GUIBase):
@@ -2076,18 +2239,29 @@ class PensionGUI(GUIBase):
     PENSION_OWNER = "Owner"
     VALUE = "Value (£)"
 
-    def __init__(self, add, pension_dict, config, owner_list):
-        """@brief Constructor.
+    def __init__(self):
+        """@brief Parameterless constructor."""
+        pass
+
+    def set_args(self, add, pension_dict, owner_list, config_password, config_folder, selected_pension_index):
+        """
            @param add If True then add to the list of available bank accounts.
            @param pension_dict A dict holding the pension details.
            @param config A Config instance.
-           @param owner_list A list of pension owners."""
-        self._add = add
-        self._pension_dict = self._ensure_default_pension_keys(pension_dict)
-        self._config = config
-        self._owner_list = owner_list
-        self._init_add_row_dialog()
-        self._init_page()
+           @param owner_list A list of savings account owners.
+           @param config_password The config password.
+           @param config_folder The folder containing the config.
+           @param The index of the selected bank account in the list (-1 if not selected)"""
+        # We pass args to the BankAccountGUI instance using the env because we have no way of
+        # knowing which instance of BankAccountGUI nicegui will use to display the GUI
+        arg_list = [add,
+                    pension_dict,
+                    owner_list,
+                    config_password,
+                    config_folder,
+                    selected_pension_index]
+        # Pass the args to BankAccountGUI instance using the env
+        PensionGUIEnvArgs().set(arg_list)
 
     def _ensure_default_pension_keys(self, pension_dict):
         """@brief Ensure the pension dict has the required keys."""
@@ -2111,7 +2285,23 @@ class PensionGUI(GUIBase):
 
         return pension_dict
 
-    def _init_page(self):
+    def init_page(self):
+        env_args = PensionGUIEnvArgs().get()
+        # This may get called by nicegui before the page is accessed by user
+        # in which case not env data will be available.
+        if env_args is None:
+            return
+        self._add = env_args[0]
+        self._pension_dict = self._ensure_default_pension_keys(env_args[1])
+        self._owner_list = env_args[2]
+        self._config_password = env_args[3]
+        self._config_folder = env_args[4]
+        self._selected_pension_index = env_args[5]
+        self._config = Config(self._config_folder,
+                              show_load_save_notifications=False)
+        self._config.load_config(self._config_password)
+
+        self._init_add_row_dialog()
         ui.label("Pension").style('font-size: 32px; font-weight: bold;')
         self._state_pension_checkbox = ui.checkbox(PensionGUI.STATE_PENSION, value=False).on(
             'click', self._state_pension_checkbox_callback).tooltip("This should be checked if this is a state pension. If not then this should be unchecked.")
@@ -2126,7 +2316,6 @@ class PensionGUI(GUIBase):
                                               value=self._owner_list[0]).style('width: 200px;').tooltip("The name of the pension owner.")
 
         with ui.card().style("height: 300px; overflow-y: auto;").tooltip("If a state pension the amount should be the yearly expected state pension. If not a state pension, then the amount should be the pension fund value."):
-            self._table = self._get_table_copy()
             with ui.row():
                 columns = [{'name': PensionGUI.DATE, 'label': PensionGUI.DATE, 'field': PensionGUI.DATE},
                            {'name': PensionGUI.AMOUNT, 'label': PensionGUI.AMOUNT,
@@ -2142,10 +2331,8 @@ class PensionGUI(GUIBase):
         self._update_gui_from_pension()
 
         with ui.row():
-            ui.button("Add", on_click=self._add_button_handler).tooltip(
-                'Add a row to the pension table.')
-            ui.button("Delete", on_click=self._delete_button_handler).tooltip(
-                'Delete a row from the pension table.')
+            ui.button("Add", on_click=self._add_button_handler).tooltip('Add a row to the pension table.')
+            ui.button("Delete", on_click=self._delete_button_handler).tooltip('Delete a row from the pension table.')
 
         with ui.row():
             ui.button("Save", on_click=self._save_button_selected).tooltip("Save the pension details.")
@@ -2172,17 +2359,6 @@ class PensionGUI(GUIBase):
         if self._update_pension_from_gui():
             ui.notify('Saved pension account details.', type='positive', position='bottom')
 
-    def _get_table_copy(self):
-        """@brief Get a copy of the table from the dict that holds the pension table."""
-        table = []
-        if PensionGUI.PENSION_TABLE in self._pension_dict:
-            table = self._pension_dict[PensionGUI.PENSION_TABLE]
-        else:
-            # If not present add an empty table to the dict
-            self._pension_dict[PensionGUI.PENSION_TABLE] = table
-        # Return a copy of the table
-        return copy.deepcopy(table)
-
     def _state_pension_checkbox_callback(self):
         # Ensure state pension field/s are enabled if checkbox is selected
         if self._state_pension_checkbox:
@@ -2202,10 +2378,9 @@ class PensionGUI(GUIBase):
         self._pension_table.update()
         table = self._pension_dict[PensionGUI.PENSION_TABLE]
         for row in table:
-            self._pension_table.add_row(
-                {PensionGUI.DATE: row[0], PensionGUI.AMOUNT: row[1]})
-        self._pension_table.run_method(
-            'scrollTo', len(self._pension_table.rows)-1)
+            self._pension_table.add_row({PensionGUI.DATE: row[0], PensionGUI.AMOUNT: row[1]})
+        self._pension_table.update()
+        self._pension_table.run_method('scrollTo', len(self._pension_table.rows)-1)
 
     def _init_add_row_dialog(self):
         """@brief Create a dialog presented to the user to check that they wish to add a pension value."""
@@ -2265,10 +2440,10 @@ class PensionGUI(GUIBase):
     def _update_gui_from_pension(self):
         """@brief Update the contents of fields from the pension entered."""
         self._state_pension_checkbox.value = self._pension_dict[PensionGUI.STATE_PENSION]
-        self._provider_field.value = self._pension_dict[PensionGUI.PENSION_PROVIDER_LABEL]
-        self._description_field.value = self._pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL]
-        self._pension_owner_field.value = self._pension_dict[PensionGUI.PENSION_OWNER_LABEL]
-        self._state_pension_state_date_field.value = self._pension_dict[PensionGUI.STATE_PENSION_START_DATE]
+        self._provider_field.set_value(self._pension_dict[PensionGUI.PENSION_PROVIDER_LABEL])
+        self._description_field.set_value(self._pension_dict[PensionGUI.PENSION_DESCRIPTION_LABEL])
+        self._pension_owner_field.set_value(self._pension_dict[PensionGUI.PENSION_OWNER_LABEL])
+        self._state_pension_state_date_field.set_value(self._pension_dict[PensionGUI.STATE_PENSION_START_DATE])
         self._state_pension_checkbox_callback()
         self._display_table_rows()
 
@@ -2301,7 +2476,7 @@ class PensionGUI(GUIBase):
             ui.notify("Owner field not set.", type='negative')
 
         elif duplicate_description:
-            ui.notify(f"A pension with this description ('{_descrip}') is already present.", type='negative')
+            ui.notify(f"A pension with this description ('{self._description_field.value}') is already present.", type='negative')
 
         elif state_pension and not valid_pension_start_date:
             # Error message already displayed
@@ -2318,11 +2493,24 @@ class PensionGUI(GUIBase):
             if self._add:
                 self._config.add_pension(self._pension_dict)
 
+            else:
+                # We're editing a pension so update the pensions list
+                pension_list = self._config.get_pension_dict_list()
+                if self._selected_pension_index >= 0:
+                    pension_list[self._selected_pension_index] = self._pension_dict
+
             self._config.save_pensions()
 
             valid = True
 
         return valid
+
+
+class PensionGUIEnvArgs(EnvArgs):
+    """@brief Provide the ability to pass args through the env. This only works for
+              args that can be converted to json. I.E not class instances."""
+
+    ENV_REF = PensionGUI.__name__
 
 
 class FuturePlotGUI(GUIBase):
@@ -2394,18 +2582,27 @@ class FuturePlotGUI(GUIBase):
            @param date_str The string to be converted into a date."""
         return datetime.strptime(date_str, '%d-%m-%Y')
 
-    def __init__(self, config, pension_owner_list, page_title):
-        self._config = config
-        self._pension_owner_list = pension_owner_list
-        self._page_title = page_title
-        self._last_pp_year = None
-        self._ensure_keys_present()
-        self._init_gui()
-        self._init_add_row_dialog()
-        self._init_ok_to_delete_dialog()
-        self._init_edit_row_dialog()
-        self._report_start_date = None
-        self._withdrawal_edit_table = None
+    def __init__(self):
+        """@brief Parameterless constructor."""
+        self._plot1GUI = Plot1GUI()
+
+    def getPlot1GUI(self):
+        return self._plot1GUI
+
+    def set_args(self, config_password, config_folder, pension_owner_list, page_title):
+        """
+           @param config_password The config password.
+           @param config_folder The folder containing the config.
+           @param pension_owner_list A list of the pension owners.
+           @param page_title The title of the page to open."""
+        # We pass args to the BankAccountGUI instance using the env because we have no way of
+        # knowing which instance of BankAccountGUI nicegui will use to display the GUI
+        arg_list = [config_password,
+                    config_folder,
+                    pension_owner_list,
+                    page_title]
+        # Pass the args to BankAccountGUI instance using the env
+        FuturePlotGUIEnvArgs().set(arg_list)
 
     def _ensure_keys_present(self):
         """@brief Ensure the required keys are present in the config dict that relate to the future plot attrs."""
@@ -2497,7 +2694,29 @@ class FuturePlotGUI(GUIBase):
         else:
             self._pension_drawdown_start_date_field.disable()
 
-    def _init_gui(self):
+    def init_page(self):
+        env_args = FuturePlotGUIEnvArgs().get()
+        # This may get called by nicegui before the page is accessed by user
+        # in which case not env data will be available.
+        if env_args is None:
+            return
+        self._config_password = env_args[0]
+        self._config_folder = env_args[1]
+        self._pension_owner_list = env_args[2]
+        self._page_title = env_args[3]
+        self._config = Config(self._config_folder,
+                              show_load_save_notifications=False)
+        self._config.load_config(self._config_password)
+        self._last_pp_year = None
+        self._report_start_date = None
+        self._withdrawal_edit_table = None
+
+        self._ensure_keys_present()
+        self._init_add_row_dialog()
+        self._init_ok_to_delete_dialog()
+        self._init_edit_row_dialog()
+
+        ui.page_title(self._page_title)
         with ui.row():
             ui.label(self._page_title).style('font-size: 32px; font-weight: bold;')
         with ui.row():
@@ -3516,15 +3735,12 @@ class FuturePlotGUI(GUIBase):
         if self._interval_radio.value == FuturePlotGUI.BY_YEAR:
             plot_by_year = True
 
-        # Define a secondary page
-        @ui.page('/plot_1_page')
-        def plot_1_page():
-            Plot1GUI(name,
-                     plot_table,
-                     reality_tables,
-                     final_year,
-                     money_ran_out,
-                     plot_by_year)
+        self._plot1GUI.set_args(name,
+                                plot_table,
+                                reality_tables,
+                                final_year,
+                                money_ran_out,
+                                plot_by_year)
         # This will open in a separate browser window
         ui.run_javascript("window.open('/plot_1_page', '_blank')")
 
@@ -4001,6 +4217,13 @@ class FuturePlotGUI(GUIBase):
         return new_value
 
 
+class FuturePlotGUIEnvArgs(EnvArgs):
+    """@brief Provide the ability to pass args through the env. This only works for
+              args that can be converted to json. I.E not class instances."""
+
+    ENV_REF = FuturePlotGUI.__name__
+
+
 class Report1GUI(GUIBase):
     """@brief A simple report that does not attempt to achieve an income but allows the user
               to enter how much they want to pull from pensions and savings and if any other income is available (E.G part time jobs, Annuities etc."""
@@ -4096,15 +4319,25 @@ class Report1GUI(GUIBase):
 
         return round(interest_earned, 2)
 
-    def __init__(self, config, pension_owner_list, page_title):
+    def __init__(self):
+        """@brief Parameterless constructor."""
         super().__init__()
-        self._config = config
-        self._pension_owner_list = pension_owner_list
-        self.page_title = page_title
-        self._ensure_keys_present()
-        self._init_gui()
-        self._report_start_date = None
-        self._withdrawal_edit_table = None
+        self._table_dict = None
+
+    def set_args(self, config_password, config_folder, pension_owner_list, page_title):
+        """
+           @param config_password The config password.
+           @param config_folder The folder containing the config.
+           @param pension_owner_list A list of the pension owners.
+           @param page_title The title of the page to open."""
+        # We pass args to the BankAccountGUI instance using the env because we have no way of
+        # knowing which instance of BankAccountGUI nicegui will use to display the GUI
+        arg_list = [config_password,
+                    config_folder,
+                    pension_owner_list,
+                    page_title]
+        # Pass the args to BankAccountGUI instance using the env
+        Report1GUIEnvArgs().set(arg_list)
 
     def _ensure_keys_present(self):
         """@brief Ensure the required keys are present in the config dict that relate to the future plot attrs.
@@ -4167,12 +4400,30 @@ class Report1GUI(GUIBase):
         plot_attr_dict = multiple_report1_plot_attrs_dict[selected_name]
         plot_attr_dict[param_name] = value
 
-    def _init_gui(self):
+    def init_page(self):
+        env_args = Report1GUIEnvArgs().get()
+        # This may get called by nicegui before the page is accessed by user
+        # in which case not env data will be available.
+        if env_args is None:
+            return
+        self._config_password = env_args[0]
+        self._config_folder = env_args[1]
+        self._pension_owner_list = env_args[2]
+        self._page_title = env_args[3]
+        self._config = Config(self._config_folder,
+                              show_load_save_notifications=False)
+        self._config.load_config(self._config_password)
+        self._report_start_date = None
+        self._withdrawal_edit_table = None
+
+        self._ensure_keys_present()
+
+        ui.page_title(self._page_title)
         self._init_add_row_dialog()
         self._init_ok_to_delete_dialog()
         self._init_edit_row_dialog()
         with ui.row():
-            ui.label(self.page_title).style('font-size: 32px; font-weight: bold;')
+            ui.label(self._page_title).style('font-size: 32px; font-weight: bold;')
 
         with ui.row():
             ui.label("The following parameters can be changed to alter the prediction. The tables below define all the money you will use to meeting your monthly requirements. You must add rows to these tables to define where and when you wish to take the money from.")
@@ -4319,7 +4570,7 @@ class Report1GUI(GUIBase):
                   This method should be overridden in the subclass that needs to receive the message.
            @param rxDict The dict containing the message to be handled."""
         if Report1GUI.PLOT_TABLE_DICT in rxDict:
-            self._create_plot_page(rxDict[Report1GUI.PLOT_TABLE_DICT])
+            self._do_plot(rxDict[Report1GUI.PLOT_TABLE_DICT])
 
     def _add_other_income(self):
         """@brief Called when the add to other income table button is selected."""
@@ -4550,8 +4801,6 @@ class Report1GUI(GUIBase):
             raise Exception("{self._withdrawal_edit_table} is an unknown table.")
 
         selected_dict_list = withdrawal_table.selected
-        # PJA DEBUG
-        print(f"PJA: selected_dict_list={selected_dict_list}")
         if len(selected_dict_list) == 0:
             self._show_negative_notify_msg("No row is selected.")
 
@@ -6018,20 +6267,15 @@ class Report1GUI(GUIBase):
             raise Exception("Invalid last year to plot. This must be a year in the future.")
         return final_year
 
-    def _create_plot_page(self, table_dict):
-        # Define a secondary page
-        @ui.page('/_create_plot_page')
-        def _create_plot_page():
-            try:
-                self._create_chart_page(table_dict)
-            except Exception as ex:
-                # PJA
-                print(ex)
-                traceback.print_tb(ex.__traceback__)
-                ui.notify(str(ex), type='negative')
-
+    def _do_plot(self, table_dict):
+        # Pass the table_dict to Report1GUI instance using a disk file
+        args_list = [table_dict,
+                     self._settings_name_select.value,
+                     self._plot_by_year(),
+                     self._get_max_year()]
+        Report1GUIPickler().set(args_list)
         # This will open in a separate browser window
-        ui.run_javascript("window.open('/_create_plot_page', '_blank')")
+        ui.run_javascript("window.open('/report1_chart_page', '_blank')")
 
     def _plot_by_year(self):
         """@return True if the user wishes to plot by year rather than month."""
@@ -6068,11 +6312,23 @@ class Report1GUI(GUIBase):
                 plot_pane_list.append(ui.element('div').style('width: 100%;'))
         return plot_pane_list
 
-    def _create_chart_page(self, table_dict):
+    def init_chart_page(self):
         """@brief Create a new window displaying the data in table_dict on charts.
         @param table_dict A dict holding the pandas dataframes containing the data to be plotted."""
+        ui.query('.nicegui-content').classes('p-0')  # no padding on main content
+
+        args_list = Report1GUIPickler().get()
+        # This may get called by nicegui before the page is accessed by user
+        # in which case args_list will be available.
+        if args_list is None:
+            return
+        table_dict = args_list[0]
+        self._page_title = args_list[1]
+        self._plot_by_year = args_list[2]
+        self._max_year = args_list[3]
+
         # Set the doc name (appears in browser tab) so user can identify with name to associate the plot with
-        ui.page_title(self._settings_name_select.value)
+        ui.page_title(self._page_title)
 
         plot_panel_1, plot_panel_2, plot_panel_3, plot_panel_4 = self._get_plot_pane_list()
 
@@ -6085,7 +6341,7 @@ class Report1GUI(GUIBase):
         pensions_and_savings_table_df_list = pensions_and_savings_table_df_list[4:]
 
         bar_chart = False
-        plot_by_year = self._plot_by_year()
+        plot_by_year = self._plot_by_year
         if plot_by_year:
             bar_chart = True
 
@@ -6122,7 +6378,7 @@ class Report1GUI(GUIBase):
         line_widths = savings_growth_table_df_list[2]
         report_zero_value_list = savings_growth_table_df_list[3]
         savings_growth_table_df_list = savings_growth_table_df_list[4:]
-        plot_by_year = self._plot_by_year()
+        plot_by_year = self._plot_by_year
         # Last two charts are always bar
         bar_chart = True
 
@@ -6160,8 +6416,6 @@ class Report1GUI(GUIBase):
                         bar_chart=False,
                         plot_by_year=False):
         # If the user wishes to limit the max year, then delete all rows after this year
-        max_year = self._get_max_year()
-
         fig = go.Figure()
         plot_dict = {}
         dataframe_index = 0
@@ -6173,9 +6427,9 @@ class Report1GUI(GUIBase):
                 df = df.groupby(df['Date'].dt.year, as_index=False).last()
                 df = df.resample('Y', on='Date').sum().reset_index()
 
-            if max_year:
+            if self._max_year:
                 # Remove data after the max year if set
-                df = df[df['Date'].dt.year <= max_year]
+                df = df[df['Date'].dt.year <= self._max_year]
 
             date_list = df[Report1GUI.DATE]
             value_list = df[column_name]
@@ -6255,10 +6509,66 @@ class Report1GUI(GUIBase):
         return max_year
 
 
+class Report1GUIEnvArgs(EnvArgs):
+    """@brief Provide the ability to pass args through the env. This only works for
+              args that can be converted to json. I.E not class instances."""
+
+    ENV_REF = Report1GUI.__name__
+
+
+class Pickler():
+    """@brief Provide the ability to pass args through pickled (saved to file using pickle module)."""
+
+    PICKLE_FILENAME = None  # The PICKLE_FILENAME must be set in a subclass
+
+    def __init__(self):
+        self._pickle_file = self._get_file()
+
+    def _get_file(self):
+        temp_dir = tempfile.gettempdir()
+        return os.path.join(temp_dir, self.PICKLE_FILENAME)
+
+    def _check_filename_set(self):
+        if self.PICKLE_FILENAME is None:
+            raise Exception("Pickler.PICKLE_FILENAME must be set in subclass of Pickler")
+
+    def clean(self):
+        """@brief Remove thge pickle file from disk.
+                  This can be called after get() has been successfully called to remove the file from disk."""
+        if os.path.isfile(self._pickle_file):
+            os.remove(self._pickle_file)
+
+    def set(self, arg_list):
+        self._check_filename_set()
+        with open(self._pickle_file, "wb") as f:
+            pickle.dump(arg_list, f)
+
+    def get(self, auto_clean=True):
+        """@brief Get the list from disk.
+           @param auto_clean If True the file is removed from disk after a successfull read."""
+        self._check_filename_set()
+        if os.path.isfile(self._pickle_file):
+            with open(self._pickle_file, "rb") as f:
+                loaded_list = pickle.load(f)
+                if auto_clean:
+                    self.clean()
+                return loaded_list
+
+
+class Report1GUIPickler(Pickler):
+    """@brief Provide the ability to pass args through pickled (saved to file using pickle module)."""
+
+    PICKLE_FILENAME = Report1GUI.__name__
+
+
 class Plot1GUI(GUIBase):
     """@brief Responsible for plotting the data of the predicted changes in the savings as we draw out money."""
 
-    def __init__(self,
+    def __init__(self):
+        """@brief Parameterless constructor."""
+        pass
+
+    def set_args(self,
                  name,
                  plot_table,
                  reality_tables=None,
@@ -6289,18 +6599,16 @@ class Plot1GUI(GUIBase):
            @param money_ran_out If True the money ran out.
            @param plot_by_year If True the yearly rather than month changes are plotted.
                              """
-        self._name = name
-        self._plot_table = plot_table
-        self._reality_tables = reality_tables
-        self._final_year = final_year
-        self._money_ran_out = money_ran_out
-        self._plot_by_year = plot_by_year
-
-        # If plotting by year make changes to the tables.
-        if self._plot_by_year:
-            self._plot_table, self._reality_tables = self._group_by_year(self._plot_table, self._reality_tables)
-
-        self._init_gui()
+        # We pass args to the BankAccountGUI instance using the env because we have no way of
+        # knowing which instance of BankAccountGUI nicegui will use to display the GUI
+        arg_list = [name,
+                    plot_table,
+                    reality_tables,
+                    final_year,
+                    money_ran_out,
+                    plot_by_year]
+        # Pass the args to BankAccountGUI instance using the env
+        Plot1GUIPickler().set(arg_list)
 
     def _group_plot_table_by_year(self, plot_table):
         """@brief group the values in the plot_table by year and return the resultant table.
@@ -6407,8 +6715,24 @@ class Plot1GUI(GUIBase):
             overlay_reality = True
         return overlay_reality
 
-    def _init_gui(self):
+    def init_page(self):
         """@brief plot the data in the plot table."""
+        obj_list = Plot1GUIPickler().get()
+        # This may get called by nicegui before the page is accessed by user
+        # in which case not env data will be available.
+        if obj_list is None:
+            return
+        self._name = obj_list[0]
+        self._plot_table = obj_list[1]
+        self._reality_tables = obj_list[2]
+        self._final_year = obj_list[3]
+        self._money_ran_out = obj_list[4]
+        self._plot_by_year = obj_list[5]
+
+        # If plotting by year make changes to the tables.
+        if self._plot_by_year:
+            self._plot_table, self._reality_tables = self._group_by_year(self._plot_table, self._reality_tables)
+
         # Set the doc name (appears in browser tab) so user can identify with name to associate the plot with
         ui.page_title(self._name)
 
@@ -6729,6 +7053,15 @@ class Plot1GUI(GUIBase):
             ui.notify("You ran out of money", type='negative')
 
 
+class Plot1GUIPickler(Pickler):
+    """@brief Provide the ability to pass args through pickled (saved to file using pickle module)."""
+
+    PICKLE_FILENAME = Plot1GUI.__name__
+
+    def __init__(self):
+        super().__init__()
+
+
 class HMRC:
     """
     # --- Example Usage ---
@@ -6888,6 +7221,7 @@ class HMRC:
 
 def main():
     """@brief Program entry point"""
+
     uio = UIO()
     options = None
     try:
@@ -6913,16 +7247,34 @@ def main():
 
         handled = launcher.handleLauncherArgs(options, uio=uio)
         if not handled:
-            uio.info("Starting up, please wait...")
+            uio.info("Opening page...")
+
+            # make all sub_pages full width by default
+            ui.sub_pages.default_classes('w-full')
+
             finances = Finances(uio, options.password, options.folder, example_data=options.example)
             port = options.port
             if options.example:
                 # For the example we start the server on the next port
                 port += 1
 
-            @ui.page('/')
-            def main_page():
-                finances.initGUI(options.debug)
+            bankAccountGUI = finances.getBankAccountGUI()
+            pensionsGUI = finances.getPensionsGUI()
+            report1GUI = finances.getReport1GUI()
+            futurePlotGUI = finances.getFuturePlotGUI()
+            plot1GUI = finances.getPlot1GUI()
+            finances.init_footer()
+
+            ui.sub_pages({
+                '/': finances.login_page,  # Root page, followed by sub pages
+                '/main_page': finances.main_page,
+                '/bank_accounts_page': bankAccountGUI.init_page,
+                '/pensions_page': pensionsGUI.init_page,
+                '/future_plot_page2': futurePlotGUI.init_page,
+                '/plot_1_page': plot1GUI.init_page,
+                '/report1_page': report1GUI.init_page,
+                '/report1_chart_page': report1GUI.init_chart_page,
+                })
 
             guiLogLevel = "warning"
             if options.debug:
@@ -6933,7 +7285,8 @@ def main():
                    title="Retirement Finances",
                    dark=True,
                    uvicorn_logging_level=guiLogLevel,
-                   reload=options.reload)
+                   reload=options.reload,
+                   storage_secret=secrets.token_hex(32))
 
     # If the program throws a system exit exception
     except SystemExit:
@@ -6951,5 +7304,5 @@ def main():
 
 
 # Note __mp_main__ is used by the nicegui module
-if __name__ in {"__main__", "__mp_main__"}:
+if __name__ in {"__main__"}:
     main()
