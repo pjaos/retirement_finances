@@ -6548,13 +6548,14 @@ class Pickler():
     def get(self, auto_clean=True):
         """@brief Get the list from disk.
            @param auto_clean If True the file is removed from disk after a successfull read."""
+        loaded_list = None
         self._check_filename_set()
         if os.path.isfile(self._pickle_file):
             with open(self._pickle_file, "rb") as f:
                 loaded_list = pickle.load(f)
-                if auto_clean:
-                    self.clean()
-                return loaded_list
+        if loaded_list and auto_clean:
+            self.clean()
+        return loaded_list
 
 
 class Report1GUIPickler(Pickler):
