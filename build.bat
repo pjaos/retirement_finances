@@ -1,9 +1,11 @@
-del /Q windows_installer\*.exe
-del /Q installers\windows\*.exe
+:: This builds the python wheel file in the windows folder that can be installed using the install.py file.
 copy .\pyproject.toml .\src\retirement_finances\assets\
-pyinstaller --distpath windows_installer/ --workpath windows_installer/ retirement_finances.spec
-"C:\Program Files (x86)\Inno Setup 6\iscc.exe" windows_installer/retirement_finances.iss
-
+:: Use poetry command to build python wheel
+poetry --output=windows --clean -vvv build
+:: Delete the .tar.gz file in dist directory
+del /Q windows/*.tar.gz
+:: Put a copy of the install.py alongside the python wheel
+copy install.py windows
 
 
 

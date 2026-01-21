@@ -23,6 +23,10 @@ psutil = "*"
 pandas = "*"
 PyInstaller = "*"
 
+# Windows-only dependencies
+pywin32 = { version = "*", markers = "sys_platform == 'win32'" }
+pyreadline3 = { version = "*", markers = "sys_platform == 'win32'" }
+
 [tool.poetry.scripts]
 retirement_finances = "retirement_finances.retirement_finances:main"
 
