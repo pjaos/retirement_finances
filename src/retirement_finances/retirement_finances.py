@@ -1242,14 +1242,12 @@ class Finances(GUIBase):
            @param add If True then add to the list of available bank accounts.
            @param bank_account_dict A dict holding the bank account details."""
         if isinstance(bank_account_dict, dict):
-            # Save tab int env so that it can be restored on return to the page
-            FinancesEnvArgs().set(self._tabs.value)
+            # Don't save the tab as the bank account is the first and this is the default displayed tab.
             self._bankAccountGUI.set_args(add,
                                           bank_account_dict,
                                           self._savings_owner_list,
                                           self._password,
-                                          self._folder,
-                                          self._get_selected_bank_account_index())
+                                          self._folder)
             # This will open the new page in the same browser window
             ui.run_javascript("window.open('/bank_accounts_page', '_parent')")
 
@@ -1914,23 +1912,21 @@ class BankAccountGUI(GUIBase):
         self._selected_row_index = -1
         self._bank_account_field_list = []
 
-    def set_args(self, add, bank_account_dict, owner_list, config_password, config_folder, selected_bank_account_index):
+    def set_args(self, add, bank_account_dict, owner_list, config_password, config_folder):
         """
            @param add If True then add to the list of available bank accounts.
            @param bank_account_dict A dict holding the bank account details.
            @param config A Config instance.
            @param owner_list A list of savings account owners.
            @param config_password The config password.
-           @param config_folder The folder containing the config.
-           @param The index of the selected bank account in the list (-1 if not selected)"""
+           @param config_folder The folder containing the config."""
         # We pass args to the BankAccountGUI instance using the env because we have no way of
         # knowing which instance of BankAccountGUI nicegui will use to display the GUI
         arg_list = [add,
                     bank_account_dict,
                     owner_list,
                     config_password,
-                    config_folder,
-                    selected_bank_account_index]
+                    config_folder]
         # Pass the args to BankAccountGUI instance using the env
         BankAccountGUIEnvArgs().set(arg_list)
 
@@ -1984,7 +1980,6 @@ class BankAccountGUI(GUIBase):
         self._owner_list = env_args[2]
         self._config_password = env_args[3]
         self._config_folder = env_args[4]
-        self._selected_bank_account_index = env_args[5]
         self._config = Config(self._config_folder,
                               show_load_save_notifications=False)
         self._config.load_config(self._config_password)
@@ -2145,7 +2140,12 @@ class BankAccountGUI(GUIBase):
             self._bank_account_dict[BankAccountGUI.TABLE] = new_table
 
         self._display_table_rows(self._bank_acount_table)
-        self._config.save_bank_accounts()
+        bank_account_list = self._config.get_bank_accounts_dict_list()
+        # We're editing a bank account so update the bank account
+        selected_bank_account_index = self._get_selected_bank_account_index(bank_account_list)
+        if selected_bank_account_index is not None and selected_bank_account_index >= 0:
+            bank_account_list[selected_bank_account_index] = self._bank_account_dict
+            self._config.save_bank_accounts()
 
     def _update_gui_from_bank_account(self):
         """@brief Update the contents of fields from the bank account entered."""
@@ -2207,16 +2207,41 @@ class BankAccountGUI(GUIBase):
                 self._config.add_bank_account(self._bank_account_dict)
 
             else:
-                # We're editing a bank account so update the bank account
                 bank_account_list = self._config.get_bank_accounts_dict_list()
-                if self._selected_bank_account_index >= 0:
-                    bank_account_list[self._selected_bank_account_index] = self._bank_account_dict
+                # We're editing a bank account so update the bank account
+                selected_bank_account_index = self._get_selected_bank_account_index(bank_account_list)
+
+                if selected_bank_account_index is not None and selected_bank_account_index >= 0:
+                    bank_account_list[selected_bank_account_index] = self._bank_account_dict
 
             # If editing an account then the bank_account_dict has been modified and we just need to save it.
             self._config.save_bank_accounts()
             valid = True
 
         return valid
+
+    def _get_selected_bank_account_index(self, config_bank_account_list):
+        """@brief We've been passed the dict of the bank account we're editing.
+                  We need to find the index to the bank account in the bank account config list.
+           @param bank_account_list The list of bank account dicts from config.
+           @return The index to the bank account being edited from the configured list of bank accounts or None if not found."""
+        selected_index = None
+        index = 0
+        for config_bank_account in config_bank_account_list:
+            if self._bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL] == config_bank_account[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL] and \
+               self._bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL] == config_bank_account[BankAccountGUI.ACCOUNT_NAME_LABEL] and \
+               self._bank_account_dict[BankAccountGUI.ACCOUNT_SORT_CODE] == config_bank_account[BankAccountGUI.ACCOUNT_SORT_CODE] and \
+               self._bank_account_dict[BankAccountGUI.ACCOUNT_NUMBER] == config_bank_account[BankAccountGUI.ACCOUNT_NUMBER] and \
+               self._bank_account_dict[BankAccountGUI.ACCOUNT_OPEN_DATE] == config_bank_account[BankAccountGUI.ACCOUNT_OPEN_DATE] and \
+               self._bank_account_dict[BankAccountGUI.ACCOUNT_NOTES] == config_bank_account[BankAccountGUI.ACCOUNT_NOTES] and \
+               self._bank_account_dict[BankAccountGUI.ACCOUNT_OWNER] == config_bank_account[BankAccountGUI.ACCOUNT_OWNER]:
+                # This is the bank account being edited
+                selected_index = index
+                break
+
+            index += 1
+
+        return selected_index
 
 
 class BankAccountGUIEnvArgs(EnvArgs):
