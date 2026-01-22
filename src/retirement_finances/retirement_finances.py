@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import argparse
 import copy
 import shutil
 import traceback
 import bcrypt
 import zipfile
-import sys
 import subprocess
 import threading
 import tempfile
@@ -17,11 +17,9 @@ import json
 import pickle
 
 from queue import Queue
-
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal, ROUND_HALF_UP
-
 import pandas as pd
 from collections import defaultdict
 
@@ -7222,74 +7220,88 @@ class HMRC:
         }
 
 
-def main():
-    """@brief Program entry point"""
+def process_cmdline():
+    parser = argparse.ArgumentParser(description="A program to attempt to predict and track your finances in retirement.",
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("-d", "--debug",  action='store_true', help="Enable debugging.")
+    parser.add_argument("-enable_syslog", action='store_true', help="Enable syslog.")
+    parser.add_argument("-p", "--password", help="Password use for encrypting savings and pension details.")
+    parser.add_argument("-f", "--folder",   help="The folder to store the retirement finances files in.")
+    parser.add_argument("--port", type=int, help="The TCP IP port to serve the GUI on (default = 9090).", default=9090)
+    parser.add_argument("--reload",  action='store_true', help="Set nicegui reload = True.")
+    parser.add_argument("--example",  action='store_true', help="Launch retirement finances app using example data.")
 
+    launcher = Launcher("savings.png", app_name="Retirement_Finances", module_name=Finances.TOP_LEVEL_MODULE_NAME)
+    launcher.addLauncherArgs(parser)
+
+    options = parser.parse_args()
+    return (options, launcher)
+
+
+def build_gui():
+    """@brief Program entry point"""
     uio = UIO()
     options = None
+
+    options, _ = process_cmdline()
+    uio.enableDebug(options.debug)
+    uio.logAll(True)
+    uio.enableSyslog(options.enable_syslog, programName="ngt")
+    if options.enable_syslog:
+        uio.info("Syslog enabled")
+
+    uio.info("Opening page...")
+
+    # make all sub_pages full width by default
+    ui.sub_pages.default_classes('w-full')
+
+    finances = Finances(uio, options.password, options.folder, example_data=options.example)
+    port = options.port
+    if options.example:
+        # For the example we start the server on the next port
+        port += 1
+
+    bankAccountGUI = finances.getBankAccountGUI()
+    pensionsGUI = finances.getPensionsGUI()
+    report1GUI = finances.getReport1GUI()
+    futurePlotGUI = finances.getFuturePlotGUI()
+    plot1GUI = finances.getPlot1GUI()
+    finances.init_footer()
+
+    ui.sub_pages({
+        '/': finances.login_page,  # Root page, followed by sub pages
+        '/main_page': finances.main_page,
+        '/bank_accounts_page': bankAccountGUI.init_page,
+        '/pensions_page': pensionsGUI.init_page,
+        '/future_plot_page2': futurePlotGUI.init_page,
+        '/plot_1_page': plot1GUI.init_page,
+        '/report1_page': report1GUI.init_page,
+        '/report1_chart_page': report1GUI.init_chart_page,
+        })
+
+
+def main():
     try:
-        parser = argparse.ArgumentParser(description="A program to attempt to predict and track your finances in retirement.",
-                                         formatter_class=argparse.RawDescriptionHelpFormatter)
-        parser.add_argument("-d", "--debug",  action='store_true', help="Enable debugging.")
-        parser.add_argument("-enable_syslog", action='store_true', help="Enable syslog.")
-        parser.add_argument("-p", "--password", help="Password use for encrypting savings and pension details.")
-        parser.add_argument("-f", "--folder",   help="The folder to store the retirement finances files in.")
-        parser.add_argument("--port", type=int, help="The TCP IP port to serve the GUI on (default = 9090).", default=9090)
-        parser.add_argument("--reload",  action='store_true', help="Set nicegui reload = True.")
-        parser.add_argument("--example",  action='store_true', help="Launch retirement finances app using example data.")
-
-        launcher = Launcher("savings.png", app_name="Retirement_Finances", module_name=Finances.TOP_LEVEL_MODULE_NAME)
-        launcher.addLauncherArgs(parser)
-
-        options = parser.parse_args()
-        uio.enableDebug(options.debug)
-        uio.logAll(True)
-        uio.enableSyslog(options.enable_syslog, programName="ngt")
-        if options.enable_syslog:
-            uio.info("Syslog enabled")
-
+        uio = UIO()
+        frozen = getattr(sys, 'frozen', False)
+        if frozen:
+            uio.info("App Frozen:")
+        options, launcher = process_cmdline()
         handled = launcher.handleLauncherArgs(options, uio=uio)
         if not handled:
-            uio.info("Opening page...")
-
-            # make all sub_pages full width by default
-            ui.sub_pages.default_classes('w-full')
-
-            finances = Finances(uio, options.password, options.folder, example_data=options.example)
-            port = options.port
-            if options.example:
-                # For the example we start the server on the next port
-                port += 1
-
-            bankAccountGUI = finances.getBankAccountGUI()
-            pensionsGUI = finances.getPensionsGUI()
-            report1GUI = finances.getReport1GUI()
-            futurePlotGUI = finances.getFuturePlotGUI()
-            plot1GUI = finances.getPlot1GUI()
-            finances.init_footer()
-
-            ui.sub_pages({
-                '/': finances.login_page,  # Root page, followed by sub pages
-                '/main_page': finances.main_page,
-                '/bank_accounts_page': bankAccountGUI.init_page,
-                '/pensions_page': pensionsGUI.init_page,
-                '/future_plot_page2': futurePlotGUI.init_page,
-                '/plot_1_page': plot1GUI.init_page,
-                '/report1_page': report1GUI.init_page,
-                '/report1_chart_page': report1GUI.init_chart_page,
-                })
-
             guiLogLevel = "warning"
             if options.debug:
                 guiLogLevel = "debug"
 
-            ui.run(host='127.0.0.1',
-                   port=options.port,
+            # build_gui() must be called without args by ui.run
+            # to allow app to run when app frozen using pyinstaller.
+            ui.run(build_gui,
+                   reload=options.reload,
                    title="Retirement Finances",
                    dark=True,
+                   storage_secret=secrets.token_hex(32),
                    uvicorn_logging_level=guiLogLevel,
-                   reload=options.reload,
-                   storage_secret=secrets.token_hex(32))
+                   port=options.port)
 
     # If the program throws a system exit exception
     except SystemExit:
@@ -7307,5 +7319,5 @@ def main():
 
 
 # Note __mp_main__ is used by the nicegui module
-if __name__ in {"__main__"}:
+if __name__ in {"__main__", "__mp_main__"}:
     main()

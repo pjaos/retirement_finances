@@ -1,29 +1,29 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 import bcrypt
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_submodules
+from nicegui import __path__ as nicegui_paths
 
+nicegui_path = nicegui_paths[0]
 block_cipher = None
 
-# Locate bcrypt compiled extension (.pyd file)
+# bcrypt .pyd
 bcrypt_dir = os.path.dirname(bcrypt.__file__)
 pyd_file = [f for f in os.listdir(bcrypt_dir) if f.startswith('_bcrypt') and f.endswith('.pyd')][0]
 binaries = [(os.path.join(bcrypt_dir, pyd_file), "bcrypt")]
 
-# Put the assets folder at the top level so that it can be found by p3lib/helper.py:get_assets_dir()
-datas = [("src/retirement_finances", "retirement_finances"),
-          ("src/retirement_finances/assets", "assets"),
-          ("pyproject.toml", "assets"),
-        ]
+# NiceGUI must be added as data so .py files are included
+datas = [
+    ("src/retirement_finances", "retirement_finances"),
+    ("src/retirement_finances/assets", "assets"),
+    ("pyproject.toml", "assets"),
+    (nicegui_path, 'nicegui'),
+]
 
-# Collect hidden imports for your dependencies
 hidden_imports = []
-hidden_imports += collect_submodules("numpy")
 hidden_imports += collect_submodules("p3lib")
-hidden_imports += collect_submodules("nicegui")
 hidden_imports += collect_submodules("plotly")
 hidden_imports += collect_submodules("bcrypt")
-hidden_imports += collect_submodules("dateutil")
 
 a = Analysis(
     ['src/retirement_finances/retirement_finances.py'],
@@ -31,14 +31,13 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=hidden_imports,
-    hookspath=['.'],  # Add this line to tell PyInstaller where to find extra hooks
+    hookspath=['.'],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
     cipher=block_cipher,
-    noarchive=False,
+    noarchive=True,
+    optimize=0,
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
@@ -51,14 +50,10 @@ exe = EXE(
     a.datas,
     name='retirement_finances',
     debug=False,
-    bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,  # Change to True for debugging console output
-    disable_windowed_traceback=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=None,
-    onefile=True,  # Onefile bundling enabled
+    console=True,
+    exclude_binaries=False,   # IMPORTANT for onefile
+    bootloader_ignore_signals=False,
+    onefile=True,             # <── THIS MAKES IT ONEFILE
 )

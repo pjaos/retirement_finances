@@ -47,7 +47,7 @@ Source: "../LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../pyproject.toml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "../src/retirement_finances\assets/*"; DestDir: "{app}/assets/"; Flags: ignoreversion
-Source: "retirement_finances.exe"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: "dist/retirement_finances.exe"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 Source: "launch.bat"; DestDir: "{app}"; Flags: ignoreversion
 
 [Tasks]
