@@ -2611,7 +2611,7 @@ class FuturePlotGUI(GUIBase):
     def Table2Dict(table):
         """@brief convert a table with date and value columns to a dict with keys of
            Date and Value"""
-        return { "Date": [r[0] for r in table], "Value": [r[1] for r in table] }
+        return {"Date": [r[0] for r in table], "Value": [r[1] for r in table]}
 
     @staticmethod
     def ClipTable(table, min_start_date):
