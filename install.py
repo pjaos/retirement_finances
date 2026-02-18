@@ -19,6 +19,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+import os
+import site
 
 
 class Installer:
@@ -42,6 +44,9 @@ class Installer:
     HELP_ARG_2 = '--help'
     HELP_ARGS = (HELP_ARG_1, HELP_ARG_2)
 
+    INCLUDE_SYSTEM_SITE_PACKAGES = True #  This may be set False in subclass if you do not wish your
+                                        #  program to access system site-packages.
+
     @staticmethod
     def GetInfoEscapeSeq():
         """@return the info level ANSI escape sequence."""
@@ -52,7 +57,7 @@ class Installer:
         """@return the warning level ANSI escape sequence."""
         return "\x1b[{:01d};{:02d}m".format(Installer.DISPLAY_ATTR_FG_RED, Installer.DISPLAY_ATTR_BRIGHT)
 
-    def __init__(self, handle_cmd_line=True, color=True):
+    def __init__(self, handle_cmd_line=True, color=True, use_emojis=True):
         """@brief Constructor
            @param handle_cmd_line If True then the command lines arguments are processed in the constructor.
                                   If False then the following methods should be called after the caller
@@ -62,6 +67,7 @@ class Installer:
                                   process_cmdline()
                                   """
         self._colour = color
+        self._use_emojis = use_emojis
         if self.APP_NAME is None or self.CMD_DICT is None:
             raise Exception("BUG: Installer.APP_NAME and Installer.CMD_DICT must be defined in subclass of the Installer class.")
 
@@ -73,7 +79,10 @@ class Installer:
         """@brief Present an info level message to the user.
            @param text The line of text to be presented to the user."""
         if self._colour:
-            print('{}INFO{}:  {}'.format(Installer.GetInfoEscapeSeq(), Installer.DISPLAY_RESET_ESCAPE_SEQ, text))
+            if self._use_emojis:
+                print('ℹ️  ' + text)
+            else:
+                print('{}INFO{}:  {}'.format(Installer.GetInfoEscapeSeq(), Installer.DISPLAY_RESET_ESCAPE_SEQ, text))
         else:
             print('INFO:  {}'.format(text))
 
@@ -81,7 +90,10 @@ class Installer:
         """@brief Present an error level message to the user.
            @param text The line of text to be presented to the user."""
         if self._colour:
-            print('{}ERROR{}: {}'.format(Installer.GetErrorEscapeSeq(), Installer.DISPLAY_RESET_ESCAPE_SEQ, text), file=sys.stderr)
+            if self._use_emojis:
+                print('❌  ' + text)
+            else:
+                print('{}ERROR{}: {}'.format(Installer.GetErrorEscapeSeq(), Installer.DISPLAY_RESET_ESCAPE_SEQ, text), file=sys.stderr)
         else:
             print('ERROR: {}'.format(text), file=sys.stderr)
 
@@ -264,13 +276,22 @@ class Installer:
 
         self.info(f"{self.APP_NAME} now using version {version}")
 
+    def run_system_cmd(self, args, show_output=True):
+        self.info(f"CMD: {" ".join(args)}")
+        if show_output:
+            subprocess.check_call(args)
+        else:
+            subprocess.check_call(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
     def create_venv(self, venv_path: Path, python=sys.executable):
         if not venv_path.exists():
-            subprocess.check_call([python, "-m", "venv", str(venv_path)])
+            args = [python, "-m", "venv", "--system-site-packages", str(venv_path)]
+            self.run_system_cmd(args)
 
     def install_wheel(self, venv_path: Path, wheel: Path):
         python_exe = venv_path / ("Scripts/python.exe" if platform.system() == "Windows" else "bin/python")
-        subprocess.check_call([str(python_exe), "-m", "pip", "install", "--upgrade", str(wheel)])
+        args = [str(python_exe), "-m", "pip", "install", "--upgrade", str(wheel)]
+        self.run_system_cmd(args)
 
     def remove_launchers_for_version(self, base, version, mode):
         bin_dir = self.get_bin_dir(mode)
@@ -403,7 +424,9 @@ class Installer:
                     # Try running it with the --remove_launcher argument (see p3lib launcher.py)
                     # to remove and launcher created previously.
                     try:
-                        subprocess.check_call([launcher, "--remove_launcher"])
+                        args = [launcher, "--remove_launcher"]
+                        self.run_system_cmd(args)
+
                     except Exception:
                         # Fail silently as cmd may not support the create gui launcher functionality
                         pass
@@ -616,7 +639,9 @@ exec "{entrypoint}" "$@"
                     if system == "Windows" and not full_cmd.name.endswith(".bat"):
                         full_cmd = full_cmd.with_name(full_cmd.name + ".bat")
                     if full_cmd.exists():
-                        subprocess.check_call([full_cmd, "--add_launcher"])
+                        args = [full_cmd, "--add_launcher"]
+                        self.run_system_cmd(args)
+
                 except Exception:
                     # Fail silently as cmd may not support the create gui launcher functionality
                     pass
@@ -681,12 +706,59 @@ exec "{entrypoint}" "$@"
     def ensure_pip(self, venv_path: Path):
         python_exe = venv_path / ("Scripts/python.exe" if platform.system() == "Windows" else "bin/python")
         try:
-            subprocess.check_call([str(python_exe), "-m", "pip", "--version"],
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            args = [str(python_exe), "-m", "pip", "--version"]
+            self.run_system_cmd(args, show_output=False)
+
         except Exception:
             self.info("Installing pip into virtualenv...")
-            subprocess.check_call([str(python_exe), "-m", "ensurepip", "--upgrade"])
-            subprocess.check_call([str(python_exe), "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"])
+            args = [str(python_exe), "-m", "ensurepip", "--upgrade"]
+            self.run_system_cmd(args)
+            args = [str(python_exe), "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"]
+            self.run_system_cmd(args)
+
+    def add_to_path(self):
+        # 1. Get the correct 'bin' or 'Scripts' directory
+        # Linux: ~/.local/bin | Windows: %APPDATA%\Python\Python3x\Scripts
+        user_base = site.getuserbase()
+        if platform.system() == "Windows":
+            bin_path = Path(user_base) / "Scripts"
+        else:
+            bin_path = Path(user_base) / "bin"
+
+        bin_str = str(bin_path.absolute())
+
+        # --- WINDOWS LOGIC ---
+        if platform.system() == "Windows":
+            current_path = os.environ.get("PATH", "")
+            if bin_str not in current_path:
+                try:
+                    # 'setx' sets the variable permanently in the Registry for the current user
+                    subprocess.run(["setx", "PATH", f"{current_path};{bin_str}"], check=True)
+                    self.info(f"✅ Added {bin_str} to Windows PATH.")
+                    self.info("👉 Note: Restart your terminal/IDE to see the changes.")
+                except subprocess.CalledProcessError:
+                    self.error("❌ Failed to set PATH on Windows.")
+            else:
+                self.info("ℹ️ Path already exists in Windows environment.")
+
+        # --- LINUX / MACOS LOGIC ---
+        else:
+            home = Path.home()
+            configs = [home / ".bashrc", home / ".zshrc", home / ".profile", home / ".bash_profile"]
+            export_line = f'\nexport PATH="$PATH:{bin_str}"\n'
+
+            updated = False
+            for config in configs:
+                if config.exists():
+                    content = config.read_text()
+                    if bin_str not in content:
+                        with open(config, "a") as f:
+                            f.write(export_line)
+                        self.info(f"✅ Updated {config.name}")
+                        updated = True
+
+            if updated:
+                self.info(f"🚀 Path added. Run 'source ~/{configs[0].name}' to apply.")
 
     def install(self):
         base = Path(self.args.base).resolve()
@@ -704,14 +776,16 @@ exec "{entrypoint}" "$@"
         self.install_wheel(venv_path, wheel_path)
         self.create_launchers(base, version, venv_path)
         self.set_current_version(base, version)
+        self.add_to_path()
         self.info(f"{self.APP_NAME} version {version} installed successfully")
-
-
 
 
 # The Installer class must be extended to be used.
 # The APP_NAME and CMD_DICT attributes must be set.
 class MpyToolInstaller(Installer):
+    INCLUDE_SYSTEM_SITE_PACKAGES = False #  This may be set False if you do not wish your
+                                         #  program to access system site-packages.
+
     # All sections mentioned below must be present in the projects pyproject.toml file.
 
     # APP_NAME
@@ -738,4 +812,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
