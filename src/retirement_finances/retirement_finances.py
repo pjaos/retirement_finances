@@ -3111,9 +3111,19 @@ class FuturePlotGUI(GUIBase):
             self._interval_radio = ui.radio([FuturePlotGUI.BY_MONTH, FuturePlotGUI.BY_YEAR], value=FuturePlotGUI.BY_MONTH).props('inline')
 
         if mc_mode:
-            self._mc_progress_label = ui.label('').style('font-style: italic; color: #aaa;')
+            self._mc_progress_label = None  # not used — replaced by dialog
+            with ui.dialog().props('persistent') as self._mc_progress_dialog, \
+                    ui.card().style('min-width: 400px; padding: 1.5rem;'):
+                ui.label('Monte Carlo Simulation').style(
+                    'font-size: 1.2rem; font-weight: bold; margin-bottom: 0.5rem;')
+                self._mc_progress_bar = ui.linear_progress(value=0).props('stripe').style(
+                    'margin-bottom: 0.5rem;')
+                self._mc_progress_text = ui.label('Starting…').style('color: #aaa; font-style: italic;')
         else:
             self._mc_progress_label = None
+            self._mc_progress_dialog = None
+            self._mc_progress_bar = None
+            self._mc_progress_text = None
 
         self._update_gui_from_dict()
         self._load_settings(retirement_predictions_settings_name)
@@ -4062,10 +4072,29 @@ class FuturePlotGUI(GUIBase):
     MC_RESULT_KEY = 'MC_RESULT'
     MC_ENABLE_BUTTON_KEY = 'MC_ENABLE_BUTTON'
     MC_PROGRESS_KEY = 'MC_PROGRESS'
+    MC_DIALOG_OPEN_KEY = 'MC_DIALOG_OPEN'
+    MC_DIALOG_CLOSE_KEY = 'MC_DIALOG_CLOSE'
 
     def _handle_gui_message(self, rxDict):
         """@brief Handle messages sent from background threads to the GUI thread.
            @param rxDict The dict containing the message."""
+        if FuturePlotGUI.MC_DIALOG_OPEN_KEY in rxDict:
+            if self._mc_progress_dialog:
+                self._mc_progress_bar.set_value(0)
+                self._mc_progress_text.set_text(rxDict[FuturePlotGUI.MC_DIALOG_OPEN_KEY])
+                self._mc_progress_dialog.open()
+
+        if FuturePlotGUI.MC_PROGRESS_KEY in rxDict:
+            progress, text = rxDict[FuturePlotGUI.MC_PROGRESS_KEY]
+            if self._mc_progress_bar:
+                self._mc_progress_bar.set_value(progress)
+            if self._mc_progress_text:
+                self._mc_progress_text.set_text(text)
+
+        if FuturePlotGUI.MC_DIALOG_CLOSE_KEY in rxDict:
+            if self._mc_progress_dialog:
+                self._mc_progress_dialog.close()
+
         if FuturePlotGUI.MC_RESULT_KEY in rxDict:
             result = rxDict[FuturePlotGUI.MC_RESULT_KEY]
             self._mc_plot_gui.set_args(
@@ -4076,18 +4105,10 @@ class FuturePlotGUI(GUIBase):
                 pct_runs_out=result['pct_runs_out'],
                 n_simulations=result['n_simulations'],
                 final_year=result['final_year'])
-            if self._mc_progress_label:
-                self._mc_progress_label.set_text('Simulations complete — opening plot...')
             ui.run_javascript("window.open('/monte_carlo_page', '_blank')")
-
-        if FuturePlotGUI.MC_PROGRESS_KEY in rxDict:
-            if self._mc_progress_label:
-                self._mc_progress_label.set_text(rxDict[FuturePlotGUI.MC_PROGRESS_KEY])
 
         if FuturePlotGUI.MC_ENABLE_BUTTON_KEY in rxDict:
             self._mc_button.enable()
-            if self._mc_progress_label:
-                self._mc_progress_label.set_text('')
 
     def _calc_monte_carlo(self):
         """@brief Launcher for the Monte Carlo simulation.
@@ -4162,10 +4183,12 @@ class FuturePlotGUI(GUIBase):
             n_simulations = int(global_cfg.get(
                 Finances.MC_SIMULATIONS_FIELD, Finances.DEFAULT_MC_SIMULATIONS))
 
-            # Disable button and notify — then hand off to background thread
+            # Disable button, open progress dialog, then hand off to background thread
             self._mc_button.disable()
-            ui.notify(f"Running {n_simulations} Monte Carlo simulations…",
-                      position='top', duration=5)
+            self._update_gui({
+                FuturePlotGUI.MC_DIALOG_OPEN_KEY:
+                    f'Starting {n_simulations:,} simulations…'
+            })
 
             self._start_background_thread(
                 self._run_monte_carlo_worker,
@@ -4270,8 +4293,10 @@ class FuturePlotGUI(GUIBase):
                 if completed % report_every == 0 or completed == n_simulations:
                     pct_done = round(100 * completed / n_simulations)
                     self._update_gui({
-                        FuturePlotGUI.MC_PROGRESS_KEY:
-                            f"Running simulations: {completed} / {n_simulations} ({pct_done}%)"
+                        FuturePlotGUI.MC_PROGRESS_KEY: (
+                            completed / n_simulations,
+                            f'Running simulations: {completed:,} / {n_simulations:,} ({pct_done}%)'
+                        )
                     })
 
             percentiles = [10, 25, 50, 75, 90]
@@ -4279,6 +4304,8 @@ class FuturePlotGUI(GUIBase):
             dates = [row[0] for row in series]
             pct_out = round(100.0 * runs_out_count / n_simulations, 1)
 
+            # Close the progress dialog then send the result to the GUI thread
+            self._update_gui({FuturePlotGUI.MC_DIALOG_CLOSE_KEY: True})
             # Send result back to the GUI thread via the queue
             self._update_gui({
                 FuturePlotGUI.MC_RESULT_KEY: {
@@ -4294,6 +4321,7 @@ class FuturePlotGUI(GUIBase):
 
         except Exception as ex:
             traceback.print_tb(ex.__traceback__)
+            self._update_gui({FuturePlotGUI.MC_DIALOG_CLOSE_KEY: True})
             self._show_negative_notify_msg(str(ex))
 
         finally:
