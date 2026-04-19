@@ -15,6 +15,8 @@ import tempfile
 import secrets
 import json
 import pickle
+import random
+import numpy as np
 
 from queue import Queue
 from datetime import datetime, timedelta
@@ -568,6 +570,19 @@ class GUIBase(object):
         return valid
 
     @staticmethod
+    def CheckRateField(value, field_name=None):
+        """@brief Check that a rate field contains either a comma-separated number list
+                  or a PERT MIN:MOST_LIKELY:MAX specification (e.g. '2.0:3.5:5.0').
+                  Both formats are valid; this replaces CheckCommaSeparatedNumberList
+                  for the rate fields that support Monte Carlo input.
+           @param value The string to check.
+           @param field_name The optional name of the field being checked.
+           @return True if the value is valid in either format."""
+        if PertDistribution.is_pert_string(value):
+            return True
+        return GUIBase.CheckCommaSeparatedNumberList(value, field_name=field_name)
+
+    @staticmethod
     def CheckDuplicateDate(table, date_str):
         """@brief check that the dateStr is not already present in the table.
            @param table A table in which the first column is the date (string format) in the form DD-MM-YYYY.
@@ -705,6 +720,8 @@ class Finances(GUIBase):
     MY_NAME_FIELD = "My Name"
     PARTNER_NAME_FIELD = "Partner Name"
     NEW_PASSWORD_FIELD = "New Password"
+    MC_SIMULATIONS_FIELD = "Monte Carlo simulations"
+    DEFAULT_MC_SIMULATIONS = 1000
 
     EXAMPLE_DATA_COPY_FOLDER = 'example_data_copy_folder'
 
@@ -778,6 +795,9 @@ class Finances(GUIBase):
 
     def getPlot1GUI(self):
         return self._futurePlotGUI.getPlot1GUI()
+
+    def getMCPlotGUI(self):
+        return self._futurePlotGUI.get_mc_plot_gui()
 
     def _populate_example_data(self):
         """@brief Populate the example data folder from the assets folder zip file."""
@@ -1018,7 +1038,7 @@ class Finances(GUIBase):
     def _backup_data_files(self, data_folder):
         """@brief Backup files in the data folder.
            @param data_folder The folder containing the data files created by this tool."""
-        MAX_BACKUPS = 365
+        MAX_BACKUPS = 30
         if os.path.isdir(data_folder):
             backup_folder = os.path.join(data_folder, 'backup')
             if not os.path.isdir(backup_folder):
@@ -1757,12 +1777,32 @@ class Finances(GUIBase):
             ui.button('Retirement Prediction including tax', on_click=lambda: self._report1()).tooltip(
                 'Show how your finances could increase/decrease in the future. This report allows you to manually enter each amount you wish to take from pensions and savings and also add any income you expect (E.G Annuity, rental income, etc)')
 
+        with ui.row():
+            ui.button('Monte Carlo Retirement Prediction', on_click=lambda: self._report_monte_carlo()).tooltip(
+                'Run a Monte Carlo simulation of the Drawdown Retirement Prediction. '
+                'Opens the same parameter page as the Drawdown report — enter your rate fields '
+                'in MIN:MOST_LIKELY:MAX format (e.g. 2.0:3.5:5.0) then click the Monte Carlo button on that page.')
+
+        with ui.row():
+            ui.label(
+                'Monte Carlo tip: on the Drawdown page, enter any rate field as MIN:MOST_LIKELY:MAX '
+                '(e.g. savings interest "2.0:3.5:5.0") then click "Monte Carlo" to see percentile bands '
+                'across all simulated futures.'
+            ).style('font-style: italic; color: #aaa; font-size: 0.85em;')
+
     def _init_config_tab(self):
         self._my_name_field = ui.input(label=Finances.MY_NAME_FIELD).style('width: 300px;').tooltip('Enter your name here.')
         self._partner_name_field = ui.input(label=Finances.PARTNER_NAME_FIELD).style('width: 300px;').tooltip('If you have a partner you may enter their name here if you wish to combine your finances.')
         self._new_password_field = ui.input(label=Finances.NEW_PASSWORD_FIELD,
                                             password=True,
                                             password_toggle_button=True).style('width: 300px;').tooltip('If you wish to change the password used to encrypt and decrypt data enter it here.')
+        self._mc_simulations_field = ui.number(
+            label=Finances.MC_SIMULATIONS_FIELD,
+            min=100, max=10000, step=100
+        ).style('width: 300px;').tooltip(
+            'The number of Monte Carlo simulations to run when generating the Monte Carlo retirement prediction plot. '
+            'Higher values give smoother percentile bands but take longer. 1000 is a good default.'
+        )
         with ui.row():
             ui.button('Save', on_click=self._save_config_button_selected)
 
@@ -1790,6 +1830,12 @@ class Finances(GUIBase):
         self._config.save_global_configuration()
         ui.notify('Saved Configuration.', type='positive', position='bottom')
 
+    def get_mc_simulations(self):
+        """@brief Get the configured number of Monte Carlo simulations.
+           @return The number of simulations as an int."""
+        return int(self._global_configuration_dict.get(
+            Finances.MC_SIMULATIONS_FIELD, Finances.DEFAULT_MC_SIMULATIONS))
+
     def _ensure_default_global_config_keys(self):
         self._config.load_global_configuration()
         global_configuration_dict = self._config.get_global_configuration_dict()
@@ -1799,17 +1845,24 @@ class Finances(GUIBase):
         if Finances.PARTNER_NAME_FIELD not in global_configuration_dict:
             global_configuration_dict[Finances.PARTNER_NAME_FIELD] = ""
 
+        if Finances.MC_SIMULATIONS_FIELD not in global_configuration_dict:
+            global_configuration_dict[Finances.MC_SIMULATIONS_FIELD] = Finances.DEFAULT_MC_SIMULATIONS
+
         return global_configuration_dict
 
     def _update_gui_from_config(self):
         """@brief Update GUI from the configuration."""
         self._my_name_field.value = self._global_configuration_dict[Finances.MY_NAME_FIELD]
         self._partner_name_field.value = self._global_configuration_dict[Finances.PARTNER_NAME_FIELD]
+        self._mc_simulations_field.value = self._global_configuration_dict.get(
+            Finances.MC_SIMULATIONS_FIELD, Finances.DEFAULT_MC_SIMULATIONS)
 
     def _update_config_from_gui(self):
         """@brief Update configuration from the GUI."""
         self._global_configuration_dict[Finances.MY_NAME_FIELD] = self._my_name_field.value
         self._global_configuration_dict[Finances.PARTNER_NAME_FIELD] = self._partner_name_field.value
+        self._global_configuration_dict[Finances.MC_SIMULATIONS_FIELD] = int(
+            self._mc_simulations_field.value or Finances.DEFAULT_MC_SIMULATIONS)
 
     def _show_totals(self):
         """@brief Show details of the total savings and pensions."""
@@ -1899,6 +1952,17 @@ class Finances(GUIBase):
                                   'Retirement Prediction Including Tax')
         # This will open in a separate browser window
         ui.run_javascript("window.open('/report1_page', '_blank')")
+
+    def _report_monte_carlo(self):
+        """@brief Open the Drawdown Retirement Prediction page ready for a Monte Carlo run.
+                  The user sets rate fields in MIN:MOST_LIKELY:MAX format on that page,
+                  then clicks the Monte Carlo button to run the simulations."""
+        FinancesEnvArgs().set(self._tabs.value)
+        self._futurePlotGUI.set_args(self._password,
+                                     self._folder,
+                                     self._pension_owner_list,
+                                     FuturePlotGUI.MC_PAGE_TITLE)
+        ui.run_javascript("window.open('/future_plot_page2', '_blank')")
 
 
 class FinancesPIDEnvArgs(EnvArgs):
@@ -2568,6 +2632,112 @@ class PensionGUIEnvArgs(EnvArgs):
     ENV_REF = PensionGUI.__name__
 
 
+class PertDistribution:
+    """@brief Implements a PERT (Program Evaluation and Review Technique) distribution.
+
+    The PERT distribution is a Beta distribution shaped by three parameters:
+    minimum, most_likely (mode) and maximum.  It weights the most likely value
+    more heavily than the extremes, making it well-suited for financial rate
+    estimation where the analyst has a central expectation with bounded
+    uncertainty.
+
+    Shape parameter lambda=4 is the standard PERT weighting.
+    """
+
+    LAMBDA = 4  # Standard PERT weighting — higher values peak more sharply at mode
+
+    @staticmethod
+    def sample(minimum: float, most_likely: float, maximum: float) -> float:
+        """@brief Draw one random sample from the PERT distribution.
+           @param minimum   The minimum plausible value.
+           @param most_likely The most likely (mode) value.
+           @param maximum   The maximum plausible value.
+           @return A single float sample."""
+        if minimum == maximum:
+            return minimum
+        # PERT mean
+        mean = (minimum + PertDistribution.LAMBDA * most_likely + maximum) / (PertDistribution.LAMBDA + 2)
+        if mean == minimum:
+            return minimum
+        # When mode == mean (symmetric case) the standard alpha formula has a zero
+        # denominator.  Fall back to the symmetric Beta(lambda, lambda) distribution.
+        if abs(most_likely - mean) < 1e-10:
+            alpha = float(PertDistribution.LAMBDA)
+            beta = float(PertDistribution.LAMBDA)
+        else:
+            alpha = (mean - minimum) * (2 * most_likely - minimum - maximum) / (
+                (most_likely - mean) * (maximum - minimum))
+            beta = alpha * (maximum - mean) / (mean - minimum)
+        # Clamp to avoid degenerate Beta parameters caused by edge cases
+        alpha = max(alpha, 1e-6)
+        beta = max(beta, 1e-6)
+        # Sample from Beta(alpha, beta) then rescale to [minimum, maximum]
+        sample = np.random.beta(alpha, beta)
+        return minimum + sample * (maximum - minimum)
+
+    @staticmethod
+    def is_pert_string(value: str) -> bool:
+        """@brief Return True if the string is a MIN:MOST_LIKELY:MAX PERT specification.
+           @param value The string to test."""
+        if not isinstance(value, str):
+            return False
+        parts = value.strip().split(':')
+        if len(parts) != 3:
+            return False
+        try:
+            vals = [float(p) for p in parts]
+            return vals[0] <= vals[1] <= vals[2]
+        except ValueError:
+            return False
+
+    @staticmethod
+    def parse_pert_string(value: str):
+        """@brief Parse a MIN:MOST_LIKELY:MAX string into a (min, mode, max) tuple.
+           @param value The PERT specification string.
+           @return Tuple (minimum, most_likely, maximum) as floats."""
+        parts = value.strip().split(':')
+        return tuple(float(p) for p in parts)
+
+
+class RateSpec:
+    """@brief Wraps a rate field value (either a comma-separated list or a PERT
+    MIN:MOST_LIKELY:MAX specification) and provides a consistent sampling interface.
+
+    When the field contains a colon-separated PERT spec the same distribution is
+    sampled once per simulation-year to produce a rate list for that run.
+    When it contains a comma-separated list the behaviour is identical to the
+    existing deterministic code — the list is returned unchanged.
+    """
+
+    def __init__(self, raw_value: str):
+        """@param raw_value The raw string from the UI field."""
+        self._raw = raw_value.strip() if isinstance(raw_value, str) else str(raw_value)
+        self._is_pert = PertDistribution.is_pert_string(self._raw)
+        if self._is_pert:
+            self._pert_params = PertDistribution.parse_pert_string(self._raw)
+
+    @property
+    def is_stochastic(self) -> bool:
+        """@return True if this spec will produce different values across simulations."""
+        return self._is_pert
+
+    def sample_rate_list(self, n_years: int):
+        """@brief Return a list of n_years rates, sampled independently if stochastic.
+           @param n_years The number of years to generate rates for.
+           @return A list of float rate values (one per year)."""
+        if self._is_pert:
+            minimum, most_likely, maximum = self._pert_params
+            return [PertDistribution.sample(minimum, most_likely, maximum)
+                    for _ in range(n_years)]
+        else:
+            # Deterministic — return the raw value for the existing _get_yearly_rate logic
+            return self._raw
+
+    def deterministic_value(self):
+        """@brief Return the raw value for use with the existing _get_yearly_rate helper."""
+        return self._raw
+
+
 class FuturePlotGUI(GUIBase):
     """@brief Responsible for allowing the user to plot predictions about the way the savings and pensions will fare during retirement."""
     DEFAULT_MALE_MAX_AGE = 90
@@ -2612,6 +2782,8 @@ class FuturePlotGUI(GUIBase):
     BY_MONTH = "By Month"
     BY_YEAR = "By Year"
 
+    MC_PAGE_TITLE = "Monte Carlo Retirement Prediction"
+
     @staticmethod
     def GetDateTimeList(start_datetime, stop_datetime):
         """@brief Get a list of datetime instances (by month) starting from the start of the current month
@@ -2654,7 +2826,9 @@ class FuturePlotGUI(GUIBase):
 
     def __init__(self):
         """@brief Parameterless constructor."""
+        super().__init__()
         self._plot1GUI = Plot1GUI()
+        self._mc_plot_gui = MonteCarloPlotGUI()
 
     def getPlot1GUI(self):
         return self._plot1GUI
@@ -2786,6 +2960,10 @@ class FuturePlotGUI(GUIBase):
         self._init_ok_to_delete_dialog()
         self._init_edit_row_dialog()
 
+        self._monte_carlo = False
+        if self._page_title.find("Monte Carlo") != -1:
+            self._monte_carlo = True
+
         ui.page_title(self._page_title)
         with ui.row():
             ui.label(self._page_title).style('font-size: 32px; font-weight: bold;')
@@ -2825,21 +3003,25 @@ class FuturePlotGUI(GUIBase):
                         'A monthly amount from non savings/pension sources. E.G Part time jobs or adult children living at home contributing to household finances.')
 
             with ui.column():
+                tt_text = 'Enter a single value or a comma-separated list. One value per year. The last value is used for subsequent years.'
+                if self._monte_carlo:
+                    tt_text = 'Enter MIN:MOST_LIKELY:MAX for a Monte Carlo PERT distribution (e.g. 1.5:2.5:4.0).'
+
                 with ui.row():
                     self._yearly_increase_in_income_field = ui.input(label=FuturePlotGUI.YEARLY_INCREASE_IN_INCOME).style(
-                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
+                        'width: 500px;').tooltip(tt_text)
 
                 with ui.row():
                     self._savings_interest_rates_field = ui.input(label=FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST).style(
-                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
+                        'width: 500px;').tooltip(tt_text)
 
                 with ui.row():
                     self._pension_growth_rate_list_field = ui.input(label=FuturePlotGUI.PENSION_GROWTH_RATE_LIST).style(
-                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
+                        'width: 500px;').tooltip(tt_text)
 
                 with ui.row():
                     self._state_pension_growth_rate_list_field = ui.input(label=FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST).style(
-                        'width: 500px;').tooltip('This may be a single value or a comma separated list (one value for each year). The last value in the list will be used for subsequent years.')
+                        'width: 500px;').tooltip(tt_text)
 
         with ui.row():
             columns = [{'name': FuturePlotGUI.DATE, 'label': FuturePlotGUI.DATE, 'field': FuturePlotGUI.DATE},
@@ -2904,14 +3086,35 @@ class FuturePlotGUI(GUIBase):
                     ui.button('Delete', on_click=lambda: self._del_ret_pred_param_dialog.open()).tooltip(
                         'Delete the selected pension prediction parameters.')
 
+        mc_mode = (self._page_title == FuturePlotGUI.MC_PAGE_TITLE)
+
         with ui.row():
-            ui.button('Show prediction', on_click=lambda: self._calc()).tooltip(
-                'Perform calculation and plot the results.')
-            self._show_progress_button = ui.button('Show progress', on_click=lambda: self._show_progress()).tooltip(
-                'Show your progress against a prediction.')
+            if not mc_mode:
+                ui.button('Show prediction', on_click=lambda: self._calc()).tooltip(
+                    'Perform calculation and plot the results.')
+                self._show_progress_button = ui.button('Show progress', on_click=lambda: self._show_progress()).tooltip(
+                    'Show your progress against a prediction.')
+            else:
+                # In MC mode these placeholders keep _show_progress_button defined
+                # so the rest of the code that references it doesn't need guarding.
+                self._show_progress_button = ui.button('Show progress', on_click=lambda: self._show_progress()).tooltip(
+                    'Show your progress against a prediction.').set_visibility(False)
+
+            self._mc_button = ui.button('Monte Carlo', on_click=lambda: self._calc_monte_carlo()).tooltip(
+                'Run Monte Carlo simulations using PERT distributions (MIN:MOST_LIKELY:MAX) for stochastic '
+                'rate fields, and plot percentile bands showing the spread of possible outcomes. '
+                'At least one rate field must use the MIN:MOST_LIKELY:MAX format.')
+            if not mc_mode:
+                self._mc_button.set_visibility(False)
+
             self._last_year_to_plot_field = ui.input(label="Last year to plot", value="").style(
                         'width: 200px;').tooltip('The last year you wish to plot. Leave this blank to plot all years.')
             self._interval_radio = ui.radio([FuturePlotGUI.BY_MONTH, FuturePlotGUI.BY_YEAR], value=FuturePlotGUI.BY_MONTH).props('inline')
+
+        if mc_mode:
+            self._mc_progress_label = ui.label('').style('font-style: italic; color: #aaa;')
+        else:
+            self._mc_progress_label = None
 
         self._update_gui_from_dict()
         self._load_settings(retirement_predictions_settings_name)
@@ -3352,13 +3555,13 @@ class FuturePlotGUI(GUIBase):
                                                     field_name=self._my_max_age_field.props['label']) and \
                 BankAccountGUI.CheckZeroOrGreater(self._monthly_income_field.value,
                                                   field_name=self._monthly_income_field.props['label']) and \
-                BankAccountGUI.CheckCommaSeparatedNumberList(self._yearly_increase_in_income_field.value,
+                BankAccountGUI.CheckRateField(self._yearly_increase_in_income_field.value,
                                                              field_name=self._yearly_increase_in_income_field.props['label']) and \
-                BankAccountGUI.CheckCommaSeparatedNumberList(self._savings_interest_rates_field.value,
+                BankAccountGUI.CheckRateField(self._savings_interest_rates_field.value,
                                                              field_name=self._savings_interest_rates_field.props['label']) and \
-                BankAccountGUI.CheckCommaSeparatedNumberList(self._pension_growth_rate_list_field.value,
+                BankAccountGUI.CheckRateField(self._pension_growth_rate_list_field.value,
                                                              field_name=self._pension_growth_rate_list_field.props['label']) and \
-                BankAccountGUI.CheckCommaSeparatedNumberList(self._state_pension_growth_rate_list_field.value,
+                BankAccountGUI.CheckRateField(self._state_pension_growth_rate_list_field.value,
                                                              field_name=self._state_pension_growth_rate_list_field.props['label']):
                 self._set_param_value(FuturePlotGUI.MY_DATE_OF_BIRTH, self._my_dob_field.value)
                 self._set_param_value(FuturePlotGUI.MY_MAX_AGE, self._my_max_age_field.value)
@@ -3692,6 +3895,488 @@ class FuturePlotGUI(GUIBase):
         except Exception as ex:
             traceback.print_tb(ex.__traceback__)
             ui.notify(str(ex), type='negative')
+
+    def _run_single_simulation(self,
+                               datetime_list,
+                               report_start_date,
+                               monthly_budget_table,
+                               lump_sum_savings_withdrawals_table,
+                               lump_sum_pension_withdrawals_table,
+                               predicted_state_pension_table,
+                               monthly_from_other_sources,
+                               savings_rate_list,
+                               pension_rate_list,
+                               income_increase_rate_list):
+        """@brief Run one simulation of the retirement projection using supplied per-year rate lists.
+                  This is the inner loop of _calc, factored out so Monte Carlo can call it repeatedly
+                  with different sampled rate lists.
+           @param datetime_list          Monthly datetime list for the projection.
+           @param report_start_date      Start date of the projection.
+           @param monthly_budget_table   Pre-computed budget table.
+           @param lump_sum_savings_withdrawals_table  Converted lump-sum savings withdrawal table.
+           @param lump_sum_pension_withdrawals_table  Converted lump-sum pension withdrawal table.
+           @param predicted_state_pension_table       State pension projection.
+           @param monthly_from_other_sources          Fixed monthly income from other sources.
+           @param savings_rate_list      List of yearly savings interest rates (one per year).
+           @param pension_rate_list      List of yearly pension growth rates (one per year).
+           @param income_increase_rate_list  List of yearly income increase rates (one per year).
+           @return (total_wealth_series, money_ran_out)
+                   total_wealth_series — list of (date, total_wealth) tuples, one per month.
+                   money_ran_out       — bool, True if wealth hit zero during the projection."""
+        pp_table = self._get_personal_pension_table()
+        personal_pension_value = self._get_initial_value(pp_table, report_start_date)
+        savings_amount = self._get_savings_total(report_start_date)
+
+        drawdown_enabled = self._get_param_value(FuturePlotGUI.ENABLE_PENSION_DRAWDOWN_START_DATE)
+        if drawdown_enabled:
+            pension_drawdown_start_date = datetime.strptime(
+                self._get_param_value(FuturePlotGUI.PENSION_DRAWDOWN_START_DATE), '%d-%m-%Y')
+        else:
+            pension_drawdown_start_date = None
+
+        first_date = datetime_list[0]
+        last_date = first_date
+        year_index = 0
+        monthly_savings_interest_list = []
+        tax_free_pension_event = False
+        money_ran_out = False
+        total_wealth_series = []
+
+        # Helper to get a rate for a given year from a pre-sampled list
+        def get_rate(rate_list, idx):
+            if isinstance(rate_list, list):
+                return float(rate_list[min(idx, len(rate_list) - 1)])
+            # Fallback to existing string-based helper for deterministic comma lists
+            return self._get_yearly_rate(rate_list, idx)
+
+        # Seed the first month's savings interest
+        savings_rate = get_rate(savings_rate_list, 0)
+        monthly_savings_interest_list.append(
+            savings_amount * ((1 + savings_rate / 100) ** (1 / 12) - 1))
+
+        for row in monthly_budget_table:
+            this_date = row[0]
+            if this_date <= first_date:
+                total = savings_amount + personal_pension_value
+                total_wealth_series.append((this_date, total))
+                continue
+
+            # Year rollover
+            if this_date.year != last_date.year:
+                year_index += 1
+                savings_amount += sum(monthly_savings_interest_list)
+                monthly_savings_interest_list = []
+                last_date = this_date
+
+            predicted_income_this_month = row[1]
+            remaining_income = predicted_income_this_month - monthly_from_other_sources
+            state_pension_this_month = self._get_state_pension_this_month(
+                this_date, predicted_state_pension_table)
+            remaining_income = max(0.0, remaining_income - state_pension_this_month)
+
+            # Lump-sum savings withdrawal — record the amount but don't update
+            # savings_amount yet; it is deducted once below via total_savings_withdrawal,
+            # matching the pattern used in _calc.
+            new_savings = self._get_value_drop(
+                this_date, savings_amount, lump_sum_savings_withdrawals_table)
+            lump_sum_savings_withdrawal = savings_amount - new_savings
+
+            # Lump-sum pension withdrawal — same pattern: record, don't apply yet.
+            new_pension = self._get_value_drop(
+                this_date, personal_pension_value, lump_sum_pension_withdrawals_table)
+            lump_sum_pension_withdrawal = personal_pension_value - new_pension
+            if lump_sum_pension_withdrawal > 0:
+                remaining_income = max(0.0, remaining_income - lump_sum_pension_withdrawal)
+
+            # Regular monthly withdrawal routing
+            if remaining_income > 0:
+                if pension_drawdown_start_date is not None and this_date >= pension_drawdown_start_date:
+                    pension_withdrawal = remaining_income
+                    savings_withdrawal = 0.0
+                else:
+                    savings_withdrawal = remaining_income
+                    pension_withdrawal = 0.0
+            else:
+                savings_withdrawal = 0.0
+                pension_withdrawal = 0.0
+
+            total_pension_withdrawal = pension_withdrawal + lump_sum_pension_withdrawal
+            total_savings_withdrawal = savings_withdrawal + lump_sum_savings_withdrawal
+
+            savings_amount -= total_savings_withdrawal
+            # Savings interest accrues monthly, credited yearly
+            savings_rate = get_rate(savings_rate_list, year_index)
+            monthly_savings_interest_list.append(
+                savings_amount * ((1 + savings_rate / 100) ** (1 / 12) - 1))
+
+            personal_pension_value -= total_pension_withdrawal
+            # Pension grows daily-compounded monthly
+            pension_rate = get_rate(pension_rate_list, year_index)
+            personal_pension_value += self._get_pension_increase_this_month_for_rate(
+                personal_pension_value, pension_rate)
+
+            # Fallback: if pension depleted, try savings
+            if personal_pension_value <= 0 and total_pension_withdrawal > 0:
+                if total_pension_withdrawal < savings_amount:
+                    savings_amount -= total_pension_withdrawal
+                    personal_pension_value = 0
+                else:
+                    personal_pension_value = 0
+                    money_ran_out = True
+
+            # Fallback: if savings depleted, try pension
+            if savings_amount <= 0 and total_savings_withdrawal > 0:
+                if total_savings_withdrawal < personal_pension_value:
+                    personal_pension_value -= total_savings_withdrawal
+                    savings_amount = 0
+                else:
+                    savings_amount = 0
+                    money_ran_out = True
+
+            # Pre-75 death: pension passes tax-free to savings
+            if not tax_free_pension_event and self._dead_before_75(this_date):
+                savings_amount += personal_pension_value
+                personal_pension_value = 0
+                pension_drawdown_start_date = None
+                tax_free_pension_event = True
+
+            total = savings_amount + personal_pension_value
+            if total <= 0:
+                money_ran_out = True
+
+            total_wealth_series.append((this_date, max(0.0, total)))
+
+        return total_wealth_series, money_ran_out
+
+    def _get_pension_increase_this_month_for_rate(self, pension_value, yearly_rate_pct):
+        """@brief Compute one month of daily-compounded pension growth for a given rate.
+           @param pension_value   Current pension value.
+           @param yearly_rate_pct Annual growth rate as a percentage (e.g. 5.0 for 5%).
+           @return The increase amount for this month."""
+        annual_rate = yearly_rate_pct / 100.0
+        days_in_year = 365.25
+        days_in_month = days_in_year / 12
+        growth_factor = (1 + annual_rate / days_in_year) ** days_in_month
+        return pension_value * (growth_factor - 1)
+
+    # Key used to pass Monte Carlo results back from the worker thread to the GUI thread
+    MC_RESULT_KEY = 'MC_RESULT'
+    MC_ENABLE_BUTTON_KEY = 'MC_ENABLE_BUTTON'
+    MC_PROGRESS_KEY = 'MC_PROGRESS'
+
+    def _handle_gui_message(self, rxDict):
+        """@brief Handle messages sent from background threads to the GUI thread.
+           @param rxDict The dict containing the message."""
+        if FuturePlotGUI.MC_RESULT_KEY in rxDict:
+            result = rxDict[FuturePlotGUI.MC_RESULT_KEY]
+            self._mc_plot_gui.set_args(
+                name=result['name'],
+                dates=result['dates'],
+                percentile_matrix=np.array(result['percentile_matrix']),
+                percentiles=result['percentiles'],
+                pct_runs_out=result['pct_runs_out'],
+                n_simulations=result['n_simulations'],
+                final_year=result['final_year'])
+            if self._mc_progress_label:
+                self._mc_progress_label.set_text('Simulations complete — opening plot...')
+            ui.run_javascript("window.open('/monte_carlo_page', '_blank')")
+
+        if FuturePlotGUI.MC_PROGRESS_KEY in rxDict:
+            if self._mc_progress_label:
+                self._mc_progress_label.set_text(rxDict[FuturePlotGUI.MC_PROGRESS_KEY])
+
+        if FuturePlotGUI.MC_ENABLE_BUTTON_KEY in rxDict:
+            self._mc_button.enable()
+            if self._mc_progress_label:
+                self._mc_progress_label.set_text('')
+
+    def _calc_monte_carlo(self):
+        """@brief Launcher for the Monte Carlo simulation.
+                  Validates inputs in the GUI thread, then hands the heavy computation
+                  off to a background thread so the browser connection is not dropped."""
+        try:
+            # --- Validate that at least one field is stochastic ---
+            savings_raw = self._get_param_value(FuturePlotGUI.SAVINGS_INTEREST_RATE_LIST)
+            pension_raw = self._get_param_value(FuturePlotGUI.PENSION_GROWTH_RATE_LIST)
+            income_raw = self._get_param_value(FuturePlotGUI.YEARLY_INCREASE_IN_INCOME)
+
+            savings_spec = RateSpec(savings_raw)
+            pension_spec = RateSpec(pension_raw)
+            income_spec = RateSpec(income_raw)
+
+            if not any([savings_spec.is_stochastic,
+                        pension_spec.is_stochastic,
+                        income_spec.is_stochastic]):
+                ui.notify(
+                    "Monte Carlo requires at least one rate field to use the MIN:MOST_LIKELY:MAX format "
+                    "(e.g. 2.0:3.5:5.0). The existing comma-list fields produce a deterministic plot — "
+                    "use the 'Show prediction' button for that.",
+                    type='warning', position='top', duration=8)
+                return
+
+            # --- Collect all inputs that must be read from the GUI thread ---
+            report_start_date = self._get_report_start_date()
+            self._report_start_date = report_start_date
+            max_planning_date = self._get_max_date()
+            final_year = self._get_final_year()
+            datetime_list = FuturePlotGUI.GetDateTimeList(report_start_date, max_planning_date)
+            n_years = len(set(d.year for d in datetime_list)) + 1
+
+            # Read the state pension increase spec before building the table.
+            state_raw = self._get_param_value(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST)
+            state_spec = RateSpec(state_raw)
+
+            # Build the shared state pension table using the PERT mode (most likely value)
+            # so that all simulations share a consistent baseline.  Each simulation then
+            # applies its own sampled yearly growth factor on top of this baseline.
+            # This avoids the table being built with a single random PERT sample that would
+            # bias all simulations in the same direction.
+            if state_spec.is_stochastic:
+                _, most_likely, _ = state_spec._pert_params
+                # Temporarily substitute the mode value so _get_predicted_state_pension
+                # uses a deterministic rate when building the shared table.
+                self._set_param_value(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST,
+                                      str(most_likely))
+                try:
+                    predicted_state_pension_table = self._get_predicted_state_pension(
+                        datetime_list, report_start_date)
+                finally:
+                    # Always restore the original PERT spec
+                    self._set_param_value(FuturePlotGUI.STATE_PENSION_YEARLY_INCREASE_LIST,
+                                          state_raw)
+            else:
+                predicted_state_pension_table = self._get_predicted_state_pension(
+                    datetime_list, report_start_date)
+
+            if predicted_state_pension_table is None:
+                raise Exception('No state pension defined in the pension list.')
+
+            monthly_from_other_sources = float(
+                self._get_param_value(FuturePlotGUI.MONTHLY_AMOUNT_FROM_OTHER_SOURCES))
+            lump_sum_savings_withdrawals_table = self._convert_table(
+                self._get_param_value(FuturePlotGUI.SAVINGS_WITHDRAWAL_TABLE))
+            lump_sum_pension_withdrawals_table = self._convert_table(
+                self._get_param_value(FuturePlotGUI.PENSION_WITHDRAWAL_TABLE))
+            settings_name = self._settings_name_select.value
+
+            global_cfg = self._config.get_global_configuration_dict()
+            n_simulations = int(global_cfg.get(
+                Finances.MC_SIMULATIONS_FIELD, Finances.DEFAULT_MC_SIMULATIONS))
+
+            # Disable button and notify — then hand off to background thread
+            self._mc_button.disable()
+            ui.notify(f"Running {n_simulations} Monte Carlo simulations…",
+                      position='top', duration=5)
+
+            self._start_background_thread(
+                self._run_monte_carlo_worker,
+                args=(datetime_list,
+                      report_start_date,
+                      predicted_state_pension_table,
+                      lump_sum_savings_withdrawals_table,
+                      lump_sum_pension_withdrawals_table,
+                      monthly_from_other_sources,
+                      savings_spec,
+                      pension_spec,
+                      income_spec,
+                      state_spec,
+                      n_years,
+                      n_simulations,
+                      final_year,
+                      settings_name))
+
+        except Exception as ex:
+            traceback.print_tb(ex.__traceback__)
+            ui.notify(str(ex), type='negative')
+
+    def _run_monte_carlo_worker(self,
+                                datetime_list,
+                                report_start_date,
+                                predicted_state_pension_table,
+                                lump_sum_savings_withdrawals_table,
+                                lump_sum_pension_withdrawals_table,
+                                monthly_from_other_sources,
+                                savings_spec,
+                                pension_spec,
+                                income_spec,
+                                state_spec,
+                                n_years,
+                                n_simulations,
+                                final_year,
+                                settings_name):
+        """@brief Background worker that runs the Monte Carlo simulations.
+                  Must not call any ui.* methods directly — results are sent back
+                  to the GUI thread via _update_gui()."""
+        try:
+            n_months = len(datetime_list)
+            wealth_matrix = np.zeros((n_simulations, n_months), dtype=np.float64)
+            runs_out_count = 0
+            series = None
+            report_every = max(1, n_simulations // 10)  # report at every 10% milestone
+
+            # For state pension scaling: the base table was built using the PERT mode rate.
+            # We pre-compute the mode rate so we can calculate a ratio for each simulation.
+            if state_spec.is_stochastic:
+                _, state_mode, _ = state_spec._pert_params
+            else:
+                state_mode = None  # not needed — deterministic, no scaling required
+
+            for sim_idx in range(n_simulations):
+                s_rates = savings_spec.sample_rate_list(n_years)
+                p_rates = pension_spec.sample_rate_list(n_years)
+                i_rates = income_spec.sample_rate_list(n_years)
+
+                # Scale the state pension table for this simulation if the state pension
+                # increase rate is stochastic.  The base table used the PERT mode; we apply
+                # a per-year compound scaling factor relative to that mode so each simulation
+                # sees its own independently sampled state pension trajectory.
+                if state_spec.is_stochastic:
+                    st_rates = state_spec.sample_rate_list(n_years)
+                    sim_state_pension_table = self._scale_state_pension_table(
+                        predicted_state_pension_table,
+                        datetime_list,
+                        st_rates,
+                        state_mode)
+                else:
+                    sim_state_pension_table = predicted_state_pension_table
+
+                if income_spec.is_stochastic:
+                    monthly_budget_table = self._get_monthly_budget_table_for_rates(
+                        datetime_list, i_rates)
+                else:
+                    if sim_idx == 0:
+                        monthly_budget_table = self._get_monthly_budget_table(datetime_list)
+
+                series, ran_out = self._run_single_simulation(
+                    datetime_list,
+                    report_start_date,
+                    monthly_budget_table,
+                    lump_sum_savings_withdrawals_table,
+                    lump_sum_pension_withdrawals_table,
+                    sim_state_pension_table,
+                    monthly_from_other_sources,
+                    s_rates,
+                    p_rates,
+                    i_rates)
+
+                if ran_out:
+                    runs_out_count += 1
+
+                for month_idx, (_, wealth) in enumerate(series):
+                    if month_idx < n_months:
+                        wealth_matrix[sim_idx, month_idx] = wealth
+
+                # Send progress update at each 10% milestone
+                completed = sim_idx + 1
+                if completed % report_every == 0 or completed == n_simulations:
+                    pct_done = round(100 * completed / n_simulations)
+                    self._update_gui({
+                        FuturePlotGUI.MC_PROGRESS_KEY:
+                            f"Running simulations: {completed} / {n_simulations} ({pct_done}%)"
+                    })
+
+            percentiles = [10, 25, 50, 75, 90]
+            percentile_matrix = np.percentile(wealth_matrix, percentiles, axis=0)
+            dates = [row[0] for row in series]
+            pct_out = round(100.0 * runs_out_count / n_simulations, 1)
+
+            # Send result back to the GUI thread via the queue
+            self._update_gui({
+                FuturePlotGUI.MC_RESULT_KEY: {
+                    'name': settings_name,
+                    'dates': dates,
+                    'percentile_matrix': percentile_matrix.tolist(),
+                    'percentiles': percentiles,
+                    'pct_runs_out': pct_out,
+                    'n_simulations': n_simulations,
+                    'final_year': final_year,
+                }
+            })
+
+        except Exception as ex:
+            traceback.print_tb(ex.__traceback__)
+            self._show_negative_notify_msg(str(ex))
+
+        finally:
+            # Re-enable the button whether the run succeeded or failed
+            self._update_gui({FuturePlotGUI.MC_ENABLE_BUTTON_KEY: True})
+
+    def _scale_state_pension_table(self,
+                                   base_table,
+                                   datetime_list,
+                                   sampled_rates,
+                                   mode_rate):
+        """@brief Return a copy of the state pension table with per-year amounts adjusted
+                  to reflect a simulation's sampled yearly increase rates rather than the
+                  mode rate used when building the base table.
+
+                  The base table was constructed assuming the state pension grows at
+                  `mode_rate`% every May.  For each simulation we want it to grow at
+                  `sampled_rates[year_index]`% instead.  We achieve this by computing a
+                  cumulative scaling factor that diverges from 1.0 after the first May
+                  and applying it to every row from that point on.
+
+           @param base_table     The shared state pension table (list of [datetime, amount]).
+           @param datetime_list  The full monthly datetime list for the projection.
+           @param sampled_rates  Per-year list of sampled state pension increase rates (%).
+           @param mode_rate      The mode rate used to build the base table (%).
+           @return A new table with the same structure but scaled amounts."""
+        if not base_table:
+            return base_table
+
+        scaled = [list(row) for row in base_table]  # deep copy of [date, amount] rows
+
+        # Track cumulative scale factor relative to the base table.
+        # Incremented each May after the first year (matching _process_state_pension_table).
+        cumulative_scale = 1.0
+        last_year = base_table[0][0].year
+        may_count = 0  # counts how many May increases have been applied
+
+        for row in scaled:
+            this_date = row[0]
+
+            # Detect each May after the start — this is when the state pension increases.
+            # year_index for the increase is may_count (0-based: first increase = index 0).
+            if this_date.month == 5:
+                if this_date.year != last_year or may_count == 0 and this_date.year > last_year:
+                    pass  # first May in start year: no increase applied in base table
+                if this_date.year > last_year:
+                    sampled_rate = float(sampled_rates[min(may_count, len(sampled_rates) - 1)])
+                    base_factor = 1 + mode_rate / 100
+                    sim_factor = 1 + sampled_rate / 100
+                    cumulative_scale *= sim_factor / base_factor
+                    may_count += 1
+                    last_year = this_date.year
+
+            # Apply the cumulative scale to this month's amount
+            row[1] = row[1] * cumulative_scale
+
+        return scaled
+
+    def _get_monthly_budget_table_for_rates(self, datetime_list, income_rate_list):
+        """@brief Build the monthly budget table using a supplied per-year income-increase rate list.
+                  Used by Monte Carlo when the income-increase spec is stochastic.
+           @param datetime_list     Monthly datetime list.
+           @param income_rate_list  List of yearly increase rates (one per year).
+           @return The budget table (list of [datetime, monthly_income] rows)."""
+        future_table = []
+        last_datetime = datetime_list[0]
+        monthly_income = float(self._get_param_value(FuturePlotGUI.MONTHLY_INCOME))
+        year_index = 0
+        for this_datetime in datetime_list:
+            if this_datetime.year == last_datetime.year:
+                future_table.append([this_datetime, monthly_income])
+            else:
+                rate = float(income_rate_list[min(year_index, len(income_rate_list) - 1)])
+                monthly_income = monthly_income * (1 + rate / 100)
+                future_table.append([this_datetime, monthly_income])
+                last_datetime = this_datetime
+                year_index += 1
+        return future_table
+
+    def get_mc_plot_gui(self):
+        """@return The MonteCarloPlotGUI instance."""
+        return self._mc_plot_gui
 
     def _get_monthly_spending_table(self):
         monthly_spending_dict = self._config.get_monthly_spending_dict()
@@ -4217,20 +4902,26 @@ class FuturePlotGUI(GUIBase):
                          rate_list,
                          year_index):
         """@brief Get the interest/growth rate for the year.
-           @param rate_list A list detailing the predicted interest/growth rates in future years (0=this year, 1=next year and so on). This may also be a comma separated string.
-           @param year_index The index into the above list. If beyond the list length, the last rate is used."""
+           @param rate_list A list detailing the predicted interest/growth rates in future years
+                            (0=this year, 1=next year and so on). This may also be a comma
+                            separated string, or a PERT MIN:MOST_LIKELY:MAX string (e.g. '2:3.5:5').
+                            When a PERT string is supplied a sample is drawn from the distribution
+                            on each call, giving year-to-year variation.
+           @param year_index The index into the above list. If beyond the list length, the last
+                             rate is used. Ignored for PERT strings (every call samples freshly)."""
+        if isinstance(rate_list, str) and PertDistribution.is_pert_string(rate_list):
+            # PERT spec: sample a fresh rate from the distribution for this year
+            minimum, most_likely, maximum = PertDistribution.parse_pert_string(rate_list)
+            return PertDistribution.sample(minimum, most_likely, maximum)
         if len(rate_list) < 1:
-            raise Exception(
-                "Rate list error. The rate_list must have at least one element.")
+            raise Exception("Rate list error. The rate_list must have at least one element.")
         if isinstance(rate_list, str):
             rate_list = rate_list.split(',')
-        selected_rate = rate_list[0]
         if year_index >= 0 and year_index < len(rate_list):
             selected_rate = rate_list[year_index]
         else:
             selected_rate = rate_list[-1]
-        selected_rate = float(selected_rate)
-        return selected_rate
+        return float(selected_rate)
 
     def _calc_new_account_value(self,
                                 current_value,
@@ -5232,11 +5923,11 @@ class Report1GUI(GUIBase):
                                                   field_name=self._my_dob_field.props['label']) and \
                 BankAccountGUI.CheckGreaterThanZero(self._my_max_age_field.value,
                                                     field_name=self._my_max_age_field.props['label']) and \
-                BankAccountGUI.CheckCommaSeparatedNumberList(self._savings_interest_rates_field.value,
+                BankAccountGUI.CheckRateField(self._savings_interest_rates_field.value,
                                                              field_name=self._savings_interest_rates_field.props['label']) and \
-                BankAccountGUI.CheckCommaSeparatedNumberList(self._pension_growth_rate_list_field.value,
+                BankAccountGUI.CheckRateField(self._pension_growth_rate_list_field.value,
                                                              field_name=self._pension_growth_rate_list_field.props['label']) and \
-                BankAccountGUI.CheckCommaSeparatedNumberList(self._state_pension_growth_rate_list_field.value,
+                BankAccountGUI.CheckRateField(self._state_pension_growth_rate_list_field.value,
                                                              field_name=self._state_pension_growth_rate_list_field.props['label']):
                 self._set_param_value(Report1GUI.MY_DATE_OF_BIRTH, self._my_dob_field.value)
                 self._set_param_value(Report1GUI.MY_MAX_AGE, self._my_max_age_field.value)
@@ -6152,19 +6843,26 @@ class Report1GUI(GUIBase):
                          rate_list,
                          year_index):
         """@brief Get the interest/growth rate for the year.
-           @param rate_list A list detailing the predicted interest/growth rates in future years (0=this year, 1=next year and so on). This may also be a comma separated string.
-           @param year_index The index into the above list. If beyond the list length, the last rate is used."""
+           @param rate_list A list detailing the predicted interest/growth rates in future years
+                            (0=this year, 1=next year and so on). This may also be a comma
+                            separated string, or a PERT MIN:MOST_LIKELY:MAX string (e.g. '2:3.5:5').
+                            When a PERT string is supplied a sample is drawn from the distribution
+                            on each call, giving year-to-year variation.
+           @param year_index The index into the above list. If beyond the list length, the last
+                             rate is used. Ignored for PERT strings (every call samples freshly)."""
+        if isinstance(rate_list, str) and PertDistribution.is_pert_string(rate_list):
+            # PERT spec: sample a fresh rate from the distribution for this year
+            minimum, most_likely, maximum = PertDistribution.parse_pert_string(rate_list)
+            return PertDistribution.sample(minimum, most_likely, maximum)
         if len(rate_list) < 1:
             raise Exception("Rate list error. The rate_list must have at least one element.")
         if isinstance(rate_list, str):
             rate_list = rate_list.split(',')
-        selected_rate = rate_list[0]
         if year_index >= 0 and year_index < len(rate_list):
             selected_rate = rate_list[year_index]
         else:
             selected_rate = rate_list[-1]
-        selected_rate = float(selected_rate)
-        return selected_rate
+        return float(selected_rate)
 
     def _is_pension_owner_alive(self, owner, report_date):
         """@brief Determine if (for the purposes of this report) the pension owner is alive and this pension is owned by you.
@@ -6571,6 +7269,154 @@ class Report1GUIPickler(Pickler):
     """@brief Provide the ability to pass args through pickled (saved to file using pickle module)."""
 
     PICKLE_FILENAME = Report1GUI.__name__
+
+
+class MonteCarloPickler(Pickler):
+    """@brief Pickler for passing Monte Carlo results to the plot page."""
+
+    PICKLE_FILENAME = "MonteCarloPlotGUI"
+
+
+class MonteCarloPlotGUI(GUIBase):
+    """@brief Responsible for rendering the Monte Carlo percentile-band plot.
+
+    Receives pre-computed percentile bands from FuturePlotGUI._calc_monte_carlo
+    and plots them as shaded regions on a single chart, together with a
+    prominent label showing the probability of running out of money.
+    """
+
+    # Colours for the five percentile traces (10, 25, 50, 75, 90)
+    _BAND_COLOURS = ['#d62728', '#ff7f0e', '#2ca02c', '#1f77b4', '#9467bd']
+    # Fill colours for the shaded inter-percentile bands (10-25, 25-50, 50-75, 75-90)
+    _FILL_COLOURS = ['rgba(214,39,40,0.15)', 'rgba(255,127,14,0.15)',
+                     'rgba(44,160,44,0.15)', 'rgba(31,119,180,0.15)']
+
+    def __init__(self):
+        """@brief Parameterless constructor."""
+        pass
+
+    def set_args(self,
+                 name,
+                 dates,
+                 percentile_matrix,
+                 percentiles,
+                 pct_runs_out,
+                 n_simulations,
+                 final_year=-1):
+        """@brief Store the Monte Carlo results via the Pickler for retrieval on the plot page.
+           @param name             Settings name (used as browser tab title).
+           @param dates            List of datetime instances (one per month).
+           @param percentile_matrix  2-D numpy array shape (len(percentiles), len(dates)).
+           @param percentiles      List of percentile values that were computed (e.g. [10,25,50,75,90]).
+           @param pct_runs_out     Percentage of simulations in which money ran out.
+           @param n_simulations    Total number of simulations run.
+           @param final_year       Last year to plot (-1 = no limit)."""
+        MonteCarloPickler().set([name,
+                                 dates,
+                                 percentile_matrix.tolist(),
+                                 percentiles,
+                                 pct_runs_out,
+                                 n_simulations,
+                                 final_year])
+
+    def init_page(self):
+        """@brief Render the Monte Carlo plot page."""
+        obj_list = MonteCarloPickler().get()
+        if obj_list is None:
+            return
+
+        name = obj_list[0]
+        dates = obj_list[1]
+        pct_matrix = np.array(obj_list[2])   # shape: (n_pcts, n_months)
+        percentiles = obj_list[3]
+        pct_runs_out = obj_list[4]
+        n_simulations = obj_list[5]
+        final_year = obj_list[6]
+
+        ui.page_title(f"Monte Carlo — {name}")
+
+        # --- Summary banner ---
+        colour = 'red' if pct_runs_out > 20 else ('orange' if pct_runs_out > 5 else 'green')
+        with ui.row().style('width: 100%; align-items: center; gap: 2rem;'):
+            ui.label(f"Monte Carlo: {name}").style('font-size: 28px; font-weight: bold;')
+            ui.label(
+                f"Runs out of money: {pct_runs_out}% of {n_simulations:,} simulations"
+            ).style(f'font-size: 20px; font-weight: bold; color: {colour};')
+
+        ui.label(
+            "Shaded bands show the 10th–25th, 25th–50th, 50th–75th and 75th–90th percentile "
+            "ranges of total wealth (savings + pension) across all simulations. "
+            "The solid line is the median (50th percentile). "
+            "Rate fields using MIN:MOST_LIKELY:MAX were sampled from a PERT distribution each year."
+        ).style('font-style: italic; color: #aaa; margin-bottom: 0.5rem;')
+
+        # --- Clip to final_year if set ---
+        if final_year > 0:
+            cut = next((i for i, d in enumerate(dates)
+                        if isinstance(d, datetime) and d.year > final_year), len(dates))
+            dates = dates[:cut]
+            pct_matrix = pct_matrix[:, :cut]
+
+        # --- Build Plotly figure ---
+        fig = go.Figure()
+
+        pct_labels = [f"{p}th percentile" for p in percentiles]
+        n_pcts = len(percentiles)
+        median_idx = percentiles.index(50) if 50 in percentiles else n_pcts // 2
+
+        # Draw filled bands between adjacent percentile pairs (bottom-up)
+        band_pairs = list(zip(range(n_pcts - 1), range(1, n_pcts)))
+        for band_idx, (lo_idx, hi_idx) in enumerate(band_pairs):
+            lo_vals = pct_matrix[lo_idx].tolist()
+            hi_vals = pct_matrix[hi_idx].tolist()
+            fill_colour = self._FILL_COLOURS[band_idx % len(self._FILL_COLOURS)]
+            label = f"{percentiles[lo_idx]}–{percentiles[hi_idx]}th pct band"
+
+            # Upper edge (visible)
+            fig.add_trace(go.Scatter(
+                x=dates, y=hi_vals,
+                mode='lines',
+                line=dict(color=self._BAND_COLOURS[hi_idx], width=1),
+                name=pct_labels[hi_idx],
+                showlegend=(band_idx == len(band_pairs) - 1)))
+
+            # Lower edge filled back to upper
+            fig.add_trace(go.Scatter(
+                x=dates, y=lo_vals,
+                mode='lines',
+                line=dict(color=self._BAND_COLOURS[lo_idx], width=1),
+                fill='tonexty',
+                fillcolor=fill_colour,
+                name=label,
+                showlegend=True))
+
+        # Draw median prominently on top
+        fig.add_trace(go.Scatter(
+            x=dates,
+            y=pct_matrix[median_idx].tolist(),
+            mode='lines',
+            line=dict(color='white', width=3, dash='solid'),
+            name='Median (50th pct)'))
+
+        # Zero line annotation
+        fig.add_hline(y=0, line_dash='dash', line_color='red',
+                      annotation_text='£0', annotation_position='right')
+
+        fig.update_layout(
+            title=dict(text=f"Monte Carlo Retirement Projection — {name}", font=dict(size=18)),
+            xaxis_title="Date",
+            yaxis_title="Total Wealth (£)",
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+            paper_bgcolor='#1e1e1e',
+            plot_bgcolor='#2a2a2a',
+            font=dict(color='white'),
+            xaxis=dict(gridcolor='#444'),
+            yaxis=dict(gridcolor='#444', rangemode='tozero'),
+            height=650,
+        )
+
+        with ui.column().style('width: 100%; margin: 0 auto;'):
+            ui.plotly(fig).style('width: 100%; height: 680px;')
 
 
 class Plot1GUI(GUIBase):
@@ -7276,6 +8122,7 @@ def build_gui():
     report1GUI = finances.getReport1GUI()
     futurePlotGUI = finances.getFuturePlotGUI()
     plot1GUI = finances.getPlot1GUI()
+    mcPlotGUI = finances.getMCPlotGUI()
     finances.init_footer()
 
     ui.sub_pages({
@@ -7287,6 +8134,7 @@ def build_gui():
         '/plot_1_page': plot1GUI.init_page,
         '/report1_page': report1GUI.init_page,
         '/report1_chart_page': report1GUI.init_chart_page,
+        '/monte_carlo_page': mcPlotGUI.init_page,
         })
 
 
