@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "retirement-finances"
-version = "7.3"
+version = "8.0"
 description = ""
 authors = ["Paul Austen <pjaos@gmail.com>"]
 readme = "README.md"
@@ -21,6 +21,7 @@ plotly = "*"
 python-dateutil = "*"
 psutil = "*"
 pandas = "*"
+numpy = "*"
 PyInstaller = "*"
 
 # Windows-only dependencies

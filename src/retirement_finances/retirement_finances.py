@@ -15,7 +15,6 @@ import tempfile
 import secrets
 import json
 import pickle
-import random
 import numpy as np
 
 from queue import Queue
@@ -3556,13 +3555,13 @@ class FuturePlotGUI(GUIBase):
                 BankAccountGUI.CheckZeroOrGreater(self._monthly_income_field.value,
                                                   field_name=self._monthly_income_field.props['label']) and \
                 BankAccountGUI.CheckRateField(self._yearly_increase_in_income_field.value,
-                                                             field_name=self._yearly_increase_in_income_field.props['label']) and \
+                                              field_name=self._yearly_increase_in_income_field.props['label']) and \
                 BankAccountGUI.CheckRateField(self._savings_interest_rates_field.value,
-                                                             field_name=self._savings_interest_rates_field.props['label']) and \
+                                              field_name=self._savings_interest_rates_field.props['label']) and \
                 BankAccountGUI.CheckRateField(self._pension_growth_rate_list_field.value,
-                                                             field_name=self._pension_growth_rate_list_field.props['label']) and \
+                                              field_name=self._pension_growth_rate_list_field.props['label']) and \
                 BankAccountGUI.CheckRateField(self._state_pension_growth_rate_list_field.value,
-                                                             field_name=self._state_pension_growth_rate_list_field.props['label']):
+                                              field_name=self._state_pension_growth_rate_list_field.props['label']):
                 self._set_param_value(FuturePlotGUI.MY_DATE_OF_BIRTH, self._my_dob_field.value)
                 self._set_param_value(FuturePlotGUI.MY_MAX_AGE, self._my_max_age_field.value)
                 self._set_param_value(FuturePlotGUI.PARTNER_DATE_OF_BIRTH, self._partner_dob_field.value)
@@ -4509,7 +4508,6 @@ class FuturePlotGUI(GUIBase):
         # Use monthly compounding: monthly_rate = (1 + annual_rate)^(1/12) - 1
         monthly_increase = savings_amount * ((1 + annual_rate) ** (1 / 12) - 1)
         return monthly_increase
-
 
     def _get_monthly_growth(self, principal, annual_rate):
         """
@@ -5924,11 +5922,11 @@ class Report1GUI(GUIBase):
                 BankAccountGUI.CheckGreaterThanZero(self._my_max_age_field.value,
                                                     field_name=self._my_max_age_field.props['label']) and \
                 BankAccountGUI.CheckRateField(self._savings_interest_rates_field.value,
-                                                             field_name=self._savings_interest_rates_field.props['label']) and \
+                                              field_name=self._savings_interest_rates_field.props['label']) and \
                 BankAccountGUI.CheckRateField(self._pension_growth_rate_list_field.value,
-                                                             field_name=self._pension_growth_rate_list_field.props['label']) and \
+                                              field_name=self._pension_growth_rate_list_field.props['label']) and \
                 BankAccountGUI.CheckRateField(self._state_pension_growth_rate_list_field.value,
-                                                             field_name=self._state_pension_growth_rate_list_field.props['label']):
+                                              field_name=self._state_pension_growth_rate_list_field.props['label']):
                 self._set_param_value(Report1GUI.MY_DATE_OF_BIRTH, self._my_dob_field.value)
                 self._set_param_value(Report1GUI.MY_MAX_AGE, self._my_max_age_field.value)
                 self._set_param_value(Report1GUI.PARTNER_DATE_OF_BIRTH, self._partner_dob_field.value)
@@ -6421,7 +6419,6 @@ class Report1GUI(GUIBase):
         # Use monthly compounding: monthly_rate = (1 + annual_rate)^(1/12) - 1
         monthly_increase = savings_amount * ((1 + annual_rate) ** (1 / 12) - 1)
         return monthly_increase
-
 
     def _get_savings_table(self, start_date_limited=True):
         """@param start_date The start date. Dates before this are ignored.
