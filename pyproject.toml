@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "retirement-finances"
-version = "8.0"
+version = "8.1"
 description = ""
 authors = ["Paul Austen <pjaos@gmail.com>"]
 readme = "README.md"
@@ -15,7 +15,7 @@ cryptography = "*"
 click = "*"
 p3lib = "^1.1.147"
 requests = "*"
-nicegui = "3.5.0"
+nicegui = "3.10.0"
 matplotlib = "*"
 plotly = "*"
 python-dateutil = "*"
