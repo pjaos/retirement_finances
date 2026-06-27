@@ -2284,6 +2284,17 @@ class BankAccountGUI(GUIBase):
 
         elif BankAccountGUI.CheckValidDateString(self._bank_account_field_list[5].value,
                                                  field_name=self._bank_account_field_list[5].props['label']):
+            # Locate the account in the stored config BEFORE overwriting the dict with the
+            # edited GUI values. _get_selected_bank_account_index() matches on fields that
+            # include the editable Notes field, so it must run while the dict still holds the
+            # original values; otherwise an edit to Notes (or any other matched field) means
+            # nothing matches and the change is silently discarded.
+            bank_account_list = None
+            selected_bank_account_index = None
+            if not self._add:
+                bank_account_list = self._config.get_bank_accounts_dict_list()
+                selected_bank_account_index = self._get_selected_bank_account_index(bank_account_list)
+
             # The table rows were updated previously
             self._bank_account_dict[BankAccountGUI.ACCOUNT_BANK_NAME_LABEL] = self._bank_account_field_list[0].value
             self._bank_account_dict[BankAccountGUI.ACCOUNT_NAME_LABEL] = self._bank_account_field_list[1].value
@@ -2298,12 +2309,8 @@ class BankAccountGUI(GUIBase):
 
             if self._add:
                 self._config.add_bank_account(self._bank_account_dict)
-
             else:
-                bank_account_list = self._config.get_bank_accounts_dict_list()
                 # We're editing a bank account so update the bank account
-                selected_bank_account_index = self._get_selected_bank_account_index(bank_account_list)
-
                 if selected_bank_account_index is not None and selected_bank_account_index >= 0:
                     bank_account_list[selected_bank_account_index] = self._bank_account_dict
 
